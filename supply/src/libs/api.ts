@@ -1,0 +1,397 @@
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+class ApiClient {
+    private baseURL: string;
+    private token: string | null;
+
+    constructor() {
+        this.baseURL = API_URL;
+        this.token = localStorage.getItem('auth_token');
+    }
+
+    setToken(token: string | null) {
+        this.token = token;
+        if (token) {
+            localStorage.setItem('auth_token', token);
+        } else {
+            localStorage.removeItem('auth_token');
+        }
+    }
+
+    getHeaders(): Record<string, string> {
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+
+        if (this.token) {
+            headers['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        return headers;
+    }
+
+    async request(endpoint: string, options: RequestInit = {}): Promise<any> {
+        const url = `${this.baseURL}${endpoint}`;
+        const config = {
+            ...options,
+            headers: {
+                ...this.getHeaders(),
+                ...options.headers,
+            },
+        };
+
+        try {
+            const response = await fetch(url, config);
+            const data = await response.json();
+
+            if (!response.ok) {
+                const error: any = new Error(data.error || 'Request failed');
+                error.code = data.code;
+                error.status = response.status;
+                throw error;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('API Error:', error);
+            throw error;
+        }
+    }
+
+    // Auth
+    async login(email: string, password: string) {
+        const data = await this.request('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+        });
+        this.setToken(data.token);
+        return data;
+    }
+
+    async register(data: { name: string; email: string; password: string }) {
+        return this.request('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async getMe() {
+        return this.request('/auth/me');
+    }
+
+    logout() {
+        this.setToken(null);
+    }
+
+    // SMM API
+    async getBalance(provider: string) {
+        return this.request(`/smm/balance/${provider}`);
+    }
+
+    async getServices(provider: string) {
+        return this.request(`/smm/services/${provider}`);
+    }
+
+    async createOrder(orderData: any) {
+        return this.request('/smm/order', {
+            method: 'POST',
+            body: JSON.stringify(orderData),
+        });
+    }
+
+    async getOrderStatus(provider: string, orderId: string) {
+        return this.request(`/smm/status/${provider}/${orderId}`);
+    }
+
+    async refillOrder(provider: string, orderId: string) {
+        return this.request('/smm/refill', {
+            method: 'POST',
+            body: JSON.stringify({ provider, order_id: orderId }),
+        });
+    }
+
+    async cancelOrder(provider: string, orderId: string) {
+        return this.request('/smm/cancel', {
+            method: 'POST',
+            body: JSON.stringify({ provider, order_id: orderId }),
+        });
+    }
+
+    // Orders
+    async getOrders(filters: Record<string, any> = {}, syncWithApi = false, page = 1, limit = 50) {
+        const params = new URLSearchParams({
+            ...filters,
+            page: page.toString(),
+            limit: limit.toString(),
+            ...(syncWithApi ? { sync: 'true' } : {})
+        });
+        return this.request(`/orders?${params}`);
+    }
+
+    async getOrder(orderId: string, syncWithApi = true) {
+        const params = syncWithApi ? '?sync=true' : '?sync=false';
+        return this.request(`/orders/${orderId}${params}`);
+    }
+
+    async syncOrders(orderIds: string[]) {
+        return this.request('/orders/sync', {
+            method: 'POST',
+            body: JSON.stringify({ order_ids: orderIds }),
+        });
+    }
+
+    async getRecentOrders(limit = 10) {
+        return this.request(`/orders/recent/${limit}`);
+    }
+
+    async importOrders(orderIds: string[], provider = 'BulkMedya', defaultService?: string, defaultLink?: string) {
+        return this.request('/import/orders', {
+            method: 'POST',
+            body: JSON.stringify({ orderIds, provider, defaultService, defaultLink }),
+        });
+    }
+
+    // Drip Feed
+    async getDripAccounts() {
+        return this.request('/drip/accounts');
+    }
+
+    async getDripAccount(accountId: string) {
+        return this.request(`/drip/accounts/${accountId}`);
+    }
+
+    async createDripAccount(accountData: any) {
+        return this.request('/drip/accounts', {
+            method: 'POST',
+            body: JSON.stringify(accountData),
+        });
+    }
+
+    async cancelDripAccount(accountId: string) {
+        return this.request(`/drip/accounts/${accountId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async getDripRuns(filters: Record<string, any> = {}) {
+        const params = new URLSearchParams(filters);
+        return this.request(`/drip/runs?${params}`);
+    }
+
+    async getShopifyOrders() {
+        return this.request('/drip/shopify-orders');
+    }
+
+    async runDripEngine() {
+        return this.request('/drip/run-engine', {
+            method: 'POST',
+        });
+    }
+
+    async fixBlockedRuns() {
+        return this.request('/drip/fix-blocked', {
+            method: 'POST',
+        });
+    }
+
+    // Drip Queue Processor
+    async processDripQueue() {
+        return this.request('/drip-queue/process-queue', {
+            method: 'POST',
+        });
+    }
+
+    async processCompletedOrders() {
+        return this.request('/drip-queue/process-completed', {
+            method: 'POST',
+        });
+    }
+
+    // Drip Engine - Run Cycle
+    async runDripCycle() {
+        return this.request('/drip/run-engine', {
+            method: 'POST',
+        });
+    }
+
+    async processScheduledOrders() {
+        return this.request('/drip-queue/process-scheduled', {
+            method: 'POST',
+        });
+    }
+
+    async deleteOrder(orderId: number) {
+        return this.request(`/orders/${orderId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async forceRunDripAccount(accountId: number) {
+        return this.request(`/drip/accounts/${accountId}/force-run`, {
+            method: 'POST',
+        });
+    }
+
+    async updateDripAccountStatus(accountId: number, status: string) {
+        return this.request(`/drip/accounts/${accountId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        });
+    }
+
+    async deleteDripAccount(accountId: number) {
+        return this.request(`/drip/accounts/${accountId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // Refill
+    async getRefillTimers() {
+        return this.request('/refill/timers');
+    }
+
+    async refreshOngoingOrders() {
+        return this.request('/refill/ongoing', {
+            method: 'POST',
+        });
+    }
+
+    async refreshAllOrders() {
+        return this.request('/refill/all', {
+            method: 'POST',
+        });
+    }
+
+    async autoRefill() {
+        return this.request('/refill/auto-refill', {
+            method: 'POST',
+        });
+    }
+
+    // Balance
+    async getAvailableBalance(provider: string) {
+        return this.request(`/balance/${provider}`);
+    }
+
+    async getBalanceReservations(provider: string) {
+        return this.request(`/balance/reservations/${provider}`);
+    }
+
+    // Config (Admin)
+    async getProviders() {
+        return this.request('/config/providers');
+    }
+
+    async getProvider(provider: string) {
+        return this.request(`/config/providers/${provider}`);
+    }
+
+    async createProvider(providerData: any) {
+        return this.request('/config/providers', {
+            method: 'POST',
+            body: JSON.stringify(providerData),
+        });
+    }
+
+    async updateProvider(provider: string, providerData: any) {
+        return this.request(`/config/providers/${provider}`, {
+            method: 'PUT',
+            body: JSON.stringify(providerData),
+        });
+    }
+
+    async deleteProvider(provider: string) {
+        return this.request(`/config/providers/${provider}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // Dashboard
+    async getDashboardStats() {
+        return this.request('/dashboard/stats');
+    }
+
+    async getDashboardRecentOrders() {
+        return this.request('/dashboard/recent-orders');
+    }
+
+    async getDashboardChartData() {
+        return this.request('/dashboard/chart-data');
+    }
+
+    // Employees (Admin)
+    async getEmployees() {
+        return this.request('/employees');
+    }
+
+    async getEmployee(id: string) {
+        return this.request(`/employees/${id}`);
+    }
+
+    async createEmployee(employeeData: any) {
+        return this.request('/employees', {
+            method: 'POST',
+            body: JSON.stringify(employeeData),
+        });
+    }
+
+    async updateEmployee(id: string, employeeData: any) {
+        return this.request(`/employees/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(employeeData),
+        });
+    }
+
+    async deleteEmployee(id: string) {
+        return this.request(`/employees/${id}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // Pending Users
+    async getPendingUsers() {
+        return this.request('/auth/pending-users');
+    }
+
+    async approveUser(userId: number) {
+        return this.request(`/auth/approve-user/${userId}`, {
+            method: 'POST',
+        });
+    }
+
+    async rejectUser(userId: number) {
+        return this.request(`/auth/reject-user/${userId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // Track (Public)
+    async trackOrder(orderNumber: string) {
+        return this.request(`/track/${orderNumber}`);
+    }
+
+    // Allowed Services
+    async getAllowedServices() {
+        return this.request('/allowed-services');
+    }
+
+    async addAllowedService(serviceId: string, serviceName: string, provider = 'BulkMedya') {
+        return this.request('/allowed-services', {
+            method: 'POST',
+            body: JSON.stringify({
+                service_id: serviceId,
+                service_name: serviceName,
+                provider
+            }),
+        });
+    }
+
+    async deleteAllowedService(serviceId: string) {
+        return this.request(`/allowed-services/${serviceId}`, {
+            method: 'DELETE',
+        });
+    }
+}
+
+export const api = new ApiClient();
+export default api;
