@@ -34,33 +34,54 @@ router.post('/create-order', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Provider, service, link, and quantity are required' });
         }
 
-        // Get provider configuration
-        const [providers] = await connection.query(
-            'SELECT * FROM providers WHERE name = ? AND active = 1',
-            [provider]
+        // Get service details first to get the correct provider
+        const [services] = await connection.query(
+            'SELECT * FROM allowed_services WHERE service_id = ?',
+            [service]
         );
 
-        if (providers.length === 0) {
-            console.error(`Provider ${provider} not found or inactive`);
+        if (services.length === 0) {
+            console.error(`Service ${service} not found in allowed_services`);
             await connection.rollback();
-            return res.status(400).json({ error: 'Provider not found or inactive' });
+            return res.status(400).json({ error: 'Service not found in catalog' });
+        }
+
+        const serviceData = services[0];
+        const serviceProvider = serviceData.provider; // Use provider from service
+        console.log(`📦 Service: ${serviceData.service_name}, Provider from service: ${serviceProvider}`);
+
+        // Get provider configuration (use provider from service, not from request)
+        let [providers] = await connection.query(
+            'SELECT * FROM providers WHERE name = ? AND active = 1',
+            [serviceProvider]
+        );
+
+        // Fallback to 'default' provider if specific provider not found
+        if (providers.length === 0) {
+            console.log(`⚠️  Provider '${serviceProvider}' not found, trying 'default'...`);
+            [providers] = await connection.query(
+                'SELECT * FROM providers WHERE name = ? AND active = 1',
+                ['default']
+            );
+        }
+
+        if (providers.length === 0) {
+            console.error(`Provider ${serviceProvider} not found or inactive`);
+            await connection.rollback();
+            return res.status(400).json({ error: 'Provider not found or inactive. Please configure a provider in Config page.' });
         }
 
         const providerData = providers[0];
+        console.log(`✅ Using provider: ${providerData.name} for service ${service}`);
 
         // Extract username from link
         const userInfo = extractUsername(link);
         const username = userInfo ? userInfo.username : null;
 
-        // Get service details (for rate calculation)
-        const [services] = await connection.query(
-            'SELECT * FROM allowed_services WHERE service_id = ? AND provider = ?',
-            [service, provider]
-        );
-
+        // Use service rate if available
         let serviceRate = 0;
-        if (services.length > 0 && services[0].rate) {
-            serviceRate = parseFloat(services[0].rate);
+        if (serviceData.rate) {
+            serviceRate = parseFloat(serviceData.rate);
         }
 
         // Determine if drip feed is enabled
@@ -153,7 +174,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
                 type: 'order_created',
                 title: '💧 Nouvelle commande Drip Feed',
                 message: `${service_name} - ${totalQuantity} unités en ${dripfeedRuns} exécutions`,
-                data: { orderId, shopify_order_number, runs: dripfeedRuns },
+                data: { orderId: parentOrderId, shopify_order_number, runs: dripfeedRuns },
                 link: `/commandes`
             });
 
@@ -295,20 +316,7 @@ router.post('/process', authenticateCron, async (req, res) => {
 
         for (const parentOrder of parentOrders) {
             try {
-                // Get provider configuration
-                const [providers] = await connection.query(
-                    'SELECT * FROM providers WHERE name = ? AND active = 1',
-                    [parentOrder.provider || 'BulkMedya']
-                );
-
-                if (providers.length === 0) {
-                    console.error(`❌ Provider not found for order ${parentOrder.id}`);
-                    continue;
-                }
-
-                const provider = providers[0];
-
-                // Get service details for quantity per run
+                // Get service details first to get the correct provider
                 const [services] = await connection.query(
                     'SELECT * FROM allowed_services WHERE service_id = ?',
                     [parentOrder.service_id]
@@ -322,6 +330,31 @@ router.post('/process', authenticateCron, async (req, res) => {
                 const service = services[0];
                 const serviceRate = parseFloat(service.rate || 0);
                 const quantityPerRun = parseInt(service.dripfeed_quantity || 250);
+                const serviceProvider = service.provider; // Use provider from service
+
+                // Get provider configuration (use provider from service)
+                const requestedProvider = serviceProvider || 'default';
+                let [providers] = await connection.query(
+                    'SELECT * FROM providers WHERE name = ? AND active = 1',
+                    [requestedProvider]
+                );
+
+                // Fallback to 'default' provider if specific provider not found
+                if (providers.length === 0 && requestedProvider !== 'default') {
+                    console.log(`⚠️  Provider '${requestedProvider}' not found, trying 'default'...`);
+                    [providers] = await connection.query(
+                        'SELECT * FROM providers WHERE name = ? AND active = 1',
+                        ['default']
+                    );
+                }
+
+                if (providers.length === 0) {
+                    console.error(`❌ Provider not found for order ${parentOrder.id}`);
+                    continue;
+                }
+
+                const provider = providers[0];
+                console.log(`✅ Processing order #${parentOrder.id} with provider: ${provider.name} (from service: ${service.service_name})`);
 
                 // Check if it's time for the next run
                 const lastSubOrder = await connection.query(
@@ -548,7 +581,8 @@ router.post('/accounts', authenticateToken, async (req, res) => {
         const userInfo = extractUsername(link);
         const username = userInfo ? userInfo.username : null;
 
-        // Check for existing active orders for this profile
+        // Check for existing ACTIVE orders for this profile (excluding Partial, Completed, Cancelled, Failed)
+        // Partial orders from Bulkmedya are considered done and should not block new orders
         const [existingOrders] = await connection.query(
             `SELECT id, status
              FROM orders
@@ -565,6 +599,7 @@ router.post('/accounts', authenticateToken, async (req, res) => {
         if (existingOrders.length > 0) {
             status = 'waiting_for_previous';
             parentId = existingOrders[0].id;
+            console.log(`⏳ Order queued - waiting for order #${parentId} to complete`);
         }
 
         // Calculate drip feed parameters

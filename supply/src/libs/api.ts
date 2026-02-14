@@ -261,6 +261,12 @@ class ApiClient {
         });
     }
 
+    async retryOrder(orderId: number) {
+        return this.request(`/orders/${orderId}/retry`, {
+            method: 'POST',
+        });
+    }
+
     async forceRunDripAccount(accountId: number) {
         return this.request(`/drip/accounts/${accountId}/force-run`, {
             method: 'POST',
@@ -486,6 +492,35 @@ class ApiClient {
     // Provider Balances
     async getAllProviderBalances() {
         return this.request('/balances/all-balances');
+    }
+
+    // Chat Bot
+    async sendChatMessage(message: string) {
+        return this.request('/chat', {
+            method: 'POST',
+            body: JSON.stringify({ message }),
+        });
+    }
+
+    // Refill / Service Availability Check
+    async getRefillServices() {
+        return this.request('/refill/services');
+    }
+
+    async checkServiceAvailability(serviceId: string) {
+        return this.request(`/refill/check-service/${serviceId}`, {
+            method: 'POST',
+        });
+    }
+
+    async checkAllServicesAvailability() {
+        return this.request('/refill/check-all', {
+            method: 'POST',
+        });
+    }
+
+    async getRefillHistory() {
+        return this.request('/refill/history');
     }
 }
 

@@ -28,18 +28,41 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting' | 'reconnecting'>('disconnected');
+  const [tokenChangeCounter, setTokenChangeCounter] = useState(0);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 10;
-  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeout = useRef<number | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const isConnectingRef = useRef(false);
+
+  // Keep refs in sync
+  useEffect(() => {
+    socketRef.current = socket;
+  }, [socket]);
 
   const connect = useCallback(() => {
     const token = localStorage.getItem('auth_token');
     if (!token) {
-      console.log('❌ WebSocket: No token found, cannot connect');
+      // Silent: user is not authenticated yet, WebSocket will connect after login
       setConnectionStatus('disconnected');
       return;
     }
 
+    // Avoid creating multiple socket instances
+    if (socketRef.current?.connected || isConnectingRef.current) {
+      console.log('⚠️ WebSocket: Already connected or connecting, skipping...');
+      return;
+    }
+
+    // Disconnect existing socket if any
+    if (socketRef.current) {
+      console.log('🔌 WebSocket: Disconnecting existing socket...');
+      socketRef.current.disconnect();
+      setSocket(null);
+      socketRef.current = null;
+    }
+
+    isConnectingRef.current = true;
     setConnectionStatus('connecting');
     console.log('🔌 WebSocket: Connecting...');
 
@@ -56,6 +79,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       console.log('✅ WebSocket: Connected', socketInstance.id);
       setIsConnected(true);
       setConnectionStatus('connected');
+      isConnectingRef.current = false;
       reconnectAttempts.current = 0;
     });
 
@@ -63,11 +87,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       console.log('❌ WebSocket: Disconnected', reason);
       setIsConnected(false);
       setConnectionStatus('disconnected');
+      isConnectingRef.current = false;
     });
 
     socketInstance.on('connect_error', (error) => {
       console.error('❌ WebSocket: Connection error', error.message);
       setConnectionStatus('disconnected');
+      isConnectingRef.current = false;
       
       // If authentication failed, clear token and don't retry
       if (error.message.includes('Authentication') || error.message.includes('token')) {
@@ -128,32 +154,57 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     };
   }, []);
 
+  // Connect on mount and when token changes
   useEffect(() => {
-    const cleanup = connect();
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, [connect]);
+    const token = localStorage.getItem('auth_token');
+    
+    if (token) {
+      // Only connect if not already connected/connecting
+      if (!socketRef.current?.connected && !isConnectingRef.current) {
+        const cleanup = connect();
+        return () => {
+          if (cleanup) cleanup();
+        };
+      }
+    } else {
+      // No token, disconnect if connected
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        setSocket(null);
+        socketRef.current = null;
+        setConnectionStatus('disconnected');
+      }
+    }
+  }, [connect, tokenChangeCounter]);
 
-  // Reconnect when token changes
+  // Listen for custom auth events (same-tab login/logout)
+  useEffect(() => {
+    const handleAuthChange = () => {
+      console.log('🔄 WebSocket: Auth changed, triggering reconnect check...');
+      setTokenChangeCounter(prev => prev + 1);
+    };
+
+    window.addEventListener('auth:login', handleAuthChange);
+    window.addEventListener('auth:logout', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('auth:login', handleAuthChange);
+      window.removeEventListener('auth:logout', handleAuthChange);
+    };
+  }, []);
+
+  // Listen for storage events (cross-tab login/logout)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'auth_token') {
-        if (e.newValue) {
-          console.log('🔄 WebSocket: Token changed, reconnecting...');
-          socket?.disconnect();
-          connect();
-        } else {
-          console.log('❌ WebSocket: Token removed, disconnecting...');
-          socket?.disconnect();
-          setConnectionStatus('disconnected');
-        }
+        console.log('🔄 WebSocket: Storage event detected');
+        setTokenChangeCounter(prev => prev + 1);
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [socket, connect]);
+  }, []);
 
   const on = useCallback((event: string, handler: (...args: any[]) => void) => {
     socket?.on(event, handler);

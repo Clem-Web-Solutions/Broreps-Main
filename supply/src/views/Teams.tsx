@@ -2,6 +2,7 @@ import { CheckCircle, Clock, RefreshCw, XCircle, type LucideIcon } from "lucide-
 import { useEffect, useState } from "react";
 import api from "../libs/api";
 import { cn } from "../libs/utils";
+import { useWebSocket } from "../contexts/WebSocketContext";
 
 interface StatCardProps {
     id: 'pending' | 'approved' | 'rejected';
@@ -24,6 +25,7 @@ export function Teams() {
     const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<number | null>(null);
+    const { on, off, isConnected } = useWebSocket();
 
     const [pendingUsers, setPendingUsers] = useState<Employee[]>([]);
     const [approvedUsers, setApprovedUsers] = useState<Employee[]>([]);
@@ -104,6 +106,39 @@ export function Teams() {
         loadUsers();
     }, []);
 
+    // WebSocket listeners for real-time updates
+    useEffect(() => {
+        if (!isConnected) return;
+
+        const handleUserRegistered = (data: any) => {
+            console.log('👤 WebSocket: New user registered', data);
+            // Reload users to reflect the new registration
+            loadUsers();
+        };
+
+        const handleUserApproved = (data: any) => {
+            console.log('✅ WebSocket: User approved', data);
+            // Reload users to reflect the approval
+            loadUsers();
+        };
+
+        const handleUserRejected = (data: any) => {
+            console.log('❌ WebSocket: User rejected', data);
+            // Reload users to reflect the rejection
+            loadUsers();
+        };
+
+        on('user:registered', handleUserRegistered);
+        on('user:approved', handleUserApproved);
+        on('user:rejected', handleUserRejected);
+
+        return () => {
+            off('user:registered', handleUserRegistered);
+            off('user:approved', handleUserApproved);
+            off('user:rejected', handleUserRejected);
+        };
+    }, [isConnected, on, off]);
+
     const getCurrentUsers = () => {
         switch (activeTab) {
             case 'pending':
@@ -143,9 +178,19 @@ export function Teams() {
 
     return (
         <div className="flex flex-col gap-8 pb-12">
-            <div>
-                <h1 className="text-3xl font-bold text-white tracking-tight">Demandes d'Accès</h1>
-                <p className="text-slate-400">Gérez les demandes d'accès au panel</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-bold text-white tracking-tight">Demandes d'Accès</h1>
+                        {isConnected && (
+                            <span className="px-2 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-lg border border-green-500/20 flex items-center gap-1">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                Temps réel
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-slate-400">Gérez les demandes d'accès au panel</p>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -40,7 +40,7 @@ export function Orders() {
     const [syncing, setSyncing] = useState(false);
 
     const [orders, setOrders] = useState<Order[]>([]);
-    const [totalOrders, setTotalOrders] = useState(0);
+    const [, setTotalOrders] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [showImportModal, setShowImportModal] = useState(false);

@@ -18,6 +18,8 @@ import trackRoutes from './routes/track.js';
 import refillRoutes from './routes/refill.js';
 import importRoutes from './routes/import.js';
 import notificationRoutes from './routes/notifications.js';
+import chatRoutes from './routes/chat.js';
+import reportsRoutes from './routes/reports.js';
 import { initCron } from './lib/cron.js';
 import { initWebSocket } from './lib/websocket.js';
 
@@ -68,6 +70,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/refill', refillRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // Public routes (no authentication required)
 app.use('/api/track', trackRoutes);

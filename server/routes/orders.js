@@ -300,7 +300,8 @@ router.post('/sync-status', async (req, res) => {
     
     const provider = providers[0];
 
-    // Get all orders that need syncing
+    // Get all orders that need syncing (exclude only completed and cancelled)
+    // Keep syncing 'partial' orders as they may still receive updates (especially Bulkmedya)
     const [orders] = await db.query(`
       SELECT 
         id,
@@ -310,8 +311,7 @@ router.post('/sync-status', async (req, res) => {
         status
       FROM orders
       WHERE provider_order_id IS NOT NULL 
-        AND status != 'completed'
-        AND status != 'cancelled'
+        AND status NOT IN ('completed', 'cancelled')
       ORDER BY created_at DESC
       LIMIT 100
     `);
@@ -338,10 +338,14 @@ router.post('/sync-status', async (req, res) => {
 
           // Map provider status to our status
           let newStatus = order.status;
+          const previousStatus = order.status;
+          
           if (providerStatus === 'Completed' || remains === 0) {
             newStatus = 'completed';
           } else if (providerStatus === 'Partial') {
-            newStatus = 'processing';
+            // Partial orders (especially from Bulkmedya) are considered terminal
+            // They should not block other orders on the same link
+            newStatus = 'partial';
           } else if (providerStatus === 'In progress' || providerStatus === 'Processing') {
             newStatus = 'processing';
           } else if (providerStatus === 'Pending') {
@@ -359,6 +363,44 @@ router.post('/sync-status', async (req, res) => {
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
           `, [remains, charge, newStatus, order.id]);
+
+          // If order became 'partial' or 'completed', release waiting orders for same link
+          if ((newStatus === 'partial' || newStatus === 'completed') && 
+              (previousStatus !== 'partial' && previousStatus !== 'completed')) {
+            console.log(`🔓 Order #${order.id} is now ${newStatus} - releasing waiting orders...`);
+            
+            // Get the username/link from this order
+            const [orderDetails] = await db.query(
+              'SELECT username, link FROM orders WHERE id = ?',
+              [order.id]
+            );
+            
+            if (orderDetails.length > 0 && orderDetails[0].username) {
+              const username = orderDetails[0].username;
+              
+              // Find and release orders waiting for this profile
+              const [waitingOrders] = await db.query(
+                `SELECT id FROM orders 
+                 WHERE username = ? 
+                   AND status = 'waiting_for_previous' 
+                   AND parent_order_id = ?
+                 ORDER BY created_at ASC
+                 LIMIT 1`,
+                [username, order.id]
+              );
+              
+              if (waitingOrders.length > 0) {
+                const nextOrderId = waitingOrders[0].id;
+                await db.query(
+                  `UPDATE orders 
+                   SET status = 'pending', parent_order_id = NULL 
+                   WHERE id = ?`,
+                  [nextOrderId]
+                );
+                console.log(`✅ Released order #${nextOrderId} from waiting queue`);
+              }
+            }
+          }
 
           // Get updated order with user_id for WebSocket emission
           const [updatedOrder] = await db.query(`
@@ -409,6 +451,151 @@ router.post('/sync-status', async (req, res) => {
   } catch (err) {
     console.error('Sync status error:', err);
     res.status(500).json({ error: 'Failed to sync statuses' });
+  }
+});
+
+// Retry sending order to provider
+router.post('/:orderId/retry', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.orderId);
+
+    // Get order details
+    const [orders] = await db.query(
+      `SELECT o.*, s.provider, s.service_id as smm_service_id, s.service_name
+       FROM orders o
+       LEFT JOIN allowed_services s ON o.service_id = s.service_id
+       WHERE o.id = ?`,
+      [orderId]
+    );
+
+    if (orders.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const order = orders[0];
+
+    if (!order.provider) {
+      return res.status(400).json({ error: 'No provider configured for this service' });
+    }
+
+    // Get provider info (try specific provider first, fallback to 'default')
+    let [providers] = await db.query(
+      'SELECT * FROM providers WHERE name = ? AND active = TRUE',
+      [order.provider]
+    );
+
+    // Fallback to 'default' provider if specific provider not found
+    if (providers.length === 0) {
+      console.log(`⚠️  Provider '${order.provider}' not found, trying 'default'...`);
+      [providers] = await db.query(
+        'SELECT * FROM providers WHERE name = ? AND active = TRUE',
+        ['default']
+      );
+    }
+
+    if (providers.length === 0) {
+      return res.status(400).json({ error: `Provider ${order.provider} not found or inactive. Please configure a provider in Config page.` });
+    }
+
+    const provider = providers[0];
+    console.log(`✅ Using provider: ${provider.name} (requested: ${order.provider})`);
+
+    // Import smmRequest function
+    const { smmRequest } = await import('./smm.js');
+
+    // Send order to provider
+    console.log(`🔄 Retrying order #${orderId} with provider ${provider.name}...`);
+    const response = await smmRequest(provider, 'add', {
+      service: order.smm_service_id,
+      link: order.link,
+      quantity: order.quantity
+    });
+
+    if (!response.order) {
+      throw new Error('Provider did not return order ID');
+    }
+
+    const providerOrderId = response.order;
+
+    // Update order with provider_order_id and set status to processing
+    await db.query(
+      `UPDATE orders 
+       SET provider_order_id = ?, 
+           status = 'processing', 
+           updated_at = NOW()
+       WHERE id = ?`,
+      [providerOrderId, orderId]
+    );
+
+    console.log(`✅ Order #${orderId} successfully sent to provider. Provider Order ID: ${providerOrderId}`);
+
+    // Fetch updated order status from provider
+    try {
+      const statusResponse = await smmRequest(provider, 'status', {
+        order: providerOrderId
+      });
+
+      let newStatus = 'processing';
+      let remains = order.quantity;
+
+      if (statusResponse.status === 'Completed') {
+        newStatus = 'completed';
+        remains = 0;
+      } else if (statusResponse.status === 'In progress' || statusResponse.status === 'Processing') {
+        newStatus = 'processing';
+        remains = parseInt(statusResponse.remains) || order.quantity;
+      } else if (statusResponse.status === 'Partial') {
+        newStatus = 'processing';
+        remains = parseInt(statusResponse.remains) || order.quantity;
+      } else if (statusResponse.status === 'Cancelled' || statusResponse.status === 'Canceled') {
+        newStatus = 'cancelled';
+      }
+
+      // Update with synced status
+      await db.query(
+        `UPDATE orders 
+         SET status = ?, remains = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [newStatus, remains, orderId]
+      );
+
+      console.log(`✅ Order #${orderId} synced: status=${newStatus}, remains=${remains}`);
+    } catch (syncError) {
+      console.error(`Failed to sync status for order #${orderId}:`, syncError.message);
+    }
+
+    // Get updated order for WebSocket emission
+    const [updatedOrders] = await db.query(
+      `SELECT o.*, s.service_name FROM orders o
+       LEFT JOIN allowed_services s ON o.service_id = s.service_id
+       WHERE o.id = ?`,
+      [orderId]
+    );
+
+    const updatedOrder = updatedOrders[0];
+
+    // Emit WebSocket events
+    const wsPayload = {
+      order_id: updatedOrder.id,
+      status: updatedOrder.status,
+      remains: updatedOrder.remains,
+      provider_order_id: updatedOrder.provider_order_id
+    };
+
+    if (updatedOrder.user_id) {
+      emitToUser(updatedOrder.user_id, 'order:updated', wsPayload);
+    }
+    emitToAdmins('order:updated', wsPayload);
+
+    res.json({ 
+      success: true, 
+      message: 'Order successfully sent to provider',
+      provider_order_id: providerOrderId,
+      order: updatedOrder
+    });
+  } catch (err) {
+    console.error(`❌ Failed to retry order #${req.params.orderId}:`, err);
+    res.status(500).json({ error: err.message || 'Failed to retry order' });
   }
 });
 

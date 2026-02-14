@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '../config/database.js';
+import { emitToAdmins } from '../lib/websocket.js';
 
 const router = express.Router();
 
@@ -51,6 +52,19 @@ router.post('/register', async (req, res) => {
       'SELECT id, name, email, role, status, created_at FROM users WHERE id = ?',
       [result.insertId]
     );
+
+    // Emit WebSocket event to admins about new registration
+    if (status === 'pending') {
+      emitToAdmins('user:registered', {
+        id: user[0].id,
+        name: user[0].name,
+        email: user[0].email,
+        role: user[0].role,
+        status: user[0].status,
+        created_at: user[0].created_at
+      });
+      console.log('📢 WebSocket: New user registration emitted to admins');
+    }
 
     // Generate token
     const token = jwt.sign(
@@ -205,6 +219,16 @@ router.post('/approve-user/:userId', async (req, res) => {
       [userId]
     );
 
+    // Emit WebSocket event to admins
+    emitToAdmins('user:approved', {
+      id: users[0].id,
+      name: users[0].name,
+      email: users[0].email,
+      role: users[0].role,
+      status: users[0].status
+    });
+    console.log('📢 WebSocket: User approved event emitted');
+
     res.json({ success: true, message: 'User approved', user: users[0] });
   } catch (err) {
     console.error('Approve user error:', err);
@@ -231,6 +255,16 @@ router.post('/reject-user/:userId', async (req, res) => {
       'SELECT id, name, email, role, status, created_at FROM users WHERE id = ?',
       [userId]
     );
+
+    // Emit WebSocket event to admins
+    emitToAdmins('user:rejected', {
+      id: users[0].id,
+      name: users[0].name,
+      email: users[0].email,
+      role: users[0].role,
+      status: users[0].status
+    });
+    console.log('📢 WebSocket: User rejected event emitted');
 
     res.json({ success: true, message: 'User rejected', user: users[0] });
   } catch (err) {

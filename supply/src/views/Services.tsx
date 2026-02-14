@@ -665,7 +665,7 @@ export function Services() {
                                     </div>
 
                                     {/* Hover Gradient Effect */}
-                                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                                    <div className="absolute inset-0 bg-linear-to-r from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                                 </div>
                             ))}
 
@@ -889,7 +889,7 @@ export function Services() {
                             </div>
 
                             {/* Estimated Cost */}
-                            <div className="bg-gradient-to-br from-green-500/10 to-primary/10 border border-green-500/20 rounded-2xl p-6">
+                            <div className="bg-linear-to-br from-green-500/10 to-primary/10 border border-green-500/20 rounded-2xl p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <div className="text-slate-400 text-sm mb-1">Coût estimé</div>
@@ -912,7 +912,7 @@ export function Services() {
                                 <button
                                     onClick={handleSubmitOrder}
                                     disabled={!orderForm.link || !orderForm.quantity || isSubmitting}
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-green-400 hover:from-primary/90 hover:to-green-400/90 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-all shadow-lg shadow-primary/20"
+                                    className="flex-1 px-6 py-3 bg-linear-to-r from-primary to-green-400 hover:from-primary/90 hover:to-green-400/90 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-all shadow-lg shadow-primary/20"
                                 >
                                     {isSubmitting ? (
                                         <>

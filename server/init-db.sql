@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS orders (
   dripfeed_interval INT DEFAULT NULL,
   dripfeed_current_run INT DEFAULT 0,
   parent_order_id INT DEFAULT NULL,
-  status ENUM('pending', 'waiting_for_previous', 'processing', 'completed', 'cancelled', 'failed') DEFAULT 'pending',
+  status ENUM('pending', 'waiting_for_previous', 'processing', 'completed', 'partial', 'cancelled', 'failed') DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

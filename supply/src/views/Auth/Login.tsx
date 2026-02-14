@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router";
 import { Eye, EyeOff, Lock, LogIn, Mail } from "lucide-react";
 import { cn } from "../../libs/utils";
 
 export function Login() {
-    const { login } = useAuth() as any;
+    const { login, isAuthenticated } = useAuth() as any;
     const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
@@ -14,6 +14,13 @@ export function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Redirect to dashboard if already authenticated
+    useEffect(() => {
+        if (isAuthenticated && !loading) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [isAuthenticated, loading, navigate]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -21,7 +28,7 @@ export function Login() {
 
         try {
             await login(email, password);
-            navigate('/dashboard');
+            // Navigation will happen automatically via useEffect when isAuthenticated becomes true
         } catch (err: any) {
             console.error('Login error:', err);
             
@@ -49,7 +56,6 @@ export function Login() {
             }
 
             setError(errorMessage);
-        } finally {
             setLoading(false);
         }
     };

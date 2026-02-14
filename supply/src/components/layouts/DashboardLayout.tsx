@@ -1,10 +1,9 @@
-import { Bell, Clock, FileText, LayoutDashboard, LogOut, Package, RefreshCcw, Search, Settings, Shield, ShoppingCart, Sparkles } from 'lucide-react';
+import { Clock, FileText, LayoutDashboard, LogOut, Package, RefreshCcw, Search, Settings, Shield, ShoppingCart, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../libs/utils';
 import { NotificationBell } from '../notifications/NotificationBell';
-import { ConnectionStatus } from '../connection/ConnectionStatus';
 
 const mainNav = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
@@ -95,7 +94,6 @@ export function DashboardLayout() {
 
     return (
         <div className="min-h-screen bg-background text-white selection:bg-primary selection:text-black font-sans h-screen flex flex-col">
-            <ConnectionStatus />
             <header className="flex items-center justify-between px-8 py-5">
                 <div className="flex items-center gap-12">
                     <div className="flex items-center gap-2">

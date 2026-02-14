@@ -188,8 +188,7 @@ export function Track() {
             }
         };
 
-        const handleDripExecuted = (data: any) => {
-            // Refresh if this is a drip feed order being tracked
+        const handleDripExecuted = () => {
             if (result.is_drip_feed) {
                 console.log('💧 Track: Drip executed, refreshing...');
                 handleRefresh();
@@ -242,7 +241,7 @@ export function Track() {
             {result && (
                 <div className="w-full max-w-8xl space-y-6">
                     {/* Main Order Card */}
-                    <div className="bg-gradient-to-br from-surface/40 to-surface/20 border border-primary/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(190,242,100,0.1)]">
+                    <div className="bg-linear-to-br from-surface/40 to-surface/20 border border-primary/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(190,242,100,0.1)]">
                         <div className="flex items-start justify-between mb-6">
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
@@ -306,7 +305,7 @@ export function Track() {
                             </div>
                             <div className="w-full h-4 bg-black/40 rounded-full overflow-hidden border border-white/10">
                                 <div 
-                                    className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-1000 rounded-full"
+                                    className="h-full bg-linear-to-r from-primary to-secondary transition-all duration-1000 rounded-full"
                                     style={{ width: `${calculateDripProgress().progress}%` }}
                                 />
                             </div>
@@ -377,7 +376,7 @@ export function Track() {
                             <div className="mt-4 bg-green-500/10 border border-green-500/20 rounded-xl p-4">
                                 <div className="flex items-center justify-between">
                                     <span className="text-green-400 font-bold">Coût de la commande</span>
-                                    <span className="text-green-400 text-2xl font-black">{result.order.charge.toFixed(2)} €</span>
+                                    <span className="text-green-400 text-2xl font-black">{Number(result.order.charge).toFixed(2)} €</span>
                                 </div>
                             </div>
                         )}
@@ -420,7 +419,7 @@ export function Track() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {/* Prochain Drip */}
                                         {result.drip_feed_info.executed_runs < result.drip_feed_info.total_runs && (
-                                            <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-5">
+                                            <div className="bg-linear-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-5">
                                                 <div className="flex items-center gap-2 mb-3">
                                                     <Clock className="text-blue-400" size={20} />
                                                     <span className="text-xs text-blue-300 font-bold uppercase">Prochain Drip</span>
@@ -446,7 +445,7 @@ export function Track() {
                                         )}
 
                                         {/* Fin Estimée */}
-                                        <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-xl p-5">
+                                        <div className="bg-linear-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-xl p-5">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <CheckCircle2 className="text-green-400" size={20} />
                                                 <span className="text-xs text-green-300 font-bold uppercase">Fin Estimée</span>
@@ -516,19 +515,25 @@ export function Track() {
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        {subOrder.remains === subOrder.quantity && subOrder.status !== 'Completed' ? (
-                                                            // Pas encore synchronisé avec l'API
+                                                        {subOrder.is_executed && subOrder.delivered === 0 && subOrder.status !== 'Completed' ? (
+                                                            // Aucune livraison encore (sync en attente ou traitement en cours)
                                                             <>
-                                                                <div className="text-blue-400 font-bold text-lg">Envoyé</div>
+                                                                <div className="text-blue-400 font-bold text-lg">
+                                                                    {subOrder.status === 'In progress' || subOrder.status === 'Processing' ? '🔄 En cours' : 'Envoyé'}
+                                                                </div>
                                                                 <div className="text-slate-400 text-sm">{subOrder.quantity.toLocaleString()} unités</div>
-                                                                <div className="text-yellow-400 text-xs">En attente de sync...</div>
+                                                                <div className="text-yellow-400 text-xs">
+                                                                    {subOrder.status === 'In progress' || subOrder.status === 'Processing' 
+                                                                        ? 'Traitement par le provider...' 
+                                                                        : 'En attente de sync...'}
+                                                                </div>
                                                             </>
                                                         ) : (
-                                                            // Synchronisé avec l'API
+                                                            // Livraison en cours ou terminée
                                                             <>
                                                                 <div className="text-white font-bold text-lg">{subOrder.delivered.toLocaleString()}</div>
                                                                 <div className="text-slate-400 text-sm">sur {subOrder.quantity.toLocaleString()}</div>
-                                                                {subOrder.remains > 0 && (
+                                                                {subOrder.remains > 0 && subOrder.status !== 'Completed' && (
                                                                     <div className="text-orange-400 text-xs">Restant: {subOrder.remains}</div>
                                                                 )}
                                                             </>

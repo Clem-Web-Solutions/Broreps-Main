@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../libs/api";
-import { ArrowUpRight, BarChart2, Clock, PieChartIcon, ShoppingCart, TrendingUp, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, BarChart2, Clock, ExternalLink, PieChartIcon, ShoppingCart, TrendingUp, Wallet, type LucideIcon } from "lucide-react";
 import { cn } from "../libs/utils";
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useWebSocket } from "../contexts/WebSocketContext";
@@ -45,6 +45,7 @@ interface Order {
     time: string;
     icon: string;
     platform: string;
+    link: string;
 }
 
 interface ServiceData {
@@ -112,9 +113,20 @@ function TrendChart() {
                 const daysWithOrders = dailyCounts.filter(d => d.count > 0);
                 console.log('📊 Days with orders (last 30 days):', daysWithOrders);
 
-                // Use last 7 days for display
-                const last7Days = last30Days.slice(-7);
-                const trendData = last7Days.map(dateStr => {
+                // Get current week starting from Sunday
+                const today = new Date();
+                const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                const sundayDate = new Date(today);
+                sundayDate.setDate(today.getDate() - dayOfWeek); // Go back to Sunday of current week
+                
+                // Create array of 7 days starting from Sunday
+                const weekDays = Array.from({ length: 7 }, (_, i) => {
+                    const date = new Date(sundayDate);
+                    date.setDate(sundayDate.getDate() + i);
+                    return date.toISOString().split('T')[0];
+                });
+
+                const trendData = weekDays.map(dateStr => {
                     const date = new Date(dateStr + 'T00:00:00Z');
                     const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'Europe/Paris' });
                     
@@ -171,6 +183,8 @@ function TrendChart() {
                         <Tooltip
                             contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
                             cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
+                            labelFormatter={(index) => data[index as number]?.name || index}
+                            formatter={(value: any) => [`${value}`, 'commande(s)']}
                         />
                         <Line
                             type="monotone"
@@ -264,7 +278,8 @@ function RecentOrdersTable() {
                     status: order.status,
                     time: getTimeAgo(order.created_at),
                     icon: getPlatformIcon(order.service_name),
-                    platform: getPlatform(order.service_name)
+                    platform: getPlatform(order.service_name),
+                    link: order.link || ''
                 }));
                 setOrders(formattedOrders);
             } catch (error) {
@@ -340,7 +355,24 @@ function RecentOrdersTable() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-white font-semibold text-sm truncate">{order.service}</div>
-                                <div className="text-slate-500 text-xs">#{order.id}</div>
+                                <div className="flex items-center gap-1.5 text-slate-500 text-xs">
+                                    <span>#{order.id}</span>
+                                    {order.link && (
+                                        <>
+                                            <span>•</span>
+                                            <a
+                                                href={order.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1 text-slate-400 hover:text-primary transition-colors truncate max-w-37.5"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <span className="truncate">{order.link}</span>
+                                                <ExternalLink size={10} className="shrink-0" />
+                                            </a>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -504,17 +536,17 @@ export function Overview() {
     useEffect(() => {
         if (!isConnected) return;
 
-        const handleOrderCreated = (data: any) => {
+        const handleOrderCreated = () => {
             console.log('📊 Dashboard: Order created, refreshing stats');
             fetchData();
         };
 
-        const handleOrderUpdated = (data: any) => {
+        const handleOrderUpdated = () => {
             console.log('📊 Dashboard: Order updated, refreshing stats');
             fetchData();
         };
 
-        const handleBalanceLow = (data: any) => {
+        const handleBalanceLow = () => {
             console.log('⚠️ Dashboard: Low balance detected, refreshing balances');
             fetchData();
         };

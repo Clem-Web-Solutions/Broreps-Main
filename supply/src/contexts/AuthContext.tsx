@@ -48,12 +48,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = async (email: string, password: string) => {
         const data = await api.login(email, password);
         setUser(data.user);
+        // Trigger WebSocket reconnection
+        window.dispatchEvent(new Event('auth:login'));
         return data;
     };
 
     const logout = () => {
         api.logout();
         setUser(null);
+        // Trigger WebSocket disconnection
+        window.dispatchEvent(new Event('auth:logout'));
     };
 
     const register = async (email: string, password: string, name: string) => {

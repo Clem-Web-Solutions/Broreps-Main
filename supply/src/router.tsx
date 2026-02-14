@@ -10,18 +10,22 @@ import { Login } from "./views/Auth/Login";
 import { Register } from "./views/Auth/Register";
 import { Config } from "./views/Config";
 import { Teams } from "./views/Teams";
+import { Home } from "./views/Home";
+import { Reports } from "./views/Reports";
+import { Refill } from "./views/Refill";
 
 export const router = createBrowserRouter([
     {
         path: "/",
-        children: [
-            {
-                path: "/login", index: true, element: <Login />
-            },
-            {
-                path: "/register", element: <Register />
-            }
-        ]
+        element: <Home />
+    },
+    {
+        path: "/login",
+        element: <Login />
+    },
+    {
+        path: "/register",
+        element: <Register />
     },
     {
         path: "/",
@@ -46,7 +50,13 @@ export const router = createBrowserRouter([
                 path: "/drip", element: <Drip />
             },
             {
+                path: "/rapport", element: <Reports />
+            },
+            {
                 path: "/team", element: <Teams />
+            },
+            {
+                path: "/refill", element: <Refill />
             },
             {
                 path: "/config", element: <Config />

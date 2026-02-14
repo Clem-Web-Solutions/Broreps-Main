@@ -1,5 +1,6 @@
-import { Activity, CheckCircle, Download, LayoutList, Lock, Play, RefreshCw, Trash2, TrendingUp, Zap } from "lucide-react";
+import { Activity, CheckCircle, Clock, Download, LayoutList, Lock, Play, RefreshCw, Trash2, TrendingUp, Zap } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useWebSocket } from "../contexts/WebSocketContext";
 import { useState, useEffect } from "react";
 import api from "../libs/api";
 import { cn } from "../libs/utils";
@@ -49,6 +50,7 @@ interface Order {
 export function Drip() {
     const ITEMS_PER_PAGE = 15;
     const { isAdmin } = useAuth();
+    const { on, off, isConnected } = useWebSocket();
 
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
@@ -59,7 +61,7 @@ export function Drip() {
     const [dripOrders, setDripOrders] = useState<Order[]>([]);
 
     const [currentPage, setCurrentPage] = useState(1);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery] = useState('');
 
     const [stats, setStats] = useState({
         reservedBalance: 0,
@@ -67,6 +69,37 @@ export function Drip() {
         successRate: 0,
         pending: 0
     });
+
+    // WebSocket listeners for real-time updates without resetting filters
+    useEffect(() => {
+        if (!isConnected) return;
+
+        const handleOrderUpdated = (data: any) => {
+            console.log('🔄 Drip: Order updated via WebSocket', data);
+            // Silently reload data without resetting filters
+            loadData(true);
+        };
+
+        const handleDripExecuted = (data: any) => {
+            console.log('💧 Drip: Drip executed via WebSocket', data);
+            loadData(true);
+        };
+
+        const handleOrderCompleted = (data: any) => {
+            console.log('✅ Drip: Order completed via WebSocket', data);
+            loadData(true);
+        };
+
+        on('order:updated', handleOrderUpdated);
+        on('drip:executed', handleDripExecuted);
+        on('order:completed', handleOrderCompleted);
+
+        return () => {
+            off('order:updated', handleOrderUpdated);
+            off('drip:executed', handleDripExecuted);
+            off('order:completed', handleOrderCompleted);
+        };
+    }, [isConnected, on, off, activeTab]);
 
     const loadData = async (silent = false) => {
         // Only show loading spinner if not a silent background refresh
@@ -137,26 +170,19 @@ export function Drip() {
                     pending: queuedOrders
                 });
             } else if (activeTab === 'pending') {
-                // Load ALL orders with pending runs - NO SYNC for faster loading
-                console.log('[PENDING] Loading pending orders...');
-                const ordersData = await api.getOrders({}, false, 1, 3000); // NO sync, load up to 3000 orders
-                // Include all drip feed orders (with parent_order_id or runs > 0) that are not fully completed
-                const allOrders = ordersData.orders?.filter((order: Order) =>
-                    order.runs > 0 || order.parent_order_id
-                ) || [];
-                console.log('[PENDING] All drip orders loaded:', allOrders.length);
-
-                // Group them and filter for those with pending runs
-                const grouped = groupDripFeedOrders(allOrders);
-                const pendingOrders = grouped.filter((o: Order) => {
-                    const executedRuns = (o as any).executedRuns || 0;
-                    const totalRuns = (o as any).totalRuns || o.runs || 1;
-                    const hasRemainingRuns = totalRuns > executedRuns;
-                    const isPending = o.status === 'Pending' || o.status === 'In progress';
-                    return hasRemainingRuns && isPending;
-                });
-                console.log('[PENDING] Pending orders with remaining runs:', pendingOrders.length);
-                setRuns(pendingOrders as any);
+                // Load orders waiting in queue (same link conflict)
+                console.log('[PENDING] Loading waiting orders...');
+                const ordersData = await api.getOrders({}, false, 1, 3000);
+                // Filter orders that are waiting (status contains 'waiting' or queue_status is set)
+                const waitingOrders = ordersData.orders?.filter((order: Order) => {
+                    const isWaiting = order.status?.toLowerCase().includes('waiting') ||
+                                    order.status === 'Queued' ||
+                                    order.queue_status === 'waiting' ||
+                                    order.queue_status === 'queued';
+                    return isWaiting;
+                }) || [];
+                console.log('[PENDING] Waiting orders loaded:', waitingOrders.length);
+                setRuns(waitingOrders as any);
             } else if (activeTab === 'history') {
                 // Load ALL completed orders - NO SYNC for faster loading
                 console.log('[HISTORY] Loading completed orders...');
@@ -534,6 +560,17 @@ export function Drip() {
                     Livraison Drip Feed
                 </button>
                 <button
+                    onClick={() => setActiveTab('pending')}
+                    className={cn(
+                        "flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-all",
+                        activeTab === 'pending'
+                            ? "bg-orange-500 text-white shadow-lg shadow-orange-900/30"
+                            : "text-slate-400 hover:text-white hover:bg-white/5"
+                    )}
+                >
+                    En attente
+                </button>
+                <button
                     onClick={() => setActiveTab('history')}
                     className={cn(
                         "flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-all",
@@ -638,6 +675,7 @@ export function Drip() {
                                                 const progress = getOrderProgress(order);
                                                 const statusColor =
                                                     order.status === 'Completed' ? 'text-green-400 bg-green-500/10 border-green-500/20' :
+                                                        order.status === 'Partial' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' :
                                                         order.status === 'In progress' || order.status === 'Processing' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' :
                                                             order.status === 'Pending' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
                                                                 'text-red-400 bg-red-500/10 border-red-500/20';
@@ -674,7 +712,7 @@ export function Drip() {
                                                                     <button
                                                                         onClick={() => deleteOrder(order.id, order.order_id)}
                                                                         disabled={syncing}
-                                                                        className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 flex items-center justify-center text-red-400 hover:text-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                                                                        className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 flex items-center justify-center text-red-400 hover:text-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                                                                         title="Supprimer la commande"
                                                                     >
                                                                         <Trash2 size={14} />
@@ -812,6 +850,7 @@ export function Drip() {
                                                 const progress = getOrderProgress(order);
                                                 const statusColor =
                                                     order.status === 'Completed' ? 'text-green-400 bg-green-500/10 border-green-500/20' :
+                                                        order.status === 'Partial' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' :
                                                         order.status === 'In progress' || order.status === 'Processing' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' :
                                                             order.status === 'Pending' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
                                                                 order.status === 'Queued' || order.status === 'Scheduled' ? 'text-purple-400 bg-purple-500/10 border-purple-500/20' :
@@ -905,7 +944,7 @@ export function Drip() {
                                                                     <button
                                                                         onClick={() => deleteOrder(order.id, order.order_id)}
                                                                         disabled={syncing}
-                                                                        className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 flex items-center justify-center text-red-400 hover:text-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                                                                        className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 flex items-center justify-center text-red-400 hover:text-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                                                                         title="Supprimer la commande"
                                                                     >
                                                                         <Trash2 size={14} />
@@ -972,6 +1011,141 @@ export function Drip() {
                                                                         'bg-orange-500'
                                                             )} style={{ width: `${progress}%` }}></div>
                                                         </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    );
+                })()}
+
+                {/* --- TAB: PENDING (Waiting Orders) --- */}
+                {activeTab === 'pending' && (() => {
+                    const waitingOrders = runs as any;
+
+                    return (
+                        <div className="space-y-4">
+                            {loading ? (
+                                <div className="p-12 text-center text-slate-400">
+                                    <RefreshCw className="animate-spin mx-auto mb-4" size={32} />
+                                    Chargement...
+                                </div>
+                            ) : (() => {
+                                const filteredOrders = waitingOrders.filter((order: Order) => {
+                                    if (!searchQuery) return true;
+                                    const query = searchQuery.toLowerCase();
+                                    return (
+                                        order.order_id?.toLowerCase().includes(query) ||
+                                        order.service_name?.toLowerCase().includes(query) ||
+                                        order.link?.toLowerCase().includes(query) ||
+                                        order.provider?.toLowerCase().includes(query)
+                                    );
+                                });
+
+                                const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+                                const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                                const endIndex = startIndex + ITEMS_PER_PAGE;
+                                const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+                                return filteredOrders.length === 0 ? (
+                                    <div className="p-12 text-center text-slate-400">
+                                        <Clock size={48} className="mx-auto mb-4 opacity-50" />
+                                        <p>{searchQuery ? 'Aucun résultat trouvé' : 'Aucune commande en attente'}</p>
+                                        {searchQuery && (
+                                            <p className="text-xs mt-2">Recherche: "{searchQuery}"</p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="text-center text-sm text-slate-400 mb-4">
+                                            <span className="font-bold text-white">{filteredOrders.length}</span> commande{filteredOrders.length > 1 ? 's' : ''} en attente
+                                            {totalPages > 1 && (
+                                                <span className="ml-2">• Page <span className="text-white font-bold">{currentPage}</span> / {totalPages}</span>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {paginatedOrders.map((order: Order) => {
+                                                const statusColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+
+                                                return (
+                                                    <div key={order.id} className="bg-surface/40 border border-orange-500/20 rounded-2xl p-6 relative overflow-hidden hover:border-orange-500/40 transition-all">
+                                                        <div className="flex flex-col gap-4 relative z-10">
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-3 mb-2">
+                                                                        <span className="text-xs font-mono text-slate-500">#{order.order_id || order.id}</span>
+                                                                        {order.shopify_order_number && (
+                                                                            <span className="text-xs font-mono text-slate-500 px-2 py-0.5 bg-white/5 rounded">
+                                                                                Shopify: {order.shopify_order_number}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <h3 className="text-lg font-bold text-white mb-1 truncate">
+                                                                        {order.service_name}
+                                                                    </h3>
+                                                                    <p className="text-sm text-slate-400 truncate">
+                                                                        📍 {order.link}
+                                                                    </p>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                    <span className={cn(
+                                                                        "px-3 py-1 rounded-full text-xs font-bold border",
+                                                                        statusColor
+                                                                    )}>
+                                                                        ⏳ {order.queue_status || order.status}
+                                                                    </span>
+                                                                    {isAdmin && (
+                                                                        <button
+                                                                            onClick={() => deleteOrder(order.id, order.order_id || order.shopify_order_number || order.id.toString())}
+                                                                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                                            title="Supprimer"
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                                                <div className="bg-white/5 rounded-xl p-3">
+                                                                    <div className="text-xs text-slate-500 mb-1">Quantité</div>
+                                                                    <div className="text-lg font-bold text-white">{order.quantity.toLocaleString()}</div>
+                                                                </div>
+                                                                <div className="bg-white/5 rounded-xl p-3">
+                                                                    <div className="text-xs text-slate-500 mb-1">Provider</div>
+                                                                    <div className="text-sm font-semibold text-white truncate">{order.provider}</div>
+                                                                </div>
+                                                                <div className="bg-white/5 rounded-xl p-3">
+                                                                    <div className="text-xs text-slate-500 mb-1">Coût</div>
+                                                                    <div className="text-lg font-bold text-white">${(order.charge || 0).toFixed(2)}</div>
+                                                                </div>
+                                                                <div className="bg-white/5 rounded-xl p-3">
+                                                                    <div className="text-xs text-slate-500 mb-1">Créée</div>
+                                                                    <div className="text-sm font-medium text-white">
+                                                                        {new Date(order.created_at).toLocaleDateString('fr-FR', {
+                                                                            day: '2-digit',
+                                                                            month: 'short',
+                                                                            hour: '2-digit',
+                                                                            minute: '2-digit'
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3">
+                                                                <div className="flex items-center gap-2 text-orange-400 text-sm">
+                                                                    <span className="font-bold">⚠️ Raison:</span>
+                                                                    <span>Une autre commande sur ce lien est déjà en cours de traitement</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Orange waiting bar */}
+                                                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-orange-500/50"></div>
                                                     </div>
                                                 );
                                             })}
@@ -1063,7 +1237,7 @@ export function Drip() {
                                                                     <button
                                                                         onClick={() => deleteOrder(order.id, order.order_id)}
                                                                         disabled={syncing}
-                                                                        className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 flex items-center justify-center text-red-400 hover:text-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                                                                        className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 flex items-center justify-center text-red-400 hover:text-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                                                                         title="Supprimer la commande"
                                                                     >
                                                                         <Trash2 size={14} />

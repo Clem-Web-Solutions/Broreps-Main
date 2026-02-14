@@ -1,4 +1,4 @@
-import { Plus, Trash2, Settings, Check } from "lucide-react";
+import { Plus, Trash2, Settings, Check, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "../libs/api";
 import { cn } from "../libs/utils";
@@ -18,6 +18,7 @@ interface Provider {
     id: number;
     name: string;
     api_url: string;
+    api_key?: string;
     active: number;
     created_at: string;
 }
@@ -41,7 +42,7 @@ interface AllowedService {
 }
 
 export function Config() {
-    const [activeTab, setActiveTab] = useState<TabType>('alerts');
+    const [activeTab, setActiveTab] = useState<TabType>('providers');
 
     // Alerts state
     const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -70,6 +71,9 @@ export function Config() {
         active: true
     });
     const [testingProvider, setTestingProvider] = useState<number | null>(null);
+    const [visibleApiKeys, setVisibleApiKeys] = useState<Set<number>>(new Set());
+    const [providerApiKeys, setProviderApiKeys] = useState<Map<number, string>>(new Map());
+    const [loadingApiKey, setLoadingApiKey] = useState<number | null>(null);
 
     // Members state
     const [members, setMembers] = useState<Employee[]>([]);
@@ -292,6 +296,41 @@ export function Config() {
         }
     };
 
+    const handleToggleApiKeyVisibility = async (providerId: number) => {
+        const isVisible = visibleApiKeys.has(providerId);
+        
+        if (isVisible) {
+            // Hide the API key
+            const newVisibleKeys = new Set(visibleApiKeys);
+            newVisibleKeys.delete(providerId);
+            setVisibleApiKeys(newVisibleKeys);
+        } else {
+            // Show the API key - fetch it if not already loaded
+            if (!providerApiKeys.has(providerId)) {
+                setLoadingApiKey(providerId);
+                try {
+                    const result = await api.getProvider(providerId.toString());
+                    if (result.provider && result.provider.api_key) {
+                        const newApiKeys = new Map(providerApiKeys);
+                        newApiKeys.set(providerId, result.provider.api_key);
+                        setProviderApiKeys(newApiKeys);
+                    }
+                } catch (error: any) {
+                    console.error('Failed to fetch API key:', error);
+                    window.alert('Impossible de charger la clé API');
+                    setLoadingApiKey(null);
+                    return;
+                } finally {
+                    setLoadingApiKey(null);
+                }
+            }
+            
+            const newVisibleKeys = new Set(visibleApiKeys);
+            newVisibleKeys.add(providerId);
+            setVisibleApiKeys(newVisibleKeys);
+        }
+    };
+
     // Member handlers
     const handleSaveMember = async () => {
         try {
@@ -364,15 +403,6 @@ export function Config() {
         }
     };
 
-    const handleEditService = (service: AllowedService) => {
-        setServiceFormData({
-            service_id: service.service_id,
-            service_name: service.service_name,
-            provider: service.provider
-        });
-        setShowServiceModal(true);
-    };
-
     return (
         <div className="flex flex-col gap-6 pb-12">
             {/* Header */}
@@ -423,7 +453,16 @@ export function Config() {
                 {activeTab === 'catalog' && (
                     <button
                         onClick={() => {
-                            setServiceFormData({ service_id: '', service_name: '', provider: 'BulkMedya', delivery_mode: 'standard', dripfeed_quantity: 250, dripfeed_custom: '' });
+                            // Get first active provider as default
+                            const defaultProvider = providers.find(p => p.active) || providers[0];
+                            setServiceFormData({ 
+                                service_id: '', 
+                                service_name: '', 
+                                provider: defaultProvider?.name || 'default', 
+                                delivery_mode: 'standard', 
+                                dripfeed_quantity: 250, 
+                                dripfeed_custom: '' 
+                            });
                             setShowServiceModal(true);
                         }}
                         className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-secondary text-black font-bold rounded-xl transition-colors"
@@ -497,11 +536,34 @@ export function Config() {
                                     key={provider.id}
                                     className="flex items-center justify-between p-4 bg-background rounded-xl border border-white/5 hover:border-primary/30 transition-colors"
                                 >
-                                    <div>
+                                    <div className="flex-1">
                                         <h3 className="font-semibold text-white">{provider.name}</h3>
-                                        <p className="text-sm text-slate-400">{provider.api_url || 'URL non configurée'}</p>
+                                        <p className="text-sm text-slate-400 mb-2">{provider.api_url || 'URL non configurée'}</p>
+                                        
+                                        {/* API Key Display */}
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs text-slate-500">Clé API:</span>
+                                            <code className="text-xs font-mono text-slate-300 bg-black/30 px-2 py-1 rounded">
+                                                {loadingApiKey === provider.id ? (
+                                                    'Chargement...'
+                                                ) : visibleApiKeys.has(provider.id) && providerApiKeys.has(provider.id) ? (
+                                                    providerApiKeys.get(provider.id)
+                                                ) : (
+                                                    '••••••••••••••••'
+                                                )}
+                                            </code>
+                                            <button
+                                                onClick={() => handleToggleApiKeyVisibility(provider.id)}
+                                                disabled={loadingApiKey === provider.id}
+                                                className="p-1 text-slate-400 hover:text-white hover:bg-white/5 rounded transition-colors disabled:opacity-50"
+                                                title={visibleApiKeys.has(provider.id) ? 'Masquer la clé' : 'Afficher la clé'}
+                                            >
+                                                {visibleApiKeys.has(provider.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            </button>
+                                        </div>
+                                        
                                         <span className={cn(
-                                            "inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium",
+                                            "inline-block px-2 py-1 rounded-full text-xs font-medium",
                                             provider.active ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
                                         )}>
                                             {provider.active ? 'Actif' : 'Inactif'}
@@ -886,7 +948,7 @@ export function Config() {
                                 <textarea
                                     value={alertFormData.message}
                                     onChange={(e) => setAlertFormData({ ...alertFormData, message: e.target.value })}
-                                    className="w-full px-4 py-2 bg-background border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-primary min-h-[100px] resize-none"
+                                    className="w-full px-4 py-2 bg-background border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-primary min-h-25 resize-none"
                                     placeholder="Description de l'alerte..."
                                     rows={3}
                                 />
@@ -949,9 +1011,15 @@ export function Config() {
                                     onChange={(e) => setServiceFormData({ ...serviceFormData, provider: e.target.value })}
                                     className="w-full px-4 py-2 bg-background border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary"
                                 >
-                                    <option value="BulkMedya">BulkMedya</option>
-                                    <option value="JAP">JAP</option>
-                                    <option value="SMMRocket">SMM Rocket</option>
+                                    {providers.length === 0 ? (
+                                        <option value="">Aucun fournisseur configuré</option>
+                                    ) : (
+                                        providers.map((provider) => (
+                                            <option key={provider.id} value={provider.name}>
+                                                {provider.name} {!provider.active && '(Inactif)'}
+                                            </option>
+                                        ))
+                                    )}
                                 </select>
                             </div>
                             <div>
@@ -1085,7 +1153,8 @@ export function Config() {
                                 <button
                                     onClick={() => {
                                         setShowServiceModal(false);
-                                        setServiceFormData({ service_id: '', service_name: '', provider: 'BulkMedya', delivery_mode: 'standard', dripfeed_quantity: 250, dripfeed_custom: '' });
+                                        const defaultProvider = providers.find(p => p.active) || providers[0];
+                                        setServiceFormData({ service_id: '', service_name: '', provider: defaultProvider?.name || 'default', delivery_mode: 'standard', dripfeed_quantity: 250, dripfeed_custom: '' });
                                     }}
                                     className="flex-1 px-4 py-2 bg-surface border border-white/10 text-white font-semibold rounded-xl hover:bg-white/5 transition-colors"
                                 >

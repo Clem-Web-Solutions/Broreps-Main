@@ -162,14 +162,14 @@ export function NotificationBell() {
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-primary rounded-full ring-2 ring-background flex items-center justify-center text-[10px] font-bold text-black">
+                    <span className="absolute top-1 right-1 min-w-4.5 h-4.5 bg-primary rounded-full ring-2 ring-background flex items-center justify-center text-[10px] font-bold text-black">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
 
             {showDropdown && (
-                <div className="absolute right-0 mt-2 w-[420px] max-h-[600px] bg-surface border border-white/10 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden">
+                <div className="absolute right-0 mt-2 w-105 max-h-125 bg-surface border border-white/10 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden">
                     {/* Header */}
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-surface/60 backdrop-blur-sm">
                         <div>
@@ -201,7 +201,7 @@ export function NotificationBell() {
                     </div>
 
                     {/* Notifications List */}
-                    <div className="flex-1 overflow-y-auto max-h-[500px]">
+                    <div className="flex-1 overflow-y-auto max-h-125">
                         {loading && notifications.length === 0 ? (
                             <div className="p-8 text-center text-slate-400">
                                 <RefreshCw size={24} className="animate-spin mx-auto mb-2" />

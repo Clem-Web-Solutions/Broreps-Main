@@ -50,9 +50,34 @@ export function initCron() {
         }
     });
 
+    // Check service availability daily at midnight (00:00)
+    cron.schedule('0 0 * * *', async () => {
+        console.log('🔍 Running daily service availability check...');
+        try {
+            const response = await axios.post(`${API_BASE}/refill/check-all`, {}, {
+                headers: {
+                    'Authorization': `Bearer ${CRON_SECRET}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 120000 // 2 minutes timeout
+            });
+
+            if (response.data.success) {
+                console.log(`✅ Checked ${response.data.checked} services`);
+                console.log(`⚠️  Found ${response.data.unavailable} unavailable services`);
+                if (response.data.errors > 0) {
+                    console.log(`❌ ${response.data.errors} errors occurred`);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Service availability check failed:', error.message);
+        }
+    });
+
     console.log('✅ CRON jobs scheduled:');
     console.log('   - Drip feed processor: every hour at :00');
     console.log('   - Order status sync: every 10 minutes');
+    console.log('   - Service availability check: daily at 00:00');
 }
 
 /**
