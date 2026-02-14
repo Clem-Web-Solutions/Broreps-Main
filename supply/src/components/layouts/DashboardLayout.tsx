@@ -1,8 +1,10 @@
 import { Bell, Clock, FileText, LayoutDashboard, LogOut, Package, RefreshCcw, Search, Settings, Shield, ShoppingCart, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../libs/utils';
+import { NotificationBell } from '../notifications/NotificationBell';
+import { ConnectionStatus } from '../connection/ConnectionStatus';
 
 const mainNav = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
@@ -22,11 +24,34 @@ const bottomNav = [
 
 export function DashboardLayout() {
     const [showDropdown, setShowDropdown] = useState(false);
-    const { user, logout } = useAuth();
+    const { user, logout, loading, isAuthenticated, isAdmin } = useAuth();
     const navigate = useNavigate();
-
     const location = useLocation();
-    const { isAdmin } = useAuth();
+
+    // Redirect to login if not authenticated
+    useEffect(() => {
+        if (!loading && !isAuthenticated) {
+            console.log('🔒 Not authenticated, redirecting to login...');
+            navigate('/login');
+        }
+    }, [loading, isAuthenticated, navigate]);
+
+    // Show loading state while checking authentication
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background text-white flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-slate-400">Chargement...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Don't render anything if not authenticated (will redirect)
+    if (!isAuthenticated) {
+        return null;
+    }
 
     const handleLogout = () => {
         logout();
@@ -70,6 +95,7 @@ export function DashboardLayout() {
 
     return (
         <div className="min-h-screen bg-background text-white selection:bg-primary selection:text-black font-sans h-screen flex flex-col">
+            <ConnectionStatus />
             <header className="flex items-center justify-between px-8 py-5">
                 <div className="flex items-center gap-12">
                     <div className="flex items-center gap-2">
@@ -88,10 +114,7 @@ export function DashboardLayout() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="p-2 relative text-slate-400 hover:text-white transition-colors">
-                        <Bell size={20} />
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-background"></span>
-                    </button>
+                    <NotificationBell />
 
                     <div className="relative">
                         <button

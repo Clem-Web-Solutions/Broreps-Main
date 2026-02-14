@@ -2,11 +2,14 @@ import './App.css'
 import { RouterProvider } from 'react-router'
 import { router } from './router'
 import { AuthProvider } from './contexts/AuthContext'
+import { WebSocketProvider } from './contexts/WebSocketContext'
 
 function App() {
   return (
     <AuthProvider>
-      <RouterProvider router={router} />
+      <WebSocketProvider>
+        <RouterProvider router={router} />
+      </WebSocketProvider>
     </AuthProvider>
   )
 }

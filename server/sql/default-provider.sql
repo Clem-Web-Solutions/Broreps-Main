@@ -1,0 +1,2 @@
+-- Intentionally empty.
+-- Configure providers via /api/providers with a real API key.

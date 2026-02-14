@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3005/api';
 
 class ApiClient {
     private baseURL: string;
@@ -76,11 +76,46 @@ class ApiClient {
     }
 
     async getMe() {
-        return this.request('/auth/me');
+        return this.request('/users/me');
     }
 
     logout() {
         this.setToken(null);
+    }
+
+    // Providers (Admin)
+    async getProviders() {
+        return this.request('/providers');
+    }
+
+    async getProvider(provider: string) {
+        return this.request(`/providers/${provider}`);
+    }
+
+    async createProvider(providerData: { name: string; api_key: string; api_url?: string }) {
+        return this.request('/providers', {
+            method: 'POST',
+            body: JSON.stringify(providerData),
+        });
+    }
+
+    async updateProvider(provider: string, providerData: { name: string; api_key: string; api_url?: string }) {
+        return this.request(`/providers/${provider}`, {
+            method: 'PUT',
+            body: JSON.stringify(providerData),
+        });
+    }
+
+    async deleteProvider(provider: string) {
+        return this.request(`/providers/${provider}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async testProviderConnection(provider: string) {
+        return this.request(`/providers/${provider}/test`, {
+            method: 'POST',
+        });
     }
 
     // SMM API
@@ -239,12 +274,6 @@ class ApiClient {
         });
     }
 
-    async deleteDripAccount(accountId: number) {
-        return this.request(`/drip/accounts/${accountId}`, {
-            method: 'DELETE',
-        });
-    }
-
     // Refill
     async getRefillTimers() {
         return this.request('/refill/timers');
@@ -268,6 +297,35 @@ class ApiClient {
         });
     }
 
+    // Alerts
+    async getAlerts() {
+        return this.request('/alerts');
+    }
+
+    async getAlert(id: string) {
+        return this.request(`/alerts/${id}`);
+    }
+
+    async createAlert(alertData: { type: string; title: string; message: string }) {
+        return this.request('/alerts', {
+            method: 'POST',
+            body: JSON.stringify(alertData),
+        });
+    }
+
+    async updateAlert(id: string, alertData: { type: string; title: string; message: string; enabled?: boolean }) {
+        return this.request(`/alerts/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(alertData),
+        });
+    }
+
+    async deleteAlert(id: string) {
+        return this.request(`/alerts/${id}`, {
+            method: 'DELETE',
+        });
+    }
+
     // Balance
     async getAvailableBalance(provider: string) {
         return this.request(`/balance/${provider}`);
@@ -275,35 +333,6 @@ class ApiClient {
 
     async getBalanceReservations(provider: string) {
         return this.request(`/balance/reservations/${provider}`);
-    }
-
-    // Config (Admin)
-    async getProviders() {
-        return this.request('/config/providers');
-    }
-
-    async getProvider(provider: string) {
-        return this.request(`/config/providers/${provider}`);
-    }
-
-    async createProvider(providerData: any) {
-        return this.request('/config/providers', {
-            method: 'POST',
-            body: JSON.stringify(providerData),
-        });
-    }
-
-    async updateProvider(provider: string, providerData: any) {
-        return this.request(`/config/providers/${provider}`, {
-            method: 'PUT',
-            body: JSON.stringify(providerData),
-        });
-    }
-
-    async deleteProvider(provider: string) {
-        return this.request(`/config/providers/${provider}`, {
-            method: 'DELETE',
-        });
     }
 
     // Dashboard
@@ -321,36 +350,36 @@ class ApiClient {
 
     // Employees (Admin)
     async getEmployees() {
-        return this.request('/employees');
+        return this.request('/users');
     }
 
     async getEmployee(id: string) {
-        return this.request(`/employees/${id}`);
+        return this.request(`/users/${id}`);
     }
 
     async createEmployee(employeeData: any) {
-        return this.request('/employees', {
+        return this.request('/users', {
             method: 'POST',
             body: JSON.stringify(employeeData),
         });
     }
 
     async updateEmployee(id: string, employeeData: any) {
-        return this.request(`/employees/${id}`, {
+        return this.request(`/users/${id}`, {
             method: 'PUT',
             body: JSON.stringify(employeeData),
         });
     }
 
     async deleteEmployee(id: string) {
-        return this.request(`/employees/${id}`, {
+        return this.request(`/users/${id}`, {
             method: 'DELETE',
         });
     }
 
-    // Pending Users
-    async getPendingUsers() {
-        return this.request('/auth/pending-users');
+    // Users Management
+    async getUsersByStatus(status: 'pending' | 'approved' | 'rejected') {
+        return this.request(`/auth/users/${status}`);
     }
 
     async approveUser(userId: number) {
@@ -361,7 +390,7 @@ class ApiClient {
 
     async rejectUser(userId: number) {
         return this.request(`/auth/reject-user/${userId}`, {
-            method: 'DELETE',
+            method: 'POST',
         });
     }
 
@@ -370,18 +399,52 @@ class ApiClient {
         return this.request(`/track/${orderNumber}`);
     }
 
+    // Notifications
+    async getNotifications(unreadOnly = false, limit = 50) {
+        const params = new URLSearchParams();
+        if (unreadOnly) params.append('unread', 'true');
+        params.append('limit', limit.toString());
+        return this.request(`/notifications?${params.toString()}`);
+    }
+
+    async markNotificationAsRead(notificationId: number) {
+        return this.request(`/notifications/${notificationId}/read`, {
+            method: 'PATCH',
+        });
+    }
+
+    async markAllNotificationsAsRead() {
+        return this.request('/notifications/read-all', {
+            method: 'POST',
+        });
+    }
+
+    async deleteNotification(notificationId: number) {
+        return this.request(`/notifications/${notificationId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async clearReadNotifications() {
+        return this.request('/notifications/clear/read', {
+            method: 'DELETE',
+        });
+    }
+
     // Allowed Services
     async getAllowedServices() {
         return this.request('/allowed-services');
     }
 
-    async addAllowedService(serviceId: string, serviceName: string, provider = 'BulkMedya') {
+    async addAllowedService(serviceId: string, serviceName: string, provider = 'BulkMedya', deliveryMode = 'standard', dripfeedQuantity?: number) {
         return this.request('/allowed-services', {
             method: 'POST',
             body: JSON.stringify({
                 service_id: serviceId,
                 service_name: serviceName,
-                provider
+                provider,
+                delivery_mode: deliveryMode,
+                dripfeed_quantity: dripfeedQuantity
             }),
         });
     }
@@ -390,6 +453,39 @@ class ApiClient {
         return this.request(`/allowed-services/${serviceId}`, {
             method: 'DELETE',
         });
+    }
+
+    // Drip Feed Orders
+    async createDripFeedOrder(orderData: {
+        provider: string;
+        service: string;
+        service_name?: string;
+        link: string;
+        quantity: number;
+        shopify_order_number?: string;
+        dripfeed_enabled?: boolean;
+        dripfeed_quantity?: number;
+    }) {
+        return this.request('/drip-feed/create-order', {
+            method: 'POST',
+            body: JSON.stringify(orderData),
+        });
+    }
+
+    async getDripFeedWaitingOrders() {
+        return this.request('/drip-feed/waiting-orders');
+    }
+
+    async processDripFeedOrders() {
+        return this.request('/drip-feed/process', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    }
+
+    // Provider Balances
+    async getAllProviderBalances() {
+        return this.request('/balances/all-balances');
     }
 }
 
