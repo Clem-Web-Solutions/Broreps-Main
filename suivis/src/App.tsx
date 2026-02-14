@@ -407,7 +407,7 @@ function App() {
             setError(null);
             setSearchQuery('');
           }}
-          className="fixed top-4 left-4 z-50 bg-[#0F0F0F] border border-white/10 p-2 rounded-full hover:bg-white/5 transition-colors"
+          className="fixed top-2 left-2 z-50 bg-[#0F0F0F] border border-white/10 p-2 rounded-full hover:bg-white/5 transition-colors"
           title="Retour à la recherche"
         >
           <Search className="w-5 h-5 text-gray-400" />
