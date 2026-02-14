@@ -5,23 +5,25 @@ import { cn } from "../libs/utils";
 import { useWebSocket } from "../contexts/WebSocketContext";
 
 interface OrderDetails {
-    id: number;
-    order_id: string;
-    service_id: string;
-    service_name: string;
+    id: string | number;
+    order_id?: string;
+    service_id?: string;
+    service_name?: string;
+    product?: string;
     link: string;
     quantity: number;
     remains: number;
     delivered: number;
     progress: number;
-    charge: number;
+    charge?: number;
     status: string;
-    provider: string;
+    provider?: string;
     provider_order_id?: string;
     shopify_order_number?: string;
     created_at: string;
     updated_at?: string;
-    created_by: {
+    estimated?: string;
+    created_by?: {
         name: string;
         email: string;
     };
@@ -54,10 +56,16 @@ interface DripFeedInfo {
     completed_runs: number;
 }
 
-interface TrackResult {
-    order: OrderDetails;
-    is_drip_feed: boolean;
-    drip_feed_info?: DripFeedInfo;
+interface TrackResult extends OrderDetails {
+    isDripFeed: boolean;
+    runs?: number;
+    executedRuns?: number;
+    raw?: {
+        order: any;
+        is_drip_feed: boolean;
+        drip_feed_info?: DripFeedInfo;
+        account?: any;
+    };
 }
 
 export function Track() {
@@ -103,41 +111,51 @@ export function Track() {
 
     // Calculate real-time progress for drip feed orders
     const calculateDripProgress = () => {
-        if (!result?.is_drip_feed || !result.drip_feed_info) {
+        const dripInfo = result?.raw?.drip_feed_info;
+        
+        if (!result?.isDripFeed || !dripInfo) {
             return {
-                delivered: result?.order.delivered || 0,
-                remains: result?.order.remains || 0,
-                progress: result?.order.progress || 0
+                delivered: result?.delivered || 0,
+                remains: result?.remains || 0,
+                progress: result?.progress || 0
             };
         }
 
         // Sum up all sub-orders
-        const totalDelivered = result.drip_feed_info.sub_orders.reduce((sum, sub) => sum + sub.delivered, 0);
-        const totalRemains = result.drip_feed_info.sub_orders.reduce((sum, sub) => sum + sub.remains, 0);
-        const quantity = result.order.quantity;
+        const totalDelivered = dripInfo.sub_orders.reduce((sum, sub) => sum + sub.delivered, 0);
+        const totalRemains = dripInfo.sub_orders.reduce((sum, sub) => sum + sub.remains, 0);
+        const quantity = result.quantity;
         const progress = quantity > 0 ? Math.round((totalDelivered / quantity) * 100) : 0;
 
         return { delivered: totalDelivered, remains: totalRemains, progress };
     };
 
     const handleSearch = async () => {
+        console.log('🔍 Track handleSearch called with:', orderNumber);
+        
         if (!orderNumber.trim()) {
+            console.log('⚠️ Empty order number');
             setError('Veuillez entrer un numéro de commande');
             return;
         }
 
         try {
+            console.log('📡 Track: Starting API request for order:', orderNumber);
             setLoading(true);
             setError('');
             const data = await api.trackOrder(orderNumber.replace('#', ''));
+            console.log('✅ Track: Order data received:', data);
             setResult(data);
             setLastRefreshTime(new Date());
             setNextRefresh(30); // Reset countdown when loading new order
-        } catch (err) {
+        } catch (err: any) {
+            console.error('❌ Track: Error fetching order:', err);
+            console.error('Error details:', err.message, err.status, err.code);
             setError('Commande introuvable');
             setResult(null);
             setLastRefreshTime(null);
         } finally {
+            console.log('🏁 Track: Request completed');
             setLoading(false);
         }
     };
@@ -182,14 +200,14 @@ export function Track() {
 
         const handleOrderUpdated = (data: any) => {
             // Only refresh if the updated order matches the currently tracked order
-            if (data.order_id === orderNumber || data.id === result.order.id) {
+            if (data.order_id === orderNumber || data.id === result?.id) {
                 console.log('🔄 Track: Order updated, refreshing...');
                 handleRefresh();
             }
         };
 
         const handleDripExecuted = () => {
-            if (result.is_drip_feed) {
+            if (result?.isDripFeed) {
                 console.log('💧 Track: Drip executed, refreshing...');
                 handleRefresh();
             }
@@ -246,12 +264,12 @@ export function Track() {
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
                                     <Package className="text-primary" size={32} />
-                                    <h2 className="text-3xl font-black text-white">Commande #{result.order.id}</h2>
-                                    {result.is_drip_feed && (
+                                    <h2 className="text-3xl font-black text-white">Commande #{result.id}</h2>
+                                    {result.isDripFeed && (
                                         <span className="bg-primary/20 text-primary px-3 py-1 rounded-full text-sm font-bold">DRIP FEED</span>
                                     )}
                                 </div>
-                                <p className="text-slate-400">{result.order.service_name}</p>
+                                <p className="text-slate-400">{result.product || result.raw?.order?.service_name}</p>
                                 <div className="flex items-center gap-2 mt-2">
                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
                                     <span className="text-slate-500 text-xs">
@@ -270,7 +288,7 @@ export function Track() {
                                 </button>
                                 <div className="text-right">
                                     {(() => {
-                                        const statusInfo = getStatusInfo(result.order.status);
+                                        const statusInfo = getStatusInfo(result.status);
                                         const StatusIcon = statusInfo.icon;
                                         return (
                                             <div className={cn("flex items-center gap-2 text-lg font-bold", statusInfo.color)}>
@@ -279,7 +297,7 @@ export function Track() {
                                             </div>
                                         );
                                     })()}
-                                    <div className="text-slate-500 text-sm mt-1">Créé le {formatDate(result.order.created_at)}</div>
+                                    <div className="text-slate-500 text-sm mt-1">Créé le {formatDate(result.created_at)}</div>
                                     {lastRefreshTime && (
                                         <div className="text-green-400 text-xs mt-1 flex items-center gap-1">
                                             <div className="w-1 h-1 rounded-full bg-green-400 animate-pulse"></div>
@@ -295,9 +313,9 @@ export function Track() {
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm font-bold text-slate-400">PROGRESSION</span>
-                                    {result.is_drip_feed && (
+                                    {result.isDripFeed && (
                                         <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">
-                                            Cumul des {result.drip_feed_info?.executed_runs} runs
+                                            Cumul des {result.executedRuns} runs
                                         </span>
                                     )}
                                 </div>
@@ -312,7 +330,7 @@ export function Track() {
                             <div className="flex items-center justify-between mt-2 text-sm">
                                 <span className="text-slate-400">Livré: <strong className="text-white">{calculateDripProgress().delivered.toLocaleString()}</strong></span>
                                 <span className="text-slate-400">Restant: <strong className="text-orange-400">{calculateDripProgress().remains.toLocaleString()}</strong></span>
-                                <span className="text-slate-400">Total: <strong className="text-white">{result.order.quantity.toLocaleString()}</strong></span>
+                                <span className="text-slate-400">Total: <strong className="text-white">{result.quantity.toLocaleString()}</strong></span>
                             </div>
                         </div>
 
@@ -323,28 +341,28 @@ export function Track() {
                                     <TrendingUp size={16} className="text-primary" />
                                     <span className="text-xs text-slate-500 font-bold uppercase">Provider</span>
                                 </div>
-                                <div className="text-white font-bold">{result.order.provider}</div>
+                                <div className="text-white font-bold">{result.provider || result.raw?.order?.provider || 'N/A'}</div>
                             </div>
                             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Zap size={16} className="text-blue-400" />
                                     <span className="text-xs text-slate-500 font-bold uppercase">Service ID</span>
                                 </div>
-                                <div className="text-white font-mono text-sm">{result.order.service_id}</div>
+                                <div className="text-white font-mono text-sm">{result.service_id || result.raw?.order?.service_id || 'N/A'}</div>
                             </div>
                             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Calendar size={16} className="text-green-400" />
                                     <span className="text-xs text-slate-500 font-bold uppercase">Créé le</span>
                                 </div>
-                                <div className="text-white font-bold text-sm">{formatDate(result.order.created_at)}</div>
+                                <div className="text-white font-bold text-sm">{formatDate(result.created_at)}</div>
                             </div>
                             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                                 <div className="flex items-center gap-2 mb-2">
                                     <User size={16} className="text-purple-400" />
                                     <span className="text-xs text-slate-500 font-bold uppercase">Créé par</span>
                                 </div>
-                                <div className="text-white font-bold text-sm">{result.order.created_by.name}</div>
+                                <div className="text-white font-bold text-sm">{result.created_by?.name || result.raw?.order?.created_by?.name || 'N/A'}</div>
                             </div>
                         </div>
 
@@ -352,65 +370,65 @@ export function Track() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                                 <div className="text-xs text-slate-500 font-bold uppercase mb-2">LIEN CIBLE</div>
-                                <a href={result.order.link} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 flex items-center gap-2 font-mono text-sm break-all">
-                                    {result.order.link}
+                                <a href={result.link} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 flex items-center gap-2 font-mono text-sm break-all">
+                                    {result.link}
                                     <ExternalLink size={14} className="shrink-0" />
                                 </a>
                             </div>
-                            {result.order.provider_order_id && (
+                            {result.provider_order_id && (
                                 <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                                     <div className="text-xs text-slate-500 font-bold uppercase mb-2">PROVIDER ORDER ID</div>
-                                    <div className="text-primary font-mono font-bold">{result.order.provider_order_id}</div>
+                                    <div className="text-primary font-mono font-bold">{result.provider_order_id}</div>
                                 </div>
                             )}
-                            {result.order.shopify_order_number && (
+                            {result.shopify_order_number && (
                                 <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                                     <div className="text-xs text-slate-500 font-bold uppercase mb-2">SHOPIFY ORDER</div>
-                                    <div className="text-orange-400 font-mono font-bold">#{result.order.shopify_order_number}</div>
+                                    <div className="text-orange-400 font-mono font-bold">#{result.shopify_order_number}</div>
                                 </div>
                             )}
                         </div>
 
                         {/* Charge */}
-                        {result.order.charge > 0 && (
+                        {result.charge && result.charge > 0 && (
                             <div className="mt-4 bg-green-500/10 border border-green-500/20 rounded-xl p-4">
                                 <div className="flex items-center justify-between">
                                     <span className="text-green-400 font-bold">Coût de la commande</span>
-                                    <span className="text-green-400 text-2xl font-black">{Number(result.order.charge).toFixed(2)} €</span>
+                                    <span className="text-green-400 text-2xl font-black">{Number(result.charge).toFixed(2)} €</span>
                                 </div>
                             </div>
                         )}
                     </div>
 
                     {/* Drip Feed Details */}
-                    {result.is_drip_feed && result.drip_feed_info && (
+                    {result.isDripFeed && result.raw?.drip_feed_info && (
                         <div className="bg-surface/20 border border-primary/20 rounded-2xl p-6 space-y-6">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-2xl font-bold text-primary">📊 Détails Drip Feed</h3>
                                 <div className="text-right">
                                     <div className="text-sm text-slate-400">Exécutions</div>
                                     <div className="text-2xl font-black text-white">
-                                        {result.drip_feed_info.executed_runs} / {result.drip_feed_info.total_runs}
+                                        {result.raw.drip_feed_info.executed_runs} / {result.raw.drip_feed_info.total_runs}
                                     </div>
                                 </div>
                             </div>
 
-                            {result.drip_feed_info.parent_order && (
+                            {result.raw.drip_feed_info.parent_order && (
                                 <>
                                     <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                                         <div className="text-xs text-slate-500 font-bold uppercase mb-3">CONFIGURATION</div>
                                         <div className="grid grid-cols-3 gap-4">
                                             <div>
                                                 <div className="text-slate-400 text-sm">Quantité totale</div>
-                                                <div className="text-white font-bold text-lg">{result.drip_feed_info.parent_order.quantity.toLocaleString()}</div>
+                                                <div className="text-white font-bold text-lg">{result.raw.drip_feed_info.parent_order.quantity.toLocaleString()}</div>
                                             </div>
                                             <div>
                                                 <div className="text-slate-400 text-sm">Nombre de runs</div>
-                                                <div className="text-white font-bold text-lg">{result.drip_feed_info.parent_order.runs}</div>
+                                                <div className="text-white font-bold text-lg">{result.raw.drip_feed_info.parent_order.runs}</div>
                                             </div>
                                             <div>
                                                 <div className="text-slate-400 text-sm">Intervalle</div>
-                                                <div className="text-white font-bold text-lg">{Math.round(result.drip_feed_info.parent_order.run_interval / 1440)} jour{Math.round(result.drip_feed_info.parent_order.run_interval / 1440) > 1 ? 's' : ''}</div>
+                                                <div className="text-white font-bold text-lg">{Math.round(result.raw.drip_feed_info.parent_order.run_interval / 1440)} jour{Math.round(result.raw.drip_feed_info.parent_order.run_interval / 1440) > 1 ? 's' : ''}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -418,7 +436,7 @@ export function Track() {
                                     {/* Timeline & Dates */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {/* Prochain Drip */}
-                                        {result.drip_feed_info.executed_runs < result.drip_feed_info.total_runs && (
+                                        {result.raw.drip_feed_info.executed_runs < result.raw.drip_feed_info.total_runs && (
                                             <div className="bg-linear-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-5">
                                                 <div className="flex items-center gap-2 mb-3">
                                                     <Clock className="text-blue-400" size={20} />
@@ -426,8 +444,8 @@ export function Track() {
                                                 </div>
                                                 <div className="text-white font-bold text-xl mb-1">
                                                     {(() => {
-                                                        const createdDate = new Date(result.drip_feed_info.parent_order.created_at);
-                                                        const nextDripDate = new Date(createdDate.getTime() + (result.drip_feed_info.executed_runs * result.drip_feed_info.parent_order.run_interval * 60 * 1000));
+                                                        const createdDate = new Date(result.raw.drip_feed_info.parent_order.created_at);
+                                                        const nextDripDate = new Date(createdDate.getTime() + (result.raw.drip_feed_info.executed_runs * result.raw.drip_feed_info.parent_order.run_interval * 60 * 1000));
                                                         return nextDripDate.toLocaleDateString('fr-FR', { 
                                                             day: '2-digit', 
                                                             month: 'short', 
@@ -439,7 +457,7 @@ export function Track() {
                                                     })()}
                                                 </div>
                                                 <div className="text-blue-300 text-sm">
-                                                    Run #{result.drip_feed_info.executed_runs + 1} sur {result.drip_feed_info.total_runs}
+                                                    Run #{result.raw.drip_feed_info.executed_runs + 1} sur {result.raw.drip_feed_info.total_runs}
                                                 </div>
                                             </div>
                                         )}
@@ -452,8 +470,8 @@ export function Track() {
                                             </div>
                                             <div className="text-white font-bold text-xl mb-1">
                                                 {(() => {
-                                                    const createdDate = new Date(result.drip_feed_info.parent_order.created_at);
-                                                    const endDate = new Date(createdDate.getTime() + ((result.drip_feed_info.total_runs - 1) * result.drip_feed_info.parent_order.run_interval * 60 * 1000));
+                                                    const createdDate = new Date(result.raw.drip_feed_info.parent_order.created_at);
+                                                    const endDate = new Date(createdDate.getTime() + ((result.raw.drip_feed_info.total_runs - 1) * result.raw.drip_feed_info.parent_order.run_interval * 60 * 1000));
                                                     return endDate.toLocaleDateString('fr-FR', { 
                                                         day: '2-digit', 
                                                         month: 'short', 
@@ -466,8 +484,8 @@ export function Track() {
                                             </div>
                                             <div className="text-green-300 text-sm">
                                                 {(() => {
-                                                    const createdDate = new Date(result.drip_feed_info.parent_order.created_at);
-                                                    const endDate = new Date(createdDate.getTime() + ((result.drip_feed_info.total_runs - 1) * result.drip_feed_info.parent_order.run_interval * 60 * 1000));
+                                                    const createdDate = new Date(result.raw.drip_feed_info.parent_order.created_at);
+                                                    const endDate = new Date(createdDate.getTime() + ((result.raw.drip_feed_info.total_runs - 1) * result.raw.drip_feed_info.parent_order.run_interval * 60 * 1000));
                                                     const now = new Date();
                                                     const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                                                     return daysRemaining > 0 ? `Dans ${daysRemaining} jour${daysRemaining > 1 ? 's' : ''}` : 'Terminé';
@@ -479,11 +497,11 @@ export function Track() {
                             )}
 
                             {/* Sub Orders Timeline */}
-                            {result.drip_feed_info.sub_orders.length > 0 && (
+                            {result.raw.drip_feed_info.sub_orders.length > 0 && (
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-400 uppercase mb-3">HISTORIQUE DES EXÉCUTIONS</h4>
                                     <div className="space-y-2">
-                                        {result.drip_feed_info.sub_orders.map((subOrder, index) => {
+                                        {result.raw.drip_feed_info.sub_orders.map((subOrder, index) => {
                                             const statusInfo = getStatusInfo(subOrder.status);
                                             const StatusIcon = statusInfo.icon;
                                             return (
@@ -547,16 +565,16 @@ export function Track() {
                                     {/* Summary */}
                                     <div className="mt-4 grid grid-cols-3 gap-4">
                                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-center">
-                                            <div className="text-blue-400 font-bold text-2xl">{result.drip_feed_info.executed_runs}</div>
+                                            <div className="text-blue-400 font-bold text-2xl">{result.raw.drip_feed_info.executed_runs}</div>
                                             <div className="text-slate-400 text-sm">Exécutés</div>
                                         </div>
                                         <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
-                                            <div className="text-green-400 font-bold text-2xl">{result.drip_feed_info.completed_runs}</div>
+                                            <div className="text-green-400 font-bold text-2xl">{result.raw.drip_feed_info.completed_runs}</div>
                                             <div className="text-slate-400 text-sm">Terminés</div>
                                         </div>
                                         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 text-center">
                                             <div className="text-orange-400 font-bold text-2xl">
-                                                {result.drip_feed_info.total_runs - result.drip_feed_info.executed_runs}
+                                                {result.raw.drip_feed_info.total_runs - result.raw.drip_feed_info.executed_runs}
                                             </div>
                                             <div className="text-slate-400 text-sm">En attente</div>
                                         </div>

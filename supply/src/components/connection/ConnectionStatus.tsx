@@ -38,7 +38,7 @@ export function ConnectionStatus() {
 
     return (
         <div className={cn(
-            "fixed top-4 right-4 z-[100] px-4 py-2 rounded-lg border backdrop-blur-sm flex items-center gap-2 text-sm font-medium shadow-lg",
+            "fixed top-4 right-4 z-100 px-4 py-2 rounded-lg border backdrop-blur-sm flex items-center gap-2 text-sm font-medium shadow-lg",
             config.bgColor,
             config.textColor,
             config.borderColor

@@ -1,1 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
+
+@theme {
+  /* Custom Colors */
+  --color-broreps-green: #39FF14;
+  --color-broreps-dark: #050505;
+  --color-broreps-card: #121212;
+  --color-broreps-gray: #2A2A2A;
+  
+  /* Custom Fonts */
+  --font-family-titan: "Titan One", sans-serif;
+  --font-family-sans: Inter, sans-serif;
+  
+  /* Custom Shadows */
+  --shadow-neon: 0 0 10px #39FF14, 0 0 20px #39FF14;
+  --shadow-neon-sm: 0 0 5px #39FF14;
+}
+
+@layer base {
+  body {
+    @apply bg-broreps-dark text-white font-sans overflow-x-hidden;
+  }
+}
+
+.glass-panel {
+  @apply bg-broreps-card/60 backdrop-blur-md border border-white/10;
+}
+
+.text-glow {
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+}
+
+.spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
