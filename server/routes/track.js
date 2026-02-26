@@ -3,7 +3,205 @@ import db from '../config/database.js';
 
 const router = express.Router();
 
-// Public endpoint to track order by order number
+// Rate limiting storage (in-memory, use Redis in production)
+const verificationAttempts = new Map();
+
+// Clean up old attempts every hour
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, data] of verificationAttempts.entries()) {
+        if (now - data.timestamp > 15 * 60 * 1000) { // 15 minutes
+            verificationAttempts.delete(key);
+        }
+    }
+}, 60 * 60 * 1000);
+
+// POST endpoint to verify order with email (2-step verification)
+router.post('/verify', async (req, res) => {
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    
+    try {
+        const { orderNumber, email } = req.body;
+
+        // Validation
+        if (!orderNumber || !email) {
+            return res.status(400).json({ 
+                error: 'Numéro de commande et email requis' 
+            });
+        }
+
+        // Rate limiting: max 5 attempts per IP per 15 minutes
+        const attemptKey = clientIp;
+        const attempts = verificationAttempts.get(attemptKey) || { count: 0, timestamp: Date.now() };
+        
+        if (attempts.count >= 5) {
+            const timeLeft = Math.ceil((15 * 60 * 1000 - (Date.now() - attempts.timestamp)) / 1000 / 60);
+            return res.status(429).json({ 
+                error: `Trop de tentatives. Réessayez dans ${timeLeft} minutes.` 
+            });
+        }
+
+        // Increment attempts
+        attempts.count++;
+        attempts.timestamp = attempts.timestamp || Date.now();
+        verificationAttempts.set(attemptKey, attempts);
+
+        // Search in Shopify orders first
+        const [shopifyOrders] = await db.query(`
+            SELECT 
+                so.id,
+                so.shopify_order_number,
+                so.customer_email,
+                so.customer_first_name,
+                so.customer_last_name,
+                so.product_title,
+                so.social_link,
+                so.financial_status,
+                so.fulfillment_status,
+                so.total_price,
+                so.internal_order_id,
+                so.shopify_created_at,
+                o.id as order_id,
+                o.service_id,
+                o.link,
+                o.username,
+                o.quantity,
+                o.remains,
+                o.charge,
+                o.status,
+                o.created_at,
+                o.updated_at,
+                o.parent_order_id,
+                o.dripfeed_runs as runs,
+                o.dripfeed_interval as run_interval,
+                o.dripfeed_current_run,
+                s.service_name,
+                s.provider
+            FROM shopify_orders so
+            LEFT JOIN orders o ON so.internal_order_id = o.id
+            LEFT JOIN allowed_services s ON o.service_id = s.service_id
+            WHERE so.shopify_order_number = ? AND LOWER(so.customer_email) = LOWER(?)
+            LIMIT 1
+        `, [orderNumber, email.trim()]);
+
+        // Log verification attempt
+        await db.query(`
+            INSERT INTO verification_logs (order_number, email_attempted, ip_address, user_agent, success)
+            VALUES (?, ?, ?, ?, ?)
+        `, [orderNumber, email.toLowerCase(), clientIp, userAgent, shopifyOrders.length > 0]);
+
+        if (shopifyOrders.length === 0) {
+            return res.status(404).json({ 
+                error: 'Commande introuvable ou email incorrect' 
+            });
+        }
+
+        const order = shopifyOrders[0];
+
+        // If no internal order linked, return basic Shopify info
+        if (!order.internal_order_id) {
+            const isPaid = order.financial_status === 'paid';
+            
+            return res.json({
+                id: order.shopify_order_number,
+                status: isPaid ? 'pending' : 'awaiting_payment',
+                progress: isPaid ? 0 : -1,
+                product: order.product_title || 'En cours de traitement',
+                quantity: 0,
+                delivered: 0,
+                remains: 0,
+                link: order.social_link || '',
+                created_at: order.shopify_created_at || new Date().toISOString(),
+                estimated: isPaid ? 'Commande en attente de traitement' : 'En attente du paiement',
+                isDripFeed: false,
+                runs: 0,
+                executedRuns: 0,
+                shopify: {
+                    order_number: order.shopify_order_number,
+                    customer_name: `${order.customer_first_name || ''} ${order.customer_last_name || ''}`.trim(),
+                    social_link: order.social_link || 'Non fourni',
+                    financial_status: order.financial_status,
+                    payment_validated: isPaid,
+                    fulfillment_status: order.fulfillment_status,
+                    total_price: order.total_price
+                },
+                raw: { shopify: true }
+            });
+        }
+
+        // Reset rate limit on successful verification
+        verificationAttempts.delete(attemptKey);
+
+        // Continue with full order tracking (same as GET endpoint)
+        // ... rest of the tracking logic
+        const isDripFeed = order.parent_order_id === null && order.runs > 0;
+        const isPaid = order.financial_status === 'paid';
+        
+        let orderResponse = {
+            id: order.shopify_order_number || order.order_id,
+            status: order.status || 'pending',
+            progress: getProgressStep(order.status),
+            product: order.service_name || order.product_title || 'Service inconnu',
+            quantity: order.quantity || 0,
+            delivered: order.quantity - (order.remains || 0),
+            remains: order.remains || 0,
+            link: order.link || order.username || order.social_link || '',
+            created_at: order.created_at,
+            estimated: calculateEstimatedCompletion(order),
+            isDripFeed: isDripFeed,
+            runs: order.runs || 0,
+            executedRuns: order.dripfeed_current_run || 0,
+            shopify: {
+                order_number: order.shopify_order_number,
+                customer_name: `${order.customer_first_name || ''} ${order.customer_last_name || ''}`.trim(),
+                social_link: order.social_link || 'Non fourni',
+                financial_status: order.financial_status,
+                payment_validated: isPaid,
+                fulfillment_status: order.fulfillment_status,
+                total_price: order.total_price
+            },
+            raw: {
+                order: order,
+                is_drip_feed: isDripFeed
+            }
+        };
+
+        // If drip feed, get sub-orders
+        if (isDripFeed) {
+            const [subOrders] = await db.query(`
+                SELECT id, order_id, quantity, remains, status, created_at, provider_order_id
+                FROM orders
+                WHERE parent_order_id = ?
+                ORDER BY created_at ASC
+            `, [order.order_id]);
+
+            orderResponse.raw.drip_feed_info = {
+                runs: order.runs,
+                interval: order.run_interval,
+                current_run: order.dripfeed_current_run || 0,
+                sub_orders: subOrders.map(sub => ({
+                    id: sub.id,
+                    order_id: sub.order_id,
+                    quantity: sub.quantity,
+                    delivered: sub.quantity - sub.remains,
+                    remains: sub.remains,
+                    status: sub.status,
+                    created_at: sub.created_at,
+                    provider_order_id: sub.provider_order_id
+                }))
+            };
+        }
+
+        res.json(orderResponse);
+
+    } catch (error) {
+        console.error('[TRACK VERIFY] Error:', error);
+        res.status(500).json({ error: 'Erreur interne du serveur' });
+    }
+});
+
+// Public endpoint to track order by order number (without verification)
 router.get('/:orderNumber', async (req, res) => {
     try {
         const orderNumber = req.params.orderNumber;
@@ -239,5 +437,52 @@ router.get('/:orderNumber', async (req, res) => {
         res.status(500).json({ error: 'Failed to track order' });
     }
 });
+
+// Helper functions
+function getProgressStep(status) {
+    const statusMap = {
+        'pending': 0,
+        'processing': 1,
+        'in progress': 2,
+        'partial': 2,
+        'completed': 4,
+        'canceled': 0,
+        'refunded': 0
+    };
+    return statusMap[status?.toLowerCase()] || 0;
+}
+
+function calculateEstimatedCompletion(order) {
+    if (order.status === 'Completed') {
+        return 'Terminé';
+    }
+    
+    if (order.runs > 1) {
+        // Drip feed: estimate based on interval
+        const remainingRuns = order.runs - (order.dripfeed_current_run || 0);
+        if (remainingRuns > 0 && order.run_interval) {
+            const estimatedMinutes = remainingRuns * order.run_interval;
+            const hours = Math.floor(estimatedMinutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `~${days} jour${days > 1 ? 's' : ''}`;
+            if (hours > 0) return `~${hours} heure${hours > 1 ? 's' : ''}`;
+            return `~${estimatedMinutes} minute${estimatedMinutes > 1 ? 's' : ''}`;
+        }
+    }
+    
+    // Standard order: estimate based on quantity
+    const remains = order.remains || 0;
+    if (remains > 0) {
+        const avgSpeed = 1000; // per hour (adjust based on your service)
+        const hours = Math.ceil(remains / avgSpeed);
+        const days = Math.floor(hours / 24);
+        
+        if (days > 0) return `~${days} jour${days > 1 ? 's' : ''}`;
+        if (hours > 0) return `~${hours} heure${hours > 1 ? 's' : ''}`;
+    }
+    
+    return 'Bientôt';
+}
 
 export default router;

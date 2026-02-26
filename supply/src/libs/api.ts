@@ -514,7 +514,7 @@ class ApiClient {
     }
 
     async checkAllServicesAvailability() {
-        return this.request('/refill/check-all', {
+        return this.request('/refill/check-all-manual', {
             method: 'POST',
         });
     }

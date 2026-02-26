@@ -52,6 +52,11 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Verification states
+  const [verificationStep, setVerificationStep] = useState<'search' | 'verify' | 'result'>('search');
+  const [orderNumber, setOrderNumber] = useState('');
+  const [email, setEmail] = useState('');
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -164,35 +169,53 @@ function App() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔍 handleSearch called with query:', searchQuery);
+    console.log('🔍 Step 1: Order number entered:', searchQuery);
     
     if (!searchQuery.trim()) {
       console.log('⚠️ Empty search query');
       return;
     }
 
-    console.log('📡 Starting API request...');
+    // Move to verification step
+    const cleanQuery = searchQuery.trim().replace('#', '');
+    setOrderNumber(cleanQuery);
+    setVerificationStep('verify');
+    setError(null);
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('🔐 Step 2: Verifying with email:', email);
+    
+    if (!email.trim()) {
+      setError('Veuillez entrer votre email');
+      return;
+    }
+
+    console.log('📡 Starting verification...');
     setIsLoading(true);
     setError(null);
-    setOrderData(null); // Reset order data
-    setShowResult(false); // Reset show result
 
     try {
-      const cleanQuery = searchQuery.trim().replace('#', '');
-      console.log('🔍 Searching for order:', cleanQuery);
-      const data = await api.trackOrder(cleanQuery);
-      console.log('✅ Order data received:', data);
+      const data = await api.verifyOrder(orderNumber, email.trim());
+      console.log('✅ Order verified:', data);
       setOrderData(data);
+      setVerificationStep('result');
       setShowResult(true);
     } catch (err: any) {
-      console.error('❌ Error fetching order:', err);
-      console.error('Error details:', err.message, err.response, err.stack);
-      setError(err.message || 'Commande introuvable');
-      setShowResult(false); // Stay on search page
+      console.error('❌ Verification failed:', err);
+      setError(err.message || 'Email incorrect ou commande introuvable');
     } finally {
-      console.log('🏁 Request completed, isLoading=false');
+      console.log('🏁 Verification completed');
       setIsLoading(false);
     }
+  };
+
+  const handleBack = () => {
+    setVerificationStep('search');
+    setOrderNumber('');
+    setEmail('');
+    setError(null);
   };
 
   // WebSocket listeners for real-time order updates
@@ -328,8 +351,8 @@ function App() {
     return (
       <div className="min-h-screen bg-broreps-dark text-white p-4 font-sans flex flex-col justify-center items-center relative overflow-hidden">
         {/* Background Effects */}
-        <div className="absolute top-[-10%] left-[-10%] w-125 h-125 bg-broreps-green/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-125 h-125 bg-broreps-green/5 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-broreps-green/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-broreps-green/5 rounded-full blur-[120px] pointer-events-none" />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -337,32 +360,88 @@ function App() {
           className="w-full max-w-lg z-10 text-center"
         >
           <div className="mb-12">
-            <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-transparent bg-clip-text bg-linear-to-b from-white to-gray-400 drop-shadow-lg transform -skew-x-6 mb-4">
+            <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 drop-shadow-lg transform -skew-x-6 mb-4">
               <span className="text-broreps-green drop-shadow-[0_0_15px_rgba(57,255,20,0.6)]">BRO</span>REPS
             </h1>
             <p className="text-broreps-green font-bold tracking-[0.2em] text-sm uppercase glow-sm">Plateforme de Suivi</p>
           </div>
 
-          <form onSubmit={handleSearch} className="relative group">
-            <div className="absolute -inset-0.5 bg-linear-to-r from-broreps-green to-emerald-600 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-            <div className="relative flex items-center bg-[#0F0F0F] border border-white/10 rounded-xl p-2 shadow-2xl">
-              <Search className="text-gray-500 ml-4 w-6 h-6" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Numéro de commande Shopify (ex: #1234)"
-                className="w-full bg-transparent text-white px-4 py-4 text-lg focus:outline-none placeholder-gray-600 font-medium"
-              />
+          {/* Step 1: Search by order number */}
+          {verificationStep === 'search' && (
+            <form onSubmit={handleSearch} className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-broreps-green to-emerald-600 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
+              <div className="relative flex items-center bg-[#0F0F0F] border border-white/10 rounded-xl p-2 shadow-2xl">
+                <Search className="text-gray-500 ml-4 w-6 h-6" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Numéro de commande Shopify (ex: #1234)"
+                  className="w-full bg-transparent text-white px-4 py-4 text-lg focus:outline-none placeholder-gray-600 font-medium"
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="bg-broreps-green hover:bg-[#2ecc12] text-black font-black italic tracking-wider py-3 px-8 rounded-lg transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(57,255,20,0.3)] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)]"
+                >
+                  CONTINUER
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Step 2: Verify with email */}
+          {verificationStep === 'verify' && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-6"
+            >
+              <div className="bg-[#0F0F0F]/80 border border-white/10 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Shield className="w-6 h-6 text-broreps-green" />
+                  <h2 className="text-xl font-bold">Vérification de sécurité</h2>
+                </div>
+                <p className="text-gray-400 text-sm mb-2">
+                  Pour accéder aux détails de la commande <span className="text-white font-bold">#{orderNumber}</span>,
+                </p>
+                <p className="text-gray-400 text-sm">
+                  veuillez confirmer l'email utilisé lors de la commande Shopify.
+                </p>
+              </div>
+
+              <form onSubmit={handleVerify} className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-broreps-green to-emerald-600 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
+                <div className="relative flex items-center bg-[#0F0F0F] border border-white/10 rounded-xl p-2 shadow-2xl">
+                  <User className="text-gray-500 ml-4 w-6 h-6" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email de la commande"
+                    className="w-full bg-transparent text-white px-4 py-4 text-lg focus:outline-none placeholder-gray-600 font-medium"
+                    required
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-broreps-green hover:bg-[#2ecc12] text-black font-black italic tracking-wider py-3 px-8 rounded-lg transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(57,255,20,0.3)] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)]"
+                  >
+                    {isLoading ? <Disc className="animate-spin w-6 h-6" /> : 'VÉRIFIER'}
+                  </button>
+                </div>
+              </form>
+
               <button
-                type="submit"
-                disabled={isLoading}
-                className="bg-broreps-green hover:bg-[#2ecc12] text-black font-black italic tracking-wider py-3 px-8 rounded-lg transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(57,255,20,0.3)] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)]"
+                onClick={handleBack}
+                className="text-gray-400 hover:text-white text-sm transition-colors flex items-center gap-2 mx-auto"
               >
-                {isLoading ? <Disc className="animate-spin w-6 h-6" /> : 'SEARCH'}
+                <Search className="w-4 h-4" />
+                Retour à la recherche
               </button>
-            </div>
-          </form>
+            </motion.div>
+          )}
 
           {error && (
             <motion.div
@@ -406,8 +485,11 @@ function App() {
             setOrderData(null);
             setError(null);
             setSearchQuery('');
+            setVerificationStep('search');
+            setOrderNumber('');
+            setEmail('');
           }}
-          className="fixed top-2 left-2 z-50 bg-[#0F0F0F] border border-white/10 p-2 rounded-full hover:bg-white/5 transition-colors"
+          className="fixed top-4 left-4 z-50 bg-[#0F0F0F] border border-white/10 p-2 rounded-full hover:bg-white/5 transition-colors"
           title="Retour à la recherche"
         >
           <Search className="w-5 h-5 text-gray-400" />
@@ -439,7 +521,7 @@ function App() {
             <div className="flex items-center gap-3 bg-[#0a0a0a] p-1.5 rounded-xl border border-white/5">
               <div className="px-4 py-2 rounded-lg bg-[#151515] flex items-center gap-2 border border-white/5">
                 <User className="w-4 h-4 text-gray-400" />
-                <span className="text-sm font-medium text-gray-200">{orderData.link}</span>
+                <span className="text-sm font-medium text-gray-200">{orderData.link || orderData.shopify?.social_link || 'Non fourni'}</span>
               </div>
               <div className="px-4 py-2 rounded-lg bg-[#151515] flex items-center gap-2 border border-white/5">
                 <Target className="w-4 h-4 text-broreps-green" />
@@ -447,6 +529,66 @@ function App() {
               </div>
             </div>
           </motion.div>
+
+          {/* Shopify Information Card (if available) */}
+          {orderData.shopify && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="lg:col-span-4 bg-[#0F0F0F]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 shadow-lg"
+            >
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-broreps-green" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                    </svg>
+                    Informations Shopify
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 text-sm">Lien social:</span>
+                      <span className="text-white text-sm font-medium">
+                        {orderData.shopify.social_link || 'Non fourni'}
+                      </span>
+                    </div>
+                    {orderData.shopify.customer_name && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400 text-sm">Client:</span>
+                        <span className="text-white text-sm font-medium">
+                          {orderData.shopify.customer_name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`px-4 py-2 rounded-lg flex items-center gap-2 border ${
+                    orderData.shopify.payment_validated 
+                      ? 'bg-green-500/10 border-green-500/30' 
+                      : 'bg-yellow-500/10 border-yellow-500/30'
+                  }`}>
+                    <div className={`w-2 h-2 rounded-full ${
+                      orderData.shopify.payment_validated ? 'bg-green-500' : 'bg-yellow-500'
+                    } animate-pulse`} />
+                    <span className={`text-sm font-bold ${
+                      orderData.shopify.payment_validated ? 'text-green-400' : 'text-yellow-400'
+                    }`}>
+                      {orderData.shopify.payment_validated ? 'Payé' : 'Paiement en attente'}
+                    </span>
+                  </div>
+                  {orderData.shopify.total_price && (
+                    <div className="px-4 py-2 rounded-lg bg-[#151515] border border-white/5">
+                      <span className="text-white text-sm font-bold">
+                        {parseFloat(orderData.shopify.total_price).toFixed(2)} €
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* 2. Progress Card (Left Column, Top) */}
           <motion.div

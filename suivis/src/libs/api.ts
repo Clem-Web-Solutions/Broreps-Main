@@ -59,6 +59,14 @@ class ApiClient {
     async trackOrder(orderNumber: string) {
         return this.request(`/track/${orderNumber}`);
     }
+
+    // Verify order with email (2-step verification)
+    async verifyOrder(orderNumber: string, email: string) {
+        return this.request(`/track/verify`, {
+            method: 'POST',
+            body: JSON.stringify({ orderNumber, email })
+        });
+    }
 }
 
 export const api = new ApiClient();
