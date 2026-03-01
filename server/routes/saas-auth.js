@@ -234,6 +234,24 @@ router.get('/me', requireSaasAuth, async (req, res) => {
 
   const user = rows[0];
 
+  // Fetch the freshest next billing date from tagadapay_orders (set by webhooks)
+  try {
+    const [orderRows] = await db.query(
+      `SELECT subscription_next_billing_date
+       FROM tagadapay_orders
+       WHERE customer_email = ? AND order_type = 'subscription'
+         AND subscription_next_billing_date IS NOT NULL
+       ORDER BY updated_at DESC, created_at DESC
+       LIMIT 1`,
+      [user.email.toLowerCase()]
+    );
+    if (orderRows.length > 0 && orderRows[0].subscription_next_billing_date) {
+      user.next_billing_at = orderRows[0].subscription_next_billing_date;
+    }
+  } catch (_) {
+    // fallback: keep next_billing_at from saas_users
+  }
+
   // Block if subscription expired
   if (['cancelled', 'expired'].includes(user.subscription_status)) {
     return res.status(403).json({ error: 'Abonnement inactif', code: 'SUBSCRIPTION_INACTIVE', user });

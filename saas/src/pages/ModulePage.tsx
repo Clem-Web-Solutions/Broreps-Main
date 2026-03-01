@@ -11,7 +11,7 @@ export default function ModulePage() {
     const [isPlaying, setIsPlaying] = useState(false);
     const [moduleProgress, setModuleProgress] = useState<ModuleProgress | null>(null);
     const [loadingProgress, setLoadingProgress] = useState(true);
-    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastSaveRef = useRef<number>(0);
 
     // Module Data definition
     const moduleId = id || "1";
@@ -119,14 +119,24 @@ export default function ModulePage() {
         }
     }, [moduleProgress]);
 
+    const handleSaveProgress = () => {
+        const video = videoRef.current;
+        if (!video || isNaN(video.duration) || video.duration === 0) return;
+        if (!moduleProgress?.unlocked) return;
+        modulesApi.saveProgress(
+            parseInt(moduleId),
+            Math.floor(video.currentTime),
+            Math.floor(video.duration)
+        ).catch(() => {});
+    };
+
     const handleTimeUpdate = () => {
         const video = videoRef.current;
         if (!video || !moduleProgress?.unlocked) return;
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => {
-            modulesApi.saveProgress(parseInt(moduleId), Math.floor(video.currentTime), Math.floor(video.duration || 0))
-                .catch(() => {});
-        }, 5000);
+        const now = Date.now();
+        if (now - lastSaveRef.current < 10000) return; // throttle: 1 save max tous les 10s
+        lastSaveRef.current = now;
+        handleSaveProgress();
     };
 
     const togglePlay = () => {
@@ -147,7 +157,7 @@ export default function ModulePage() {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
         }
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        lastSaveRef.current = 0;
         window.scrollTo(0, 0);
     }, [moduleId]);
 
@@ -247,7 +257,8 @@ export default function ModulePage() {
                         onClick={isPlaying ? undefined : togglePlay}
                         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isPlaying ? 'opacity-100' : 'opacity-80 group-hover:scale-105'}`}
                         playsInline
-                        onPause={() => setIsPlaying(false)}
+                        onPause={() => { setIsPlaying(false); handleSaveProgress(); }}
+                        onEnded={() => { setIsPlaying(false); handleSaveProgress(); }}
                         onPlay={() => setIsPlaying(true)}
                         onTimeUpdate={handleTimeUpdate}
                     />
