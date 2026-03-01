@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { notesApi } from '../lib/api';
 import {
     ArrowLeft,
     PenLine,
@@ -87,6 +88,33 @@ function SVGRadar({ data, max = 10 }: { data: { name: string, score: number }[],
 export default function NotesPage() {
     const navigate = useNavigate();
     const [categories, setCategories] = useState<Category[]>(initialCategories);
+    const [reflection, setReflection] = useState('');
+    const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+    useEffect(() => {
+        notesApi.get().then(r => {
+            if (r.scores) {
+                setCategories(prev => prev.map(cat => ({
+                    ...cat,
+                    score: r.scores[cat.id] ?? cat.score
+                })));
+            }
+            if (r.reflection) setReflection(r.reflection);
+        }).catch(() => {});
+    }, []);
+
+    const handleSave = async () => {
+        try {
+            const scores: Record<string, number> = {};
+            categories.forEach(c => { scores[c.id] = c.score; });
+            await notesApi.save(scores, reflection);
+            setSaveMsg('Notes sauvegardées ✓');
+            setTimeout(() => setSaveMsg(null), 3000);
+        } catch {
+            setSaveMsg('Erreur lors de la sauvegarde');
+            setTimeout(() => setSaveMsg(null), 3000);
+        }
+    };
 
     const updateScore = (id: string, delta: number) => {
         setCategories(prev =>
@@ -223,11 +251,16 @@ export default function NotesPage() {
                     <textarea
                         className="w-full h-32 bg-[#0A0A0A] border border-[#18181b] rounded-xl p-4 text-[14px] text-white placeholder-[#52525b] focus:outline-none focus:border-[#00A336] focus:ring-1 focus:ring-[#00A336] resize-none transition-all shadow-inner"
                         placeholder="Écris librement tes pensées, objectifs, stratégies..."
+                        value={reflection}
+                        onChange={e => setReflection(e.target.value)}
                     />
                 </div>
 
                 {/* Save Button */}
-                <button className="w-full bg-[#00A336] hover:bg-[#00E64D] text-white font-bold text-[15px] py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(0,163,54,0.2)] hover:shadow-[0_0_30px_rgba(0,230,77,0.4)] transform hover:-translate-y-0.5 active:translate-y-0">
+                {saveMsg && (
+                    <p className={`text-center text-[13px] font-medium mb-2 ${saveMsg.includes('Erreur') ? 'text-red-400' : 'text-[#00FF7F]'}`}>{saveMsg}</p>
+                )}
+                <button onClick={handleSave} className="w-full bg-[#00A336] hover:bg-[#00E64D] text-white font-bold text-[15px] py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(0,163,54,0.2)] hover:shadow-[0_0_30px_rgba(0,230,77,0.4)] transform hover:-translate-y-0.5 active:translate-y-0">
                     <Save className="w-[18px] h-[18px]" />
                     Sauvegarder mes notes
                 </button>

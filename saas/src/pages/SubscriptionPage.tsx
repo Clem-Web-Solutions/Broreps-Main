@@ -2,9 +2,11 @@ import { ArrowLeft, Info, AlertCircle, CheckSquare } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function SubscriptionPage() {
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -62,7 +64,7 @@ export default function SubscriptionPage() {
                     <div className="w-full bg-[#051a0d] border border-[#145620] rounded-[10px] p-4 flex items-center gap-3 mb-8">
                         <CheckSquare className="w-5 h-5 text-[#00FF7F] flex-shrink-0" fill="#00FF7F" color="#051a0d" />
                         <p className="text-[#00FF7F] text-[14px] font-medium">
-                            Vous avez déverrouillé <span className="font-bold">6 modules</span>. Vous pouvez procéder à la résiliation.
+                            Tu as déverrouillé <span className="font-bold">{user?.modules_unlocked || 0} module{(user?.modules_unlocked || 0) !== 1 ? 's' : ''}</span>. Tu peux procéder à la résiliation.
                         </p>
                     </div>
 
@@ -72,7 +74,7 @@ export default function SubscriptionPage() {
                             <label className="text-white text-[14px] font-bold">Nom complet *</label>
                             <input
                                 type="text"
-                                defaultValue="Clément Van Kerckvoorde"
+                                defaultValue={user?.name || ''}
                                 className="w-full bg-[#111111] border border-[#222222] rounded-[8px] px-4 py-3 text-white text-[14px] focus:outline-none focus:border-[#00FF7F] transition-colors"
                             />
                         </div>
@@ -81,7 +83,7 @@ export default function SubscriptionPage() {
                             <label className="text-white text-[14px] font-bold">Email *</label>
                             <input
                                 type="email"
-                                defaultValue="t3mq.pro@gmail.com"
+                                defaultValue={user?.email || ''}
                                 className="w-full bg-[#111111] border border-[#222222] rounded-[8px] px-4 py-3 text-white text-[14px] focus:outline-none focus:border-[#00FF7F] transition-colors"
                             />
                         </div>

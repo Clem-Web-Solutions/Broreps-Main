@@ -1,7 +1,16 @@
-import { Home, BookOpen, Trophy, User, ChevronDown } from 'lucide-react';
-import { NavLink } from 'react-router';
+import { Home, BookOpen, Trophy, User, ChevronDown, LogOut } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Header() {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
     return (
         <header className="sticky top-0 z-50 w-full border-b border-[#00A336] bg-[linear-gradient(90deg,#052e16_0%,#052e16_75%,#050505_100%)] shadow-[0_4px_45px_rgba(0,163,54,0.15)] relative">
 
@@ -52,16 +61,23 @@ export default function Header() {
                         <span className="text-[12px] font-black tracking-wider uppercase">PREMIUM</span>
                     </div>
 
+                    {user && (
+                        <span className="hidden sm:block text-[13px] font-bold text-white max-w-[120px] truncate">
+                            {user.name}
+                        </span>
+                    )}
+
                     <div className="relative w-[40px] h-[40px] flex items-center justify-center rounded-full bg-[#0A0A0A] border border-[#18181b] hover:bg-[#111] transition-colors cursor-pointer">
                         <User className="w-[18px] h-[18px] text-[#a1a1aa]" strokeWidth={2} />
-                        <div className="absolute -bottom-1 -right-1 w-[16px] h-[16px] flex items-center justify-center bg-[#52525b] border-[2px] border-black rounded-full text-[9px] font-bold text-white">
-                            0
-                        </div>
                     </div>
 
-                    <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] bg-[#0A0A0A] border border-[#18181b] hover:bg-[#111] transition-colors text-[13px] font-bold text-white ml-2">
-                        Explorer
-                        <ChevronDown className="w-[16px] h-[16px] text-[#a1a1aa]" strokeWidth={3} />
+                    <button
+                        onClick={handleLogout}
+                        title="Se déconnecter"
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] bg-[#0A0A0A] border border-[#18181b] hover:bg-red-950/40 hover:border-red-800 transition-colors text-[13px] font-bold text-[#a1a1aa] hover:text-red-400 ml-2"
+                    >
+                        <LogOut className="w-[14px] h-[14px]" strokeWidth={2.5} />
+                        <span className="hidden sm:block">Déco</span>
                     </button>
                 </div>
 

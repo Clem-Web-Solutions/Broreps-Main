@@ -27,6 +27,12 @@ interface OrderData {
   runs: number;
   executedRuns: number;
   raw: any;
+  tagadapay?: {
+    social_link?: string;
+    customer_name?: string;
+    payment_validated: boolean;
+    total_price?: string;
+  };
 }
 
 interface TimelineStep {
@@ -226,7 +232,7 @@ function App() {
       // Refresh if the updated order matches the tracked order
       if (data.order_id === searchQuery.trim().replace('#', '') || 
           data.id?.toString() === searchQuery.trim().replace('#', '') ||
-          data.shopify_order_number === searchQuery.trim().replace('#', '')) {
+          data.tagadapay_order_number === searchQuery.trim().replace('#', '')) {
         console.log('🔄 Suivis: Order updated via WebSocket', data);
         refreshOrderData(true);
       }
@@ -376,7 +382,7 @@ function App() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Numéro de commande Shopify (ex: #1234)"
+                  placeholder="Numéro de commande TagadaPay (ex: #1234)"
                   className="w-full bg-transparent text-white px-4 py-4 text-lg focus:outline-none placeholder-gray-600 font-medium"
                 />
                 <button
@@ -406,7 +412,7 @@ function App() {
                   Pour accéder aux détails de la commande <span className="text-white font-bold">#{orderNumber}</span>,
                 </p>
                 <p className="text-gray-400 text-sm">
-                  veuillez confirmer l'email utilisé lors de la commande Shopify.
+                  veuillez confirmer l'email utilisé lors de la commande TagadaPay.
                 </p>
               </div>
 
@@ -521,7 +527,7 @@ function App() {
             <div className="flex items-center gap-3 bg-[#0a0a0a] p-1.5 rounded-xl border border-white/5">
               <div className="px-4 py-2 rounded-lg bg-[#151515] flex items-center gap-2 border border-white/5">
                 <User className="w-4 h-4 text-gray-400" />
-                <span className="text-sm font-medium text-gray-200">{orderData.link || orderData.shopify?.social_link || 'Non fourni'}</span>
+                <span className="text-sm font-medium text-gray-200">{orderData.link || orderData.tagadapay?.social_link || 'Non fourni'}</span>
               </div>
               <div className="px-4 py-2 rounded-lg bg-[#151515] flex items-center gap-2 border border-white/5">
                 <Target className="w-4 h-4 text-broreps-green" />
@@ -530,8 +536,8 @@ function App() {
             </div>
           </motion.div>
 
-          {/* Shopify Information Card (if available) */}
-          {orderData.shopify && (
+          {/* TagadaPay Information Card (if available) */}
+          {orderData.tagadapay && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -544,20 +550,20 @@ function App() {
                     <svg className="w-5 h-5 text-broreps-green" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
                     </svg>
-                    Informations Shopify
+                    Informations TagadaPay
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400 text-sm">Lien social:</span>
                       <span className="text-white text-sm font-medium">
-                        {orderData.shopify.social_link || 'Non fourni'}
+                        {orderData.tagadapay.social_link || 'Non fourni'}
                       </span>
                     </div>
-                    {orderData.shopify.customer_name && (
+                    {orderData.tagadapay.customer_name && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400 text-sm">Client:</span>
                         <span className="text-white text-sm font-medium">
-                          {orderData.shopify.customer_name}
+                          {orderData.tagadapay.customer_name}
                         </span>
                       </div>
                     )}
@@ -565,23 +571,23 @@ function App() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className={`px-4 py-2 rounded-lg flex items-center gap-2 border ${
-                    orderData.shopify.payment_validated 
+                    orderData.tagadapay.payment_validated 
                       ? 'bg-green-500/10 border-green-500/30' 
                       : 'bg-yellow-500/10 border-yellow-500/30'
                   }`}>
                     <div className={`w-2 h-2 rounded-full ${
-                      orderData.shopify.payment_validated ? 'bg-green-500' : 'bg-yellow-500'
+                      orderData.tagadapay.payment_validated ? 'bg-green-500' : 'bg-yellow-500'
                     } animate-pulse`} />
                     <span className={`text-sm font-bold ${
-                      orderData.shopify.payment_validated ? 'text-green-400' : 'text-yellow-400'
+                      orderData.tagadapay.payment_validated ? 'text-green-400' : 'text-yellow-400'
                     }`}>
-                      {orderData.shopify.payment_validated ? 'Payé' : 'Paiement en attente'}
+                      {orderData.tagadapay.payment_validated ? 'Payé' : 'Paiement en attente'}
                     </span>
                   </div>
-                  {orderData.shopify.total_price && (
+                  {orderData.tagadapay.total_price && (
                     <div className="px-4 py-2 rounded-lg bg-[#151515] border border-white/5">
                       <span className="text-white text-sm font-bold">
-                        {parseFloat(orderData.shopify.total_price).toFixed(2)} €
+                        {parseFloat(orderData.tagadapay.total_price).toFixed(2)} €
                       </span>
                     </div>
                   )}

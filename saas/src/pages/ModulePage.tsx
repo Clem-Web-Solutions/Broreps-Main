@@ -1,13 +1,17 @@
-import { ArrowLeft, Sparkles, Zap, Play, MessageSquare, Ticket, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Sparkles, Zap, Play, MessageSquare, Ticket, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router';
+import { modulesApi, type ModuleProgress } from '../lib/api';
 
 export default function ModulePage() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [moduleProgress, setModuleProgress] = useState<ModuleProgress | null>(null);
+    const [loadingProgress, setLoadingProgress] = useState(true);
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Module Data definition
     const moduleId = id || "1";
@@ -96,6 +100,35 @@ export default function ModulePage() {
 
     const data = moduleData[moduleId as keyof typeof moduleData] || moduleData["1"];
 
+    // Fetch progress for this module
+    useEffect(() => {
+        setLoadingProgress(true);
+        modulesApi.list()
+            .then(r => {
+                const m = r.modules.find((m: ModuleProgress) => m.id === parseInt(moduleId));
+                setModuleProgress(m || null);
+            })
+            .catch(() => setModuleProgress(null))
+            .finally(() => setLoadingProgress(false));
+    }, [moduleId]);
+
+    // Restore watched position when video loads
+    useEffect(() => {
+        if (videoRef.current && moduleProgress && moduleProgress.watched_seconds > 0) {
+            videoRef.current.currentTime = moduleProgress.watched_seconds;
+        }
+    }, [moduleProgress]);
+
+    const handleTimeUpdate = () => {
+        const video = videoRef.current;
+        if (!video || !moduleProgress?.unlocked) return;
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+            modulesApi.saveProgress(parseInt(moduleId), Math.floor(video.currentTime), Math.floor(video.duration || 0))
+                .catch(() => {});
+        }, 5000);
+    };
+
     const togglePlay = () => {
         if (videoRef.current) {
             if (isPlaying) {
@@ -114,8 +147,41 @@ export default function ModulePage() {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
         }
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         window.scrollTo(0, 0);
     }, [moduleId]);
+
+    // Locked screen
+    if (!loadingProgress && moduleProgress && !moduleProgress.unlocked) {
+        return (
+            <div className="flex flex-col items-center w-full min-h-screen pt-4 pb-24">
+                <div className="w-full max-w-[800px] flex justify-start px-4 md:px-8 mb-8">
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="flex items-center gap-2 px-2 py-2 text-[12px] font-bold text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+                    >
+                        <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
+                        Retour aux modules
+                    </button>
+                </div>
+                <div className="flex flex-col items-center justify-center flex-1 gap-6 px-8 text-center py-24">
+                    <div className="w-20 h-20 rounded-full bg-[#0A1A0F] border border-[#00A336]/30 flex items-center justify-center">
+                        <Lock className="w-10 h-10 text-[#00A336]" />
+                    </div>
+                    <h2 className="text-white text-2xl font-black">Module {moduleId} verrouillé</h2>
+                    <p className="text-[#A1A1AA] text-[14px] max-w-[340px] leading-relaxed">
+                        Ce module se débloque automatiquement à ton prochain renouvellement d'abonnement. Continue ta progression !
+                    </p>
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="px-8 py-3 bg-[#00A336] text-white font-bold rounded-xl hover:brightness-110 transition-all"
+                    >
+                        Retour au Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col items-center w-full min-h-screen pt-4 pb-24">
@@ -183,6 +249,7 @@ export default function ModulePage() {
                         playsInline
                         onPause={() => setIsPlaying(false)}
                         onPlay={() => setIsPlaying(true)}
+                        onTimeUpdate={handleTimeUpdate}
                     />
 
                     {!isPlaying && (

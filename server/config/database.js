@@ -34,8 +34,12 @@ async function executeSQL(sql, description) {
     console.log(`✅ ${description}`);
     return true;
   } catch (err) {
-    // Ignore duplicate column errors
-    if (err.code === 'ER_DUP_FIELDNAME' || err.code === 'ER_DUP_INDEX_NAME') {
+    // Ignore duplicate column / key errors
+    if (
+      err.code === 'ER_DUP_FIELDNAME' ||
+      err.code === 'ER_DUP_INDEX_NAME' ||
+      err.code === 'ER_DUP_KEYNAME'      // duplicate index on CREATE INDEX
+    ) {
       console.log(`ℹ️  ${description} - already exists`);
       return true;
     }

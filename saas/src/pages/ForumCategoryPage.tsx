@@ -1,16 +1,46 @@
-import { ArrowLeft, Send, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, Send, Sparkles, Users, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { forumApi, type ForumMessage } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ForumCategoryPage() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
+    const { user } = useAuth();
     const [message, setMessage] = useState('');
+    const [messages, setMessages] = useState<ForumMessage[]>([]);
+    const [posting, setPosting] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [id]);
+
+    useEffect(() => {
+        if (id) {
+            forumApi.list(id).then(r => setMessages(r.messages)).catch(() => {});
+        }
+    }, [id]);
+
+    const handlePost = async () => {
+        if (!message.trim() || posting) return;
+        setPosting(true);
+        try {
+            const r = await forumApi.post(id!, message.trim());
+            setMessages(prev => [r.message, ...prev]);
+            setMessage('');
+        } catch {} finally {
+            setPosting(false);
+        }
+    };
+
+    const handleDelete = async (msgId: number) => {
+        try {
+            await forumApi.delete(msgId);
+            setMessages(prev => prev.filter(m => m.id !== msgId));
+        } catch {}
+    };
 
     const forumData = {
         debutants: {
@@ -106,7 +136,7 @@ export default function ForumCategoryPage() {
                         </h1>
                         <div className="flex items-center gap-1.5 text-[#a1a1aa] text-[13px] font-medium">
                             <Users className="w-4 h-4" strokeWidth={2.5} />
-                            <span>0 message</span>
+                    <span className="text-[#a1a1aa] text-[13px] font-medium">{messages.length} message{messages.length !== 1 ? 's' : ''}</span>
                         </div>
                     </div>
                 </motion.div>
@@ -139,25 +169,55 @@ export default function ForumCategoryPage() {
                             0 / 10 min
                         </span>
 
-                        <button className={`flex items-center gap-2 px-5 py-2.5 rounded-[10px] ${data.btnBg} ${data.btnText} ${data.btnHover} transition-colors cursor-pointer font-bold text-[14px]`}>
+                        <button
+                            onClick={handlePost}
+                            disabled={posting || !message.trim()}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-[10px] ${data.btnBg} ${data.btnText} ${data.btnHover} transition-colors cursor-pointer font-bold text-[14px] disabled:opacity-50`}
+                        >
                             <Send className="w-4 h-4" strokeWidth={2.5} />
-                            Publier
+                            {posting ? 'Publication...' : 'Publier'}
                         </button>
                     </div>
                 </motion.div>
 
-                {/* Empty State */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-                    className="flex flex-col items-center justify-center p-10"
-                >
-                    <div className="text-[52px] mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                        {data.icon}
+                {/* Messages list */}
+                {messages.length > 0 ? (
+                    <div className="flex flex-col gap-4 mb-8">
+                        {messages.map(msg => (
+                            <motion.div
+                                key={msg.id}
+                                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                                className="w-full bg-[#0a0a0a] border border-[#27272a] rounded-[14px] p-4"
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className={`text-[13px] font-bold ${data.themeColor}`}>{msg.author_name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] text-[#52525b]">{new Date(msg.created_at).toLocaleDateString('fr-FR')}</span>
+                                        {user?.id === msg.author_id && (
+                                            <button onClick={() => handleDelete(msg.id)} className="text-[#52525b] hover:text-red-400 transition-colors">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <p className="text-[#d4d4d8] text-[14px] font-medium leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                            </motion.div>
+                        ))}
                     </div>
-                    <p className="text-[#a1a1aa] text-[15px] font-medium text-center">
-                        {data.emptyText}
-                    </p>
-                </motion.div>
+                ) : (
+                    /* Empty State */
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
+                        className="flex flex-col items-center justify-center p-10"
+                    >
+                        <div className="text-[52px] mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                            {data.icon}
+                        </div>
+                        <p className="text-[#a1a1aa] text-[15px] font-medium text-center">
+                            {data.emptyText}
+                        </p>
+                    </motion.div>
+                )}
 
             </div>
         </div>
