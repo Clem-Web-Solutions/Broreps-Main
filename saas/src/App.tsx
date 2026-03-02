@@ -6,6 +6,9 @@ import HubPage from './pages/HubPage';
 import ForumCategoryPage from './pages/ForumCategoryPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import NotesPage from './pages/NotesPage';
+import ResourcesPage from './pages/ResourcesPage';
+import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 
 function App() {
   return (
@@ -19,6 +22,9 @@ function App() {
           <Route path="/forum/:id" element={<ForumCategoryPage />} />
           <Route path="/subscription" element={<SubscriptionPage />} />
           <Route path="/notes" element={<NotesPage />} />
+          <Route path="/resources" element={<ResourcesPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </Router>
