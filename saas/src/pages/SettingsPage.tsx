@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
     ArrowLeft,
@@ -16,17 +17,99 @@ import {
     Shield,
     FileSignature,
     MessageSquare,
-    ExternalLink
+    ExternalLink,
+    PenLine,
+    Key,
+    Check,
+    X,
+    Loader2,
+    Eye,
+    EyeOff,
+    ChevronRight,
 } from 'lucide-react';
-import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
+import { authApi } from '../lib/api';
+import { SocialConnectModal } from '../components/layout/SocialConnectModal';
+
+function fmtMonthYear(d?: string | null): string {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+}
+
+function subLabel(product?: string | null): string {
+    if (!product) return 'Premium';
+    const p = product.toLowerCase();
+    return p.includes('annual') || p.includes('annuel') || p.includes('year')
+        ? 'Premium Annuel'
+        : 'Premium Mensuel';
+}
+
+const STATUS_MAP: Record<string, string> = {
+    active: 'Actif', past_due: 'Impayé', cancelled: 'Annulé', expired: 'Expiré',
+};
 
 export default function SettingsPage() {
     const navigate = useNavigate();
+    const { user, refresh } = useAuth();
 
-    // Toggle states for notifications
+    // Notification toggles
     const [notifTickets, setNotifTickets] = useState(true);
     const [notifModules, setNotifModules] = useState(true);
     const [notifWeekly, setNotifWeekly] = useState(false);
+
+    // Name inline edit
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [nameInput, setNameInput] = useState('');
+    const [nameSaving, setNameSaving] = useState(false);
+    const [nameError, setNameError] = useState<string | null>(null);
+
+    // Password change
+    const [isPwdOpen, setIsPwdOpen] = useState(false);
+    const [currentPwd, setCurrentPwd] = useState('');
+    const [newPwd, setNewPwd] = useState('');
+    const [confirmPwd, setConfirmPwd] = useState('');
+    const [pwdSaving, setPwdSaving] = useState(false);
+    const [pwdError, setPwdError] = useState<string | null>(null);
+    const [pwdSuccess, setPwdSuccess] = useState(false);
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
+
+    // Social modal
+    const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
+
+    const openNameEdit = () => {
+        setNameInput(user?.name ?? '');
+        setNameError(null);
+        setIsEditingName(true);
+    };
+
+    const saveName = async () => {
+        const trimmed = nameInput.trim();
+        if (!trimmed || trimmed === user?.name) { setIsEditingName(false); return; }
+        setNameSaving(true); setNameError(null);
+        try {
+            await authApi.updateProfile({ name: trimmed });
+            await refresh();
+            setIsEditingName(false);
+        } catch (e: any) {
+            setNameError(e.message || 'Erreur lors de la sauvegarde');
+        } finally { setNameSaving(false); }
+    };
+
+    const savePwd = async () => {
+        if (!currentPwd || !newPwd) return;
+        if (newPwd !== confirmPwd) { setPwdError('Les mots de passe ne correspondent pas'); return; }
+        setPwdSaving(true); setPwdError(null); setPwdSuccess(false);
+        try {
+            await authApi.updateProfile({ current_password: currentPwd, new_password: newPwd });
+            setPwdSuccess(true);
+            setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
+            setTimeout(() => { setIsPwdOpen(false); setPwdSuccess(false); }, 1500);
+        } catch (e: any) {
+            setPwdError(e.message || 'Erreur');
+        } finally { setPwdSaving(false); }
+    };
 
     return (
         <div className="animate-in fade-in duration-500 pb-20">
@@ -68,17 +151,44 @@ export default function SettingsPage() {
                         <div className="space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 bg-[#050505] border border-white/5 rounded-xl shadow-inner">
                                 <span className="text-[#a1a1aa] text-[14px] font-medium">Prénom</span>
-                                <span className="text-white font-medium text-[14px]">Clement</span>
+                                {isEditingName ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            autoFocus
+                                            value={nameInput}
+                                            onChange={e => { setNameInput(e.target.value); setNameError(null); }}
+                                            onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setIsEditingName(false); }}
+                                            className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-white text-[14px] outline-none focus:border-white/30 w-40 transition-colors"
+                                        />
+                                        <button onClick={saveName} disabled={nameSaving}
+                                            className="p-1.5 rounded-lg bg-[#00A336]/20 text-[#00A336] hover:bg-[#00A336]/30 transition-colors disabled:opacity-40">
+                                            {nameSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                        </button>
+                                        <button onClick={() => setIsEditingName(false)}
+                                            className="p-1.5 rounded-lg bg-white/5 text-[#a1a1aa] hover:bg-white/10 transition-colors">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-white font-medium text-[14px]">{user?.name || '—'}</span>
+                                        <button onClick={openNameEdit}
+                                            className="p-1 rounded text-[#52525b] hover:text-white transition-colors">
+                                            <PenLine className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
+                            {nameError && <p className="text-red-400 text-[12px] px-1">{nameError}</p>}
 
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 bg-[#050505] border border-white/5 rounded-xl shadow-inner">
                                 <span className="text-[#a1a1aa] text-[14px] font-medium">Email</span>
-                                <span className="text-white font-medium text-[14px]">t3mq.pro@gmail.com</span>
+                                <span className="text-white font-medium text-[14px]">{user?.email || '—'}</span>
                             </div>
 
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 bg-[#050505] border border-white/5 rounded-xl shadow-inner">
                                 <span className="text-[#a1a1aa] text-[14px] font-medium">Membre depuis</span>
-                                <span className="text-white font-medium text-[14px]">janvier 2026</span>
+                                <span className="text-white font-medium text-[14px]">{fmtMonthYear(user?.subscribed_at)}</span>
                             </div>
                         </div>
 
@@ -88,14 +198,96 @@ export default function SettingsPage() {
                             <div className="flex items-center justify-between mb-5">
                                 <div>
                                     <h3 className="text-white font-semibold text-[15px] mb-1">Formule actuelle</h3>
-                                    <p className="text-[#a1a1aa] text-[13px] font-medium">Premium Mensuel</p>
+                                    <p className="text-[#a1a1aa] text-[13px] font-medium">{subLabel(user?.subscription_product)}</p>
                                 </div>
-                                <span className="bg-white/10 border border-white/5 text-white/90 text-[11px] font-semibold px-3 py-1 rounded-md tracking-wider uppercase">Actif</span>
+                                <span className="bg-white/10 border border-white/5 text-white/90 text-[11px] font-semibold px-3 py-1 rounded-md tracking-wider uppercase">
+                                    {STATUS_MAP[user?.subscription_status ?? ''] ?? 'Actif'}
+                                </span>
                             </div>
                             <button className="w-full bg-white hover:bg-gray-200 text-black font-semibold text-[14px] py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm">
                                 <Settings className="w-4 h-4" />
                                 Gérer mon abonnement
                             </button>
+                        </div>
+
+                        {/* Password change */}
+                        <div className="border border-white/5 rounded-xl overflow-hidden">
+                            <button
+                                onClick={() => { setIsPwdOpen(!isPwdOpen); setPwdError(null); setPwdSuccess(false); }}
+                                className="w-full flex items-center justify-between p-4 bg-[#050505] hover:bg-white/[0.03] transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#a1a1aa]">
+                                        <Key className="w-4 h-4" />
+                                    </div>
+                                    <span className="text-white font-medium text-[14px]">Changer le mot de passe</span>
+                                </div>
+                                <ChevronRight className={`w-4 h-4 text-[#52525b] transition-transform ${isPwdOpen ? 'rotate-90' : ''}`} />
+                            </button>
+
+                            <AnimatePresence>
+                                {isPwdOpen && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden border-t border-white/5"
+                                    >
+                                        <div className="p-4 bg-[#020202] flex flex-col gap-3">
+                                            {/* Current password */}
+                                            <div className="relative">
+                                                <input
+                                                    type={showCurrent ? 'text' : 'password'}
+                                                    value={currentPwd}
+                                                    onChange={e => { setCurrentPwd(e.target.value); setPwdError(null); }}
+                                                    placeholder="Mot de passe actuel"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 pr-10 text-white text-[13px] placeholder:text-white/30 outline-none focus:border-white/30 transition-colors"
+                                                />
+                                                <button onClick={() => setShowCurrent(!showCurrent)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#52525b] hover:text-white transition-colors">
+                                                    {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                            {/* New password */}
+                                            <div className="relative">
+                                                <input
+                                                    type={showNew ? 'text' : 'password'}
+                                                    value={newPwd}
+                                                    onChange={e => { setNewPwd(e.target.value); setPwdError(null); }}
+                                                    placeholder="Nouveau mot de passe"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 pr-10 text-white text-[13px] placeholder:text-white/30 outline-none focus:border-white/30 transition-colors"
+                                                />
+                                                <button onClick={() => setShowNew(!showNew)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#52525b] hover:text-white transition-colors">
+                                                    {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                            {/* Confirm */}
+                                            <input
+                                                type="password"
+                                                value={confirmPwd}
+                                                onChange={e => { setConfirmPwd(e.target.value); setPwdError(null); }}
+                                                placeholder="Confirmer le nouveau mot de passe"
+                                                onKeyDown={e => e.key === 'Enter' && savePwd()}
+                                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white text-[13px] placeholder:text-white/30 outline-none focus:border-white/30 transition-colors"
+                                            />
+                                            {pwdError && (
+                                                <p className="text-red-400 text-[12px] px-1">{pwdError}</p>
+                                            )}
+                                            <button
+                                                onClick={savePwd}
+                                                disabled={pwdSaving || !currentPwd || !newPwd || !confirmPwd}
+                                                className="w-full py-2.5 rounded-xl bg-[#00A336] hover:bg-[#00cc44] disabled:bg-white/10 disabled:cursor-not-allowed text-white font-semibold text-[13px] transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                {pwdSaving ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                                                    pwdSuccess ? <><Check className="w-4 h-4" /> Enregistré</> :
+                                                        'Enregistrer le mot de passe'}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                     </div>
@@ -121,11 +313,16 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <h3 className="text-white font-semibold text-[14px]">TikTok</h3>
-                                        <p className="text-[#a1a1aa] text-[12px] font-medium">Non connecté</p>
+                                        {user?.tiktok_username
+                                            ? <p className="text-[#00A336] text-[12px] font-medium">@{user.tiktok_username}</p>
+                                            : <p className="text-[#a1a1aa] text-[12px] font-medium">Non connecté</p>}
                                     </div>
                                 </div>
-                                <button className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 text-white/80 font-semibold text-[13px] hover:bg-white/10 hover:text-white transition-colors">
-                                    Associer
+                                <button
+                                    onClick={() => setIsSocialModalOpen(true)}
+                                    className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 text-white/80 font-semibold text-[13px] hover:bg-white/10 hover:text-white transition-colors"
+                                >
+                                    {user?.tiktok_username ? 'Gérer' : 'Associer'}
                                 </button>
                             </div>
 
@@ -142,11 +339,16 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <h3 className="text-white font-semibold text-[14px]">Instagram</h3>
-                                        <p className="text-[#a1a1aa] text-[12px] font-medium">Non connecté</p>
+                                        {user?.instagram_username
+                                            ? <p className="text-[#00A336] text-[12px] font-medium">@{user.instagram_username}</p>
+                                            : <p className="text-[#a1a1aa] text-[12px] font-medium">Non connecté</p>}
                                     </div>
                                 </div>
-                                <button className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 text-white/80 font-semibold text-[13px] hover:bg-white/10 hover:text-white transition-colors">
-                                    Associer
+                                <button
+                                    onClick={() => setIsSocialModalOpen(true)}
+                                    className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 text-white/80 font-semibold text-[13px] hover:bg-white/10 hover:text-white transition-colors"
+                                >
+                                    {user?.instagram_username ? 'Gérer' : 'Associer'}
                                 </button>
                             </div>
 
@@ -361,13 +563,22 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Footer simple indicatory */}
+                {/* Footer */}
                 <div className="flex items-center justify-center gap-2 mt-8 opacity-50 pb-8">
                     <ShieldCheck className="w-4 h-4 text-[#a1a1aa]" />
                     <span className="text-[#a1a1aa] text-[13px] font-medium">Paramètres sécurisés — BroReps Premium</span>
                 </div>
 
             </div>
+
+            <AnimatePresence>
+                {isSocialModalOpen && (
+                    <SocialConnectModal
+                        onClose={() => setIsSocialModalOpen(false)}
+                        onLinked={() => refresh()}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
