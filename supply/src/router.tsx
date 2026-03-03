@@ -13,6 +13,7 @@ import { Teams } from "./views/Teams";
 import { Home } from "./views/Home";
 import { Reports } from "./views/Reports";
 import { Refill } from "./views/Refill";
+import { Payments } from "./views/Payments";
 
 export const router = createBrowserRouter([
     {
@@ -60,6 +61,9 @@ export const router = createBrowserRouter([
             },
             {
                 path: "/config", element: <Config />
+            },
+            {
+                path: "/paiements", element: <Payments />
             }
         ]
     }
