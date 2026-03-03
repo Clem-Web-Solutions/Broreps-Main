@@ -223,7 +223,8 @@ router.post('/setup-password', async (req, res) => {
 router.get('/me', requireSaasAuth, async (req, res) => {
   const [rows] = await db.query(
     `SELECT id, email, name, subscription_status, subscription_product,
-            modules_unlocked, subscribed_at, next_billing_at, notes_reflection
+            modules_unlocked, subscribed_at, next_billing_at, notes_reflection,
+            tiktok_username, tiktok_linked_at, instagram_username, instagram_linked_at
      FROM saas_users WHERE id = ? AND is_active = 1`,
     [req.saasUser.id]
   );
@@ -258,6 +259,49 @@ router.get('/me', requireSaasAuth, async (req, res) => {
   }
 
   res.json({ user });
+});
+
+// ─── PATCH /api/saas/auth/profile ─────────────────────────────────────────────
+// Update display name and/or password
+router.patch('/profile', requireSaasAuth, async (req, res) => {
+  const { name, current_password, new_password } = req.body;
+  const updates = [];
+  const params = [];
+
+  if (name !== undefined) {
+    const trimmed = String(name).trim();
+    if (!trimmed) return res.status(400).json({ error: 'Le prénom ne peut pas être vide' });
+    updates.push('name = ?');
+    params.push(trimmed);
+  }
+
+  if (new_password) {
+    if (!current_password)
+      return res.status(400).json({ error: 'Mot de passe actuel requis' });
+    if (new_password.length < 8)
+      return res.status(400).json({ error: 'Nouveau mot de passe trop court (8 caractères min.)' });
+    const [pwRows] = await db.query('SELECT password FROM saas_users WHERE id = ?', [req.saasUser.id]);
+    const valid = await bcrypt.compare(current_password, pwRows[0]?.password || '');
+    if (!valid) return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+    const hash = await bcrypt.hash(new_password, 10);
+    updates.push('password = ?');
+    params.push(hash);
+  }
+
+  if (updates.length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+
+  params.push(req.saasUser.id);
+  await db.query(`UPDATE saas_users SET ${updates.join(', ')} WHERE id = ?`, params);
+
+  const [updated] = await db.query(
+    `SELECT id, email, name, subscription_status, subscription_product,
+            modules_unlocked, subscribed_at, next_billing_at,
+            tiktok_username, tiktok_linked_at, instagram_username, instagram_linked_at
+     FROM saas_users WHERE id = ?`,
+    [req.saasUser.id]
+  );
+
+  res.json({ success: true, user: updated[0] });
 });
 
 export default router;

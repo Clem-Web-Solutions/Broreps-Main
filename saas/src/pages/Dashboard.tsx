@@ -12,10 +12,8 @@ import {
     Lock,
     LifeBuoy,
     Sparkles,
-    Instagram,
     ArrowRight,
     CheckCircle2,
-    Link
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CobeGlobe from '../components/layout/CobeGlobe';
@@ -23,15 +21,38 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { modulesApi, type ModuleProgress } from '../lib/api';
 import { Skeleton } from '../components/ui/skeleton';
+import { AICoachModal } from '../components/layout/AICoachModal';
+import { SocialConnectModal } from '../components/layout/SocialConnectModal';
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, refresh } = useAuth();
     const [modules, setModules] = useState<ModuleProgress[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     // Mock link modal
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+
+    // AI Coach modal
+    const [isAICoachOpen, setIsAICoachOpen] = useState(false);
+    const [aiInitialMessage, setAiInitialMessage] = useState<string | undefined>();
+
+    const openCoach = (message?: string) => {
+        setAiInitialMessage(message);
+        setIsAICoachOpen(true);
+    };
+
+    // Cmd+J / Ctrl+J keyboard shortcut
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+                e.preventDefault();
+                openCoach();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, []);
 
     useEffect(() => {
         modulesApi.list()
@@ -163,16 +184,19 @@ export default function Dashboard() {
                     </div>
 
                     <div className="mt-8 flex flex-col gap-3 relative z-10 w-full md:w-[80%]">
-                        <div className="bg-[#09090b] border border-white/10 rounded-xl p-3 flex items-center justify-between text-[#A1A1AA] text-[13px] hover:border-[#001A336]/30 cursor-text transition-colors">
+                        <div
+                            onClick={() => openCoach()}
+                            className="bg-[#09090b] border border-white/10 rounded-xl p-3 flex items-center justify-between text-[#A1A1AA] text-[13px] hover:border-white/20 cursor-pointer transition-colors group"
+                        >
                             <span className="flex items-center gap-2">
-                                <MessageCircle className="w-4 h-4 text-white/40" />
+                                <MessageCircle className="w-4 h-4 text-white/40 group-hover:text-[#00A336] transition-colors" />
                                 Demande conseil à ton coach...
                             </span>
                             <div className="px-2 py-1 rounded bg-white/5 text-[10px] font-medium text-white/50">Cmd + J</div>
                         </div>
                         <div className="flex gap-2 flex-wrap text-[12px]">
-                            <span className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Idée de short ?</span>
-                            <span className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Comment percer ?</span>
+                            <span onClick={() => openCoach('Idée de short ?')} className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Idée de short ?</span>
+                            <span onClick={() => openCoach('Comment percer ?')} className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Comment percer ?</span>
                         </div>
                     </div>
                 </div>
@@ -283,7 +307,20 @@ export default function Dashboard() {
             {/* Social Connect Modal */}
             <AnimatePresence>
                 {isLinkModalOpen && (
-                    <SocialConnectModal onClose={() => setIsLinkModalOpen(false)} />
+                    <SocialConnectModal
+                        onClose={() => setIsLinkModalOpen(false)}
+                        onLinked={() => refresh()}
+                    />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {isAICoachOpen && (
+                    <AICoachModal
+                        key="ai-coach"
+                        onClose={() => { setIsAICoachOpen(false); setAiInitialMessage(undefined); }}
+                        initialMessage={aiInitialMessage}
+                    />
                 )}
             </AnimatePresence>
         </div>
@@ -369,66 +406,7 @@ function PremiumModuleCard({ number, title, Icon, status, progressPct, onClick }
     )
 }
 
-function SocialConnectModal({ onClose }: { onClose: () => void }) {
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-[500px] bg-[#09090b] border border-white/10 rounded-2xl p-8 relative shadow-2xl"
-            >
-                <div className="w-12 h-12 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center mb-6">
-                    <Link className="w-5 h-5 text-white" />
-                </div>
-                <h2 className="text-[24px] font-semibold text-white mb-2">Connecter un compte</h2>
-                <p className="text-[#A1A1AA] text-[14px] leading-relaxed mb-8">
-                    Le Coach IA et le Dashboard ont besoin d'accéder à tes données de visibilité pour fonctionner à plein potentiel.
-                </p>
 
-                <div className="flex flex-col gap-3">
-                    <button className="w-full bg-[#050505] p-4 rounded-xl border border-white/10 hover:border-white/20 hover:bg-white/[0.02] flex items-center justify-between transition-colors group">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center">
-                                <TikTokIcon />
-                            </div>
-                            <div className="text-left">
-                                <h3 className="text-white font-medium text-[15px]">TikTok</h3>
-                                <p className="text-white/40 text-[12px]">Analyse de croissance et vues</p>
-                            </div>
-                        </div>
-                        <span className="text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/10 text-white group-hover:bg-white/20 transition-colors">Connecter</span>
-                    </button>
-
-                    <button className="w-full bg-[#050505] p-4 rounded-xl border border-white/10 hover:border-white/20 hover:bg-white/[0.02] flex items-center justify-between transition-colors group">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center">
-                                <Instagram className="w-5 h-5 text-white/80" />
-                            </div>
-                            <div className="text-left">
-                                <h3 className="text-white font-medium text-[15px]">Instagram</h3>
-                                <p className="text-white/40 text-[12px]">Insights publications et Reels</p>
-                            </div>
-                        </div>
-                        <span className="text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/10 text-white group-hover:bg-white/20 transition-colors">Connecter</span>
-                    </button>
-                </div>
-
-                <div className="mt-8 flex justify-end">
-                    <button onClick={onClose} className="px-5 py-2 text-[13px] font-medium text-[#A1A1AA] hover:text-white transition-colors">
-                        Annuler
-                    </button>
-                </div>
-            </motion.div>
-        </div>
-    );
-}
-
-const TikTokIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className="w-[18px] h-[18px] text-white/80">
-        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.61-5.66-.21-3.23 1.91-6.19 5.06-6.85.25-.05.51-.08.77-.09V14.4c-1.17.06-2.31.54-3.12 1.34-1.22 1.14-1.63 2.97-.97 4.54.49 1.25 1.56 2.22 2.86 2.53 1.39.38 2.91.07 4.02-.78 1.23-.97 1.91-2.48 1.91-4.07.02-3.99.01-7.98.01-11.97-.04.05-.08.1-.13.15z" />
-    </svg>
-);
 
 // Minimal placeholder avatar
 function UserAvatar({ seed }: { seed: string }) {

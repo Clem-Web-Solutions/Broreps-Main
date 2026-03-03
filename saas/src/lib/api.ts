@@ -9,6 +9,10 @@ export interface SaasUser {
   modules_unlocked: number;
   next_billing_at?: string;
   subscribed_at?: string;
+  tiktok_username?: string;
+  tiktok_linked_at?: string;
+  instagram_username?: string;
+  instagram_linked_at?: string;
 }
 
 function authHeader(): Record<string, string> {
@@ -61,6 +65,12 @@ export const authApi = {
     request<{ token: string; user: SaasUser }>('/api/saas/auth/setup-password', {
       method: 'POST',
       body: JSON.stringify({ token, password }),
+    }),
+
+  updateProfile: (data: { name?: string; current_password?: string; new_password?: string }) =>
+    request<{ success: boolean; user: SaasUser }>('/api/saas/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     }),
 };
 
@@ -148,3 +158,66 @@ export const notesApi = {
       body: JSON.stringify({ scores, reflection }),
     }),
 };
+
+// ─── AI Coach ──────────────────────────────────────────────────────────────────
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export const aiApi = {
+  /** Returns rate limit status and whether AI is configured */
+  status: () =>
+    request<{ configured: boolean; allowed: boolean; remaining: number; daily_limit: number }>(
+      '/api/saas/ai/status'
+    ),
+
+  /**
+   * Streams an AI response. Returns a ReadableStreamDefaultReader you can consume.
+   * Pass history (up to last 10 messages) for context continuity.
+   */
+  chatStream: async (message: string, history: ChatMessage[] = []): Promise<Response> => {
+    const res = await fetch(`${BASE_URL}/api/saas/ai/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(),
+      },
+      body: JSON.stringify({ message, history }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const err: Error & { code?: string; status?: number; remaining?: number } = new Error(
+        (data as any).message || (data as any).error || `HTTP ${res.status}`
+      );
+      err.status = res.status;
+      throw err;
+    }
+
+    return res;
+  },
+};
+
+// ─── Social Accounts ───────────────────────────────────────────────────────────
+export interface LinkedAccounts {
+  tiktok_username: string | null;
+  tiktok_linked_at: string | null;
+  instagram_username: string | null;
+  instagram_linked_at: string | null;
+}
+
+export const socialApi = {
+  get: () =>
+    request<{ accounts: LinkedAccounts }>('/api/saas/social'),
+
+  link: (platform: 'tiktok' | 'instagram', username: string) =>
+    request<{ success: boolean; username: string; linked_at: string; message: string }>(
+      `/api/saas/social/${platform}`,
+      { method: 'POST', body: JSON.stringify({ username }) }
+    ),
+
+  unlink: (platform: 'tiktok' | 'instagram') =>
+    request<{ success: boolean }>(`/api/saas/social/${platform}`, { method: 'DELETE' }),
+};
+
