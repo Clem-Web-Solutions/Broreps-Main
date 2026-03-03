@@ -92,8 +92,8 @@ export default function SettingsPage() {
             await authApi.updateProfile({ name: trimmed });
             await refresh();
             setIsEditingName(false);
-        } catch (e: any) {
-            setNameError(e.message || 'Erreur lors de la sauvegarde');
+        } catch (e: unknown) {
+            setNameError((e as Error).message || 'Erreur lors de la sauvegarde');
         } finally { setNameSaving(false); }
     };
 
@@ -106,8 +106,8 @@ export default function SettingsPage() {
             setPwdSuccess(true);
             setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
             setTimeout(() => { setIsPwdOpen(false); setPwdSuccess(false); }, 1500);
-        } catch (e: any) {
-            setPwdError(e.message || 'Erreur');
+        } catch (e: unknown) {
+            setPwdError((e as Error).message || 'Erreur');
         } finally { setPwdSaving(false); }
     };
 

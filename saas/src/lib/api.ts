@@ -189,7 +189,7 @@ export const aiApi = {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       const err: Error & { code?: string; status?: number; remaining?: number } = new Error(
-        (data as any).message || (data as any).error || `HTTP ${res.status}`
+        ((data as Record<string, unknown>).message as string) || ((data as Record<string, unknown>).error as string) || `HTTP ${res.status}`
       );
       err.status = res.status;
       throw err;

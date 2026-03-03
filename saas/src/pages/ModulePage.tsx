@@ -102,14 +102,19 @@ export default function ModulePage() {
 
     // Fetch progress for this module
     useEffect(() => {
-        setLoadingProgress(true);
-        modulesApi.list()
-            .then(r => {
+        const fetchProgress = async () => {
+            setLoadingProgress(true);
+            try {
+                const r = await modulesApi.list();
                 const m = r.modules.find((m: ModuleProgress) => m.id === parseInt(moduleId));
                 setModuleProgress(m || null);
-            })
-            .catch(() => setModuleProgress(null))
-            .finally(() => setLoadingProgress(false));
+            } catch {
+                setModuleProgress(null);
+            } finally {
+                setLoadingProgress(false);
+            }
+        };
+        fetchProgress();
     }, [moduleId]);
 
     // Restore watched position when video loads
@@ -152,7 +157,7 @@ export default function ModulePage() {
 
     // Make sure we stop playing and scroll top when loading another module
     useEffect(() => {
-        setIsPlaying(false);
+        setTimeout(() => setIsPlaying(false), 0);
         if (videoRef.current) {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;

@@ -29,6 +29,7 @@ export default function Dashboard() {
     const { user, refresh } = useAuth();
     const [modules, setModules] = useState<ModuleProgress[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [now] = useState(() => Date.now());
 
     // Mock link modal
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
@@ -150,7 +151,7 @@ export default function Dashboard() {
                     />
                     <StatCard
                         title="Renouvellement"
-                        value={user?.next_billing_at ? `${Math.max(0, Math.ceil((new Date(user.next_billing_at).getTime() - Date.now()) / 86400000))}j` : '–'}
+                        value={user?.next_billing_at ? `${Math.max(0, Math.ceil((new Date(user.next_billing_at).getTime() - now) / 86400000))}j` : '–'}
                         subtitle="Avant prochaine échéance"
                         icon={Hourglass}
                         color="text-white"
@@ -331,7 +332,16 @@ export default function Dashboard() {
 // Sub-Components
 // ========================
 
-function StatCard({ title, value, subtitle, icon: Icon, color, iconBg }: any) {
+interface StatCardProps {
+    title: string;
+    value: React.ReactNode;
+    subtitle: string;
+    icon: React.ElementType;
+    color: string;
+    iconBg: string;
+}
+
+function StatCard({ title, value, subtitle, icon: Icon, color, iconBg }: StatCardProps) {
     return (
         <div className="bg-[#09090b] border border-white/5 rounded-2xl p-6 flex flex-col justify-between transition-colors hover:bg-white/[0.02]">
             <div className="flex justify-between items-start mb-6">

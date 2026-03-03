@@ -100,17 +100,23 @@ export default function NotesPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        setIsLoading(true);
-        notesApi.get().then(r => {
-            if (r.scores) {
-                setCategories(prev => prev.map(cat => ({
-                    ...cat,
-                    score: r.scores[cat.id] ?? cat.score
-                })));
+        const fetchNotes = async () => {
+            setIsLoading(true);
+            try {
+                const r = await notesApi.get();
+                if (r.scores) {
+                    setCategories(prev => prev.map(cat => ({
+                        ...cat,
+                        score: r.scores[cat.id] ?? cat.score
+                    })));
+                }
+                if (r.reflection) setReflection(r.reflection);
+            } catch {
+            } finally {
+                setIsLoading(false);
             }
-            if (r.reflection) setReflection(r.reflection);
-        }).catch(() => { })
-            .finally(() => setIsLoading(false));
+        };
+        fetchNotes();
     }, []);
 
     const handleSave = async () => {

@@ -21,7 +21,7 @@ export default function HubPage() {
     }, []);
 
     useEffect(() => {
-        hubApi.list(activeFilter).then(r => setPosts(r.posts)).catch(() => { });
+        hubApi.list(activeFilter).then(r => setPosts(r.posts)).catch(error => console.error(error));
     }, [activeFilter]);
 
     const handlePublish = async () => {
@@ -32,7 +32,9 @@ export default function HubPage() {
             setPosts(prev => [r.post, ...prev]);
             setNewContent('');
             setShowModal(false);
-        } catch { } finally {
+        } catch (error) {
+            console.error(error);
+        } finally {
             setPosting(false);
         }
     };
@@ -41,14 +43,18 @@ export default function HubPage() {
         try {
             const r = await hubApi.like(id);
             setPosts(prev => prev.map(p => p.id === id ? { ...p, likes_count: r.likes_count, liked_by_me: r.liked } : p));
-        } catch { }
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const handleDelete = async (id: number) => {
         try {
             await hubApi.delete(id);
             setPosts(prev => prev.filter(p => p.id !== id));
-        } catch { }
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const filters = [

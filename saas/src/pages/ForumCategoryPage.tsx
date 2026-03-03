@@ -19,7 +19,7 @@ export default function ForumCategoryPage() {
 
     useEffect(() => {
         if (id) {
-            forumApi.list(id).then(r => setMessages(r.messages)).catch(() => { });
+            forumApi.list(id).then(r => setMessages(r.messages)).catch(error => console.error(error));
         }
     }, [id]);
 
@@ -30,7 +30,9 @@ export default function ForumCategoryPage() {
             const r = await forumApi.post(id!, message.trim());
             setMessages(prev => [r.message, ...prev]);
             setMessage('');
-        } catch { } finally {
+        } catch (error) {
+            console.error(error);
+        } finally {
             setPosting(false);
         }
     };
@@ -39,7 +41,9 @@ export default function ForumCategoryPage() {
         try {
             await forumApi.delete(msgId);
             setMessages(prev => prev.filter(m => m.id !== msgId));
-        } catch { }
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const forumData = {
