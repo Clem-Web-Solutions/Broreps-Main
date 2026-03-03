@@ -183,12 +183,13 @@ export function Drip() {
                     successRate
                 });
 
-                setStats({
+                setStats(s => ({
+                    ...s,
                     reservedBalance: totalCost,
                     activeRuns: activeOrders,
                     successRate: successRate,
                     pending: queuedOrders
-                });
+                }));
             } else if (activeTab === 'pending') {
                 // Load orders waiting in queue (same link conflict)
                 console.log('[PENDING] Loading waiting orders...');
