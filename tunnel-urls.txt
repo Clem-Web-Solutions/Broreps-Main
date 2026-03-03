@@ -1,3 +1,9 @@
 Server (API) (Port 3005): https://sol-frank-searching-detail.trycloudflare.com
 Supply (Admin) (Port 5173): https://advised-kodak-cheap-grain.trycloudflare.com
 Suivis (Client) (Port 5174): https://dev-searched-attitudes-ringtone.trycloudflare.com
+Server (API) (Port 3005): https://slope-appropriate-dirt-december.trycloudflare.com
+Supply (Admin) (Port 5173): https://measure-static-weblog-hospitality.trycloudflare.com
+Suivis (Client) (Port 5174): https://pitch-sauce-cowboy-deeper.trycloudflare.com
+Server (API) (Port 3005): https://salvador-tablet-belong-considered.trycloudflare.com
+Supply (Admin) (Port 5173): https://parenting-disposition-brand-literacy.trycloudflare.com
+Suivis (Client) (Port 5174): https://toddler-trying-humanities-seniors.trycloudflare.com

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Lock,
     Target,
@@ -29,12 +29,34 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CobeGlobe from '../components/layout/CobeGlobe';
-
 import { useNavigate } from 'react-router';
+import { useAuth } from '../contexts/AuthContext';
+import { modulesApi, type ModuleProgress } from '../lib/api';
 
 export default function Dashboard() {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const [modules, setModules] = useState<ModuleProgress[]>([]);
+
+    useEffect(() => {
+        modulesApi.list().then(r => setModules(r.modules)).catch(() => {});
+    }, []);
+
+    const totalModules = 6;
+    const unlockedCount = modules.length > 0
+        ? modules.filter(m => m.unlocked).length
+        : (user?.modules_unlocked || 1);
+    const completedCount = modules.filter(m => m.completed).length;
+    const progressPct = Math.round((completedCount / totalModules) * 100);
+
+    const getModuleStatus = (id: number): 'termine' | 'en_cours' | 'en_attente' | 'verrouille' => {
+        const m = modules.find(m => m.id === id);
+        if (!m || !m.unlocked) return 'verrouille';
+        if (m.completed) return 'termine';
+        if (m.watched_seconds > 0) return 'en_cours';
+        return 'en_attente';
+    };
 
     return (
         <div className="flex flex-col items-center w-full min-h-screen pt-8 pb-24 px-4 lg:px-12">
@@ -52,7 +74,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2 px-5 py-2 rounded-full border border-[#14321D] bg-[#06140A] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
                         <div className="w-2.5 h-2.5 rounded-full bg-[#00A336] shadow-[0_0_8px_rgba(0,163,54,0.8)]" />
                         <span className="text-[11px] font-bold text-[#A1A1AA] tracking-[0.2em] uppercase">
-                            Clement • Premium Mensuel
+                            {user?.name || 'Membre'} • {user?.subscription_product || 'Premium Mensuel'}
                         </span>
                     </div>
 
@@ -61,7 +83,7 @@ export default function Dashboard() {
                             Salut
                         </h1>
                         <h1 className="text-[56px] md:text-[64px] font-[900] tracking-[-0.04em] leading-[1.05] text-[#00A336] mb-4">
-                            Clement
+                            {user?.name?.split(' ')[0] || 'Champion'}
                         </h1>
 
                         <div className="text-[32px] md:text-[40px] mt-1 mb-5">
@@ -86,7 +108,7 @@ export default function Dashboard() {
                         <div className="w-[72px] h-[72px] rounded-3xl bg-gradient-to-b from-[#3edb6c] to-[#12a143] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-[inset_0_2px_6px_rgba(255,255,255,0.6),0_0_20px_rgba(0,163,54,0.2)]">
                             <Lock className="w-8 h-8 text-white relative z-10" strokeWidth={2.5} />
                         </div>
-                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">6/6</span>
+                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">{unlockedCount}/{totalModules}</span>
                         <span className="text-[15px] text-[#e0e0e0] font-semibold text-center leading-tight">Modules<br />déverrouillés</span>
                     </div>
 
@@ -96,7 +118,7 @@ export default function Dashboard() {
                             <Target className="w-8 h-8 text-white relative z-10" strokeWidth={2.5} />
                             <Sparkle className="w-[14px] h-[14px] text-[#fcd34d] absolute top-1.5 right-1.5 z-20" fill="currentColor" strokeWidth={1} />
                         </div>
-                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">100%</span>
+                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">{progressPct}%</span>
                         <span className="text-[15px] text-[#e0e0e0] font-semibold text-center leading-tight">Parcours<br />complété</span>
                     </div>
 
@@ -105,8 +127,12 @@ export default function Dashboard() {
                         <div className="w-[72px] h-[72px] rounded-3xl bg-gradient-to-b from-[#3edb6c] to-[#12a143] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-[inset_0_2px_6px_rgba(255,255,255,0.6),0_0_20px_rgba(0,163,54,0.2)] relative">
                             <Hourglass className="w-8 h-8 text-white relative z-10" strokeWidth={2.5} />
                         </div>
-                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">0j</span>
-                        <span className="text-[15px] text-[#e0e0e0] font-semibold text-center leading-tight">Avant le<br />prochain</span>
+                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">
+                            {user?.next_billing_at
+                                ? Math.max(0, Math.ceil((new Date(user.next_billing_at).getTime() - Date.now()) / 86400000)) + 'j'
+                                : '–'}
+                        </span>
+                        <span className="text-[15px] text-[#e0e0e0] font-semibold text-center leading-tight">Prochain<br />renouvellement</span>
                     </div>
                 </motion.div>
 
@@ -150,22 +176,31 @@ export default function Dashboard() {
                     <div className="mb-10">
                         <div className="flex justify-between items-end mb-3">
                             <span className="text-[16px] font-semibold text-[#e0e0e0]">Progression globale</span>
-                            <span className="text-[16px] font-bold text-[#3edb6c]">100%</span>
+                            <span className="text-[16px] font-bold text-[#3edb6c]">{progressPct}%</span>
                         </div>
                         {/* Progress Bar Background */}
-                        <div className="w-full h-[12px] rounded-full bg-[#112a18] overflow-visible relative">
-                            {/* the filled green bar with an intense shadow */}
-                            <div className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-[#12a143] to-[#3edb6c] rounded-full shadow-[0_0_15px_rgba(62,219,108,0.7)]"></div>
+                        <div className="w-full h-[12px] rounded-full bg-[#112a18] overflow-hidden relative">
+                            <div
+                                className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#12a143] to-[#3edb6c] rounded-full shadow-[0_0_15px_rgba(62,219,108,0.7)] transition-all duration-700"
+                                style={{ width: `${progressPct}%` }}
+                            />
                         </div>
                     </div>
 
-                    {/* Inner Card "Parcours terminé" */}
-                    {/* uses a dark golden brown gradient and subtle gold border */}
-                    <div className="w-full rounded-[24px] border border-[#443615] bg-gradient-to-b from-[#221b08] to-[#0A0D08] p-10 flex flex-col items-center justify-center shadow-inner relative overflow-hidden">
-                        <span className="text-[48px] leading-none mb-4 drop-shadow-[0_4px_12px_rgba(252,211,77,0.4)]">🏆</span>
-                        <h3 className="text-[24px] font-bold text-white mb-2">Parcours terminé !</h3>
-                        <p className="text-[16px] text-[#A1A1AA] font-medium text-center">Félicitations champion</p>
-                    </div>
+                    {/* Inner Card — dynamic based on progress */}
+                    {progressPct === 100 ? (
+                        <div className="w-full rounded-[24px] border border-[#443615] bg-gradient-to-b from-[#221b08] to-[#0A0D08] p-10 flex flex-col items-center justify-center shadow-inner relative overflow-hidden">
+                            <span className="text-[48px] leading-none mb-4 drop-shadow-[0_4px_12px_rgba(252,211,77,0.4)]">🏆</span>
+                            <h3 className="text-[24px] font-bold text-white mb-2">Parcours terminé !</h3>
+                            <p className="text-[16px] text-[#A1A1AA] font-medium text-center">Félicitations champion</p>
+                        </div>
+                    ) : (
+                        <div className="w-full rounded-[24px] border border-[#14321D] bg-[#040D06] p-8 flex flex-col items-center justify-center shadow-inner relative overflow-hidden">
+                            <span className="text-[40px] leading-none mb-4">🎯</span>
+                            <h3 className="text-[20px] font-bold text-white mb-1">{completedCount}/{totalModules} modules complétés</h3>
+                            <p className="text-[14px] text-[#A1A1AA] font-medium text-center">Continue sur ta lancée !</p>
+                        </div>
+                    )}
                 </motion.div>
 
                 {/* 3 Small Info Cards */}
@@ -287,54 +322,25 @@ export default function Dashboard() {
                     transition={{ duration: 0.5, delay: 0.3 }}
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full"
                 >
-                    <ModuleCard
-                        number={1}
-                        title="Bienvenue dans ton écosystème"
-                        subtitle="Prends en main ton espace BroReps et démarre efficacement."
-                        Icon={Play}
-                        status="termine"
-                        onClick={() => navigate('/module/1')}
-                    />
-                    <ModuleCard
-                        number={2}
-                        title="Boost multi-plateformes"
-                        subtitle="Active TikTok + Instagram pour multiplier ta visibilité."
-                        Icon={Clock}
-                        status="en_cours"
-                        onClick={() => navigate('/module/2')}
-                    />
-                    <ModuleCard
-                        number={3}
-                        title="Passe au niveau supérieur"
-                        subtitle="Débloque plus de puissance et d'outils pour accélérer ta croissance."
-                        Icon={TrendingUp}
-                        status="en_attente"
-                        onClick={() => navigate('/module/3')}
-                    />
-                    <ModuleCard
-                        number={4}
-                        title="Étape clé à venir"
-                        subtitle="Module premium à débloquer dans ton parcours."
-                        Icon={Medal}
-                        status="en_attente"
-                        onClick={() => navigate('/module/4')}
-                    />
-                    <ModuleCard
-                        number={5}
-                        title="Discipline & régularité"
-                        subtitle="Nouveau niveau de structure et de progression."
-                        Icon={Settings2}
-                        status="en_attente"
-                        onClick={() => navigate('/module/5')}
-                    />
-                    <ModuleCard
-                        number={6}
-                        title="Maîtrise des réseaux"
-                        subtitle="Accède aux stratégies avancées de création de contenu."
-                        Icon={Crown}
-                        status="en_attente"
-                        onClick={() => navigate('/module/6')}
-                    />
+                    {[
+                        { id: 1, title: "Bienvenue dans ton écosystème", subtitle: "Prends en main ton espace BroReps et démarre efficacement.", Icon: Play },
+                        { id: 2, title: "Boost multi-plateformes", subtitle: "Active TikTok + Instagram pour multiplier ta visibilité.", Icon: Clock },
+                        { id: 3, title: "Passe au niveau supérieur", subtitle: "Débloque plus de puissance et d'outils pour accélérer ta croissance.", Icon: TrendingUp },
+                        { id: 4, title: "Étape clé à venir", subtitle: "Module premium à débloquer dans ton parcours.", Icon: Medal },
+                        { id: 5, title: "Discipline & régularité", subtitle: "Nouveau niveau de structure et de progression.", Icon: Settings2 },
+                        { id: 6, title: "Maîtrise des réseaux", subtitle: "Accède aux stratégies avancées de création de contenu.", Icon: Crown },
+                    ].map(m => (
+                        <ModuleCard
+                            key={m.id}
+                            number={m.id}
+                            title={m.title}
+                            subtitle={m.subtitle}
+                            Icon={m.Icon}
+                            status={getModuleStatus(m.id)}
+                            progressPct={modules.find(mod => mod.id === m.id)?.progress_pct}
+                            onClick={() => navigate(`/module/${m.id}`)}
+                        />
+                    ))}
                 </motion.div>
 
                 {/* 5. Forums Section */}
@@ -598,28 +604,36 @@ const TikTokIcon = () => (
 );
 
 // Reusable component for the module card
-export function ModuleCard({ number, title, subtitle, Icon, status, onClick }: { number: number, title: string, subtitle: string, Icon: React.ElementType, status: 'en_cours' | 'en_attente' | 'termine', onClick?: () => void }) {
+export function ModuleCard({ number, title, subtitle, Icon, status, progressPct, onClick }: { number: number, title: string, subtitle: string, Icon: React.ElementType, status: 'en_cours' | 'en_attente' | 'termine' | 'verrouille', progressPct?: number, onClick?: () => void }) {
 
     // Status visual mapping
-    const isLocked = status === 'en_attente';
-    const borderColor = isLocked ? 'border-[#0a2612]' : 'border-[#00A336] shadow-[inset_0_0_20px_rgba(0,163,54,0.05)]';
-    const textColor = isLocked ? 'text-[#888]' : 'text-[#00A336]';
+    const isLocked = status === 'verrouille';
+    const borderColor = isLocked ? 'border-[#0a2612] opacity-60' : 'border-[#00A336] shadow-[inset_0_0_20px_rgba(0,163,54,0.05)]';
+    const textColor = isLocked ? 'text-[#555]' : 'text-[#00A336]';
 
-    let progressFill = 'w-0';
+    let progressFill = 0;
     let statusBadge = null;
 
     if (status === 'en_cours') {
-        progressFill = 'w-[50%]';
+        progressFill = progressPct ?? 50;
         statusBadge = (
             <div className="flex items-center px-2 py-0.5 rounded-full bg-[#1e3a8a] text-[#60a5fa] text-[9px] font-bold uppercase tracking-wider">
                 En cours
             </div>
         );
     } else if (status === 'termine') {
-        progressFill = 'w-full';
+        progressFill = 100;
         statusBadge = (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#00A336] text-[#05140A] text-[10px] font-bold uppercase tracking-wide">
                 Terminé
+            </div>
+        );
+    } else if (status === 'verrouille') {
+        progressFill = 0;
+        statusBadge = (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#111] text-[#555] text-[9px] font-bold uppercase tracking-wider">
+                <Lock className="w-2.5 h-2.5" strokeWidth={2.5} />
+                Verrouillé
             </div>
         );
     }
@@ -639,13 +653,23 @@ export function ModuleCard({ number, title, subtitle, Icon, status, onClick }: {
                     </div>
                     {/* Last seen text */}
                     <span className="text-[10px] font-medium text-[#71717A] ml-2">
-                        {number === 1 ? 'Vu : il y a 27 min' : 'Vu : À l\'instant'}
+                        {status === 'verrouille' ? 'Prochain renouvellement' : status === 'termine' ? 'Complété ✓' : status === 'en_cours' ? `${progressPct ?? 0}% visionné` : 'Pas encore commencé'}
                     </span>
                 </div>
 
                 {/* Status Icon */}
-                <button onClick={onClick} className={`w-[52px] h-[52px] rounded-[18px] border border-[#14321D] bg-[#0A1D11] flex items-center justify-center transition-all duration-300 hover:bg-[#0D2415] hover:border-[#00A336] hover:shadow-[0_0_15px_rgba(0,163,54,0.15)] hover:-translate-y-1 cursor-pointer group/icon flex-shrink-0`}>
-                    <Icon className={`w-6 h-6 ${textColor} transition-transform duration-300 group-hover/icon:scale-110`} strokeWidth={1.5} />
+                <button
+                    onClick={isLocked ? undefined : onClick}
+                    className={`w-[52px] h-[52px] rounded-[18px] border flex items-center justify-center transition-all duration-300 flex-shrink-0 group/icon ${
+                        isLocked
+                            ? 'border-[#0a2612] bg-[#060e08] cursor-not-allowed'
+                            : 'border-[#14321D] bg-[#0A1D11] hover:bg-[#0D2415] hover:border-[#00A336] hover:shadow-[0_0_15px_rgba(0,163,54,0.15)] hover:-translate-y-1 cursor-pointer'
+                    }`}
+                >
+                    {isLocked
+                        ? <Lock className="w-5 h-5 text-[#3f3f3f]" strokeWidth={2} />
+                        : <Icon className={`w-6 h-6 ${textColor} transition-transform duration-300 group-hover/icon:scale-110`} strokeWidth={1.5} />
+                    }
                 </button>
             </div>
 
@@ -662,14 +686,17 @@ export function ModuleCard({ number, title, subtitle, Icon, status, onClick }: {
                 <div className="w-full h-px bg-gradient-to-r from-[#14321D] to-transparent mb-5" />
 
                 <div className="flex items-center justify-between">
-                    <button onClick={onClick} className={`flex items-center gap-2 font-bold ${textColor} transition-all duration-300 hover:brightness-125 text-[14px] group-hover:text-[#3edb6c] hover:translate-x-1 cursor-pointer group/btn`}>
-                        <PlayCircle className={`w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110`} strokeWidth={2} />
-                        Découvrir
+                    <button onClick={isLocked ? undefined : onClick} className={`flex items-center gap-2 font-bold ${textColor} transition-all duration-300 text-[14px] ${isLocked ? 'cursor-not-allowed opacity-30' : 'hover:brightness-125 group-hover:text-[#3edb6c] hover:translate-x-1 cursor-pointer group/btn'}`}>
+                        <PlayCircle className={`w-4 h-4 transition-transform duration-300 ${!isLocked && 'group-hover/btn:scale-110'}`} strokeWidth={2} />
+                        {isLocked ? 'Verrouillé' : 'Découvrir'}
                     </button>
 
                     {/* Small dash progress bar */}
                     <div className="w-[80px] h-[4px] rounded-full bg-[#112a18] relative overflow-hidden">
-                        <div className={`absolute left-0 top-0 h-full ${progressFill} bg-[#3edb6c] shadow-[0_0_8px_#3edb6c] transition-all duration-500`} />
+                        <div
+                            className="absolute left-0 top-0 h-full bg-[#3edb6c] shadow-[0_0_8px_#3edb6c] transition-all duration-500"
+                            style={{ width: `${progressFill}%` }}
+                        />
                     </div>
                 </div>
             </div>

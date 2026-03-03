@@ -1,193 +1,144 @@
-import { useState, useRef, useEffect } from 'react';
-import { Home, BookOpen, Trophy, User, ChevronDown, ChevronUp, Layers, Coins, Settings, ShoppingBag, LogOut } from 'lucide-react';
+import { useState } from 'react';
+import { User, Settings, LogOut, Zap } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router';
-import ProfileModal from './ProfileModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Header() {
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [isProfileModalOpen, setProfileModalOpen] = useState(false);
-    const [isExplorerOpen, setIsExplorerOpen] = useState(false);
-    const explorerRef = useRef<HTMLDivElement>(null);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (explorerRef.current && !explorerRef.current.contains(event.target as Node)) {
-                setIsExplorerOpen(false);
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-[#00A336] bg-[linear-gradient(90deg,#052e16_0%,#052e16_75%,#050505_100%)] shadow-[0_4px_45px_rgba(0,163,54,0.15)] relative">
+        <header className="fixed top-0 left-0 right-0 z-50 flex justify-center w-full">
+            <div className="w-full h-[64px] px-6 bg-[#050505]/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between shadow-sm">
 
-            <div className="max-w-[1400px] mx-auto h-[72px] px-6 flex items-center justify-between relative z-10">
-
-                {/* Logo */}
-                <div className="flex items-center cursor-pointer hover:opacity-90 transition-opacity">
-                    <img src="/logo.png" alt="BroReps Logo" className="h-[38px] object-contain" />
+                {/* Left: Logo */}
+                <div className="flex items-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/dashboard')}>
+                    <img src="/logo.png" alt="BroReps Logo" className="h-[28px] object-contain drop-shadow-sm" />
+                    <span className="ml-3 font-semibold text-white text-[15px] hidden sm:block tracking-tight">BroReps<span className="text-[#00A336]">.</span></span>
                 </div>
 
                 {/* Center Nav */}
-                <nav className="hidden md:flex items-center gap-2 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <nav className="hidden md:flex items-center justify-center gap-1">
                     <NavLink
                         to="/dashboard"
                         className={({ isActive }) =>
-                            `flex items-center gap-2 px-5 py-2.5 rounded-[10px] text-[13px] font-bold transition-all ${isActive
-                                ? 'bg-[#042A11] text-[#00FF7F] border border-[#00A336]/20'
-                                : 'bg-transparent border border-transparent text-[#a1a1aa] hover:text-white hover:bg-[#111111]'
+                            `group flex items-center px-4 py-2 rounded-lg text-[13px] font-medium transition-all ${isActive
+                                ? 'bg-[#00A336]/10 text-[#00A336]'
+                                : 'text-[#A1A1AA] hover:text-white hover:bg-white/5'
                             }`
                         }
                     >
-                        <Home className="w-[18px] h-[18px]" strokeWidth={2.5} />
-                        Dashboard
+                        Tableau de bord
                     </NavLink>
                     <NavLink
                         to="/notes"
                         className={({ isActive }) =>
-                            `flex items-center gap-2 px-5 py-2.5 rounded-[10px] text-[13px] font-bold transition-all ${isActive
-                                ? 'bg-[#042A11] text-[#00FF7F] border border-[#00A336]/20'
-                                : 'bg-transparent border border-[#111111] text-[#a1a1aa] hover:text-white hover:bg-[#111111]'
+                            `group flex items-center px-4 py-2 rounded-lg text-[13px] font-medium transition-all ${isActive
+                                ? 'bg-[#00A336]/10 text-[#00A336]'
+                                : 'text-[#A1A1AA] hover:text-white hover:bg-white/5'
                             }`
                         }
                     >
-                        <BookOpen className="w-[18px] h-[18px]" strokeWidth={2.5} />
                         Mes Notes
                     </NavLink>
                 </nav>
 
                 {/* Right Section */}
-                <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-[#0A0A0A] border border-[#18181b] text-[#a1a1aa]">
-                        <Trophy className="w-[14px] h-[14px]" strokeWidth={2.5} />
-                        <span className="text-[13px] font-bold">Niv. 0</span>
-                    </div>
+                <div className="flex items-center justify-end gap-3">
 
-                    <div className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-[10px] border border-[#00A336] bg-[#052e16] text-[#00FF7F] shadow-[0_0_20px_rgba(0,163,54,0.3)] mr-2">
-                        <div className="w-[5px] h-[5px] rounded-full bg-[#00FF7F] animate-pulse" />
-                        <span className="text-[12px] font-black tracking-wider uppercase">PREMIUM</span>
-                    </div>
+                    {/* Command Menu Button */}
+                    <button className="hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-[#A1A1AA] hover:text-white transition-colors" title="Rechercher (Cmd+K)" onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'k', 'metaKey': true }))}>
+                        <SearchIcon className="w-4 h-4" />
+                    </button>
 
-                    <div
-                        className="relative w-[40px] h-[40px] flex items-center justify-center rounded-full bg-[#0A0A0A] border border-[#18181b] hover:bg-[#111] transition-colors cursor-pointer"
-                        onClick={() => setProfileModalOpen(true)}
-                    >
-                        <User className="w-[18px] h-[18px] text-[#a1a1aa]" strokeWidth={2} />
-                        <div className="absolute -bottom-1 -right-1 w-[16px] h-[16px] flex items-center justify-center bg-[#52525b] border-[2px] border-black rounded-full text-[9px] font-bold text-white">
-                            0
+                    {/* Premium Badge */}
+                    {user?.subscription_status === 'active' && (
+                        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00A336]/10 border border-[#00A336]/30 text-[#00A336]">
+                            <Zap className="w-3.5 h-3.5 fill-[#00A336] text-[#00A336]" />
+                            <span className="text-[11px] font-bold uppercase tracking-wider">Premium</span>
                         </div>
-                    </div>
+                    )}
 
-                    <div className="relative" ref={explorerRef}>
+                    {/* User Dropdown */}
+                    <div className="relative">
                         <button
-                            onClick={() => setIsExplorerOpen(!isExplorerOpen)}
-                            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border transition-colors text-[13px] font-bold ml-2 ${isExplorerOpen
-                                ? 'bg-[#052e16] border-[#00A336] text-[#00FF7F]'
-                                : 'bg-[#0A0A0A] border-[#18181b] hover:bg-[#111] text-white'
-                                }`}
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/5 hover:border-white/10 transition-colors cursor-pointer group"
                         >
-                            Explorer
-                            {isExplorerOpen ? (
-                                <ChevronUp className={`w-[16px] h-[16px] ${isExplorerOpen ? 'text-[#00FF7F]' : 'text-[#a1a1aa]'}`} strokeWidth={3} />
-                            ) : (
-                                <ChevronDown className={`w-[16px] h-[16px] ${isExplorerOpen ? 'text-[#00FF7F]' : 'text-[#a1a1aa]'}`} strokeWidth={3} />
-                            )}
+                            <span className="text-[13px] font-medium">Profil</span>
+                            <div className="w-5 h-5 rounded-full bg-[#111111] flex items-center justify-center group-hover:bg-[#222] transition-colors">
+                                <ArrowRightIcon className="w-3 h-3 text-white" />
+                            </div>
                         </button>
 
-                        {/* Explorer Dropdown */}
-                        {isExplorerOpen && (
-                            <div className="absolute top-full right-0 mt-4 w-[280px] bg-[#0A0A0A] border border-[#18181b] rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
-
-                                <div className="space-y-1">
-                                    <button
-                                        className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-[#111] transition-colors group"
-                                        onClick={() => {
-                                            setIsExplorerOpen(false);
-                                            navigate('/resources');
-                                        }}
+                        <AnimatePresence>
+                            {isDropdownOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        transition={{ duration: 0.15, ease: "easeOut" }}
+                                        className="absolute top-[calc(100%+12px)] right-0 w-[220px] bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-xl overflow-hidden py-1.5 z-50 p-1"
                                     >
-                                        <div className="w-10 h-10 rounded-lg bg-[#18181b] flex items-center justify-center text-[#a1a1aa] group-hover:text-white transition-colors">
-                                            <Layers className="w-5 h-5" strokeWidth={2} />
+                                        <div className="px-3 py-2.5 mb-1 border-b border-white/5">
+                                            <p className="text-[13px] font-medium text-white truncate">{user?.name || 'Utilisateur'}</p>
+                                            <p className="text-[11px] text-[#A1A1AA] font-medium mt-0.5 truncate">{user?.email || 'user@example.com'}</p>
                                         </div>
-                                        <span className="text-white text-[14px] font-bold">Mes ressources</span>
-                                    </button>
-
-                                    <div className="w-full flex items-center justify-between gap-4 p-3 rounded-xl opacity-50 cursor-not-allowed">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-lg bg-[#18181b] flex items-center justify-center text-[#52525b]">
-                                                <Coins className="w-5 h-5" strokeWidth={2} />
-                                            </div>
-                                            <span className="text-[#52525b] text-[14px] font-bold">Mes Coins</span>
-                                        </div>
-                                        <span className="text-[9px] font-black tracking-wider uppercase px-2 py-1 rounded bg-[#18181b] text-[#71717a]">Bientôt</span>
-                                    </div>
-
-                                    <div className="w-full flex items-center justify-between gap-4 p-3 rounded-xl opacity-50 cursor-not-allowed">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-lg bg-[#18181b] flex items-center justify-center text-[#52525b]">
-                                                <Trophy className="w-5 h-5" strokeWidth={2} />
-                                            </div>
-                                            <span className="text-[#52525b] text-[14px] font-bold">Classement</span>
-                                        </div>
-                                        <span className="text-[9px] font-black tracking-wider uppercase px-2 py-1 rounded bg-[#18181b] text-[#71717a]">Bientôt</span>
-                                    </div>
-
-                                    <button
-                                        className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-[#111] transition-colors group"
-                                        onClick={() => {
-                                            setIsExplorerOpen(false);
-                                            navigate('/profile');
-                                        }}
-                                    >
-                                        <div className="w-10 h-10 rounded-lg bg-[#18181b] flex items-center justify-center text-[#a1a1aa] group-hover:text-white transition-colors">
-                                            <User className="w-5 h-5" strokeWidth={2} />
-                                        </div>
-                                        <span className="text-white text-[14px] font-bold">Mon profil</span>
-                                    </button>
-
-                                    <button
-                                        className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-[#111] transition-colors group"
-                                        onClick={() => {
-                                            setIsExplorerOpen(false);
-                                            navigate('/settings');
-                                        }}
-                                    >
-                                        <div className="w-10 h-10 rounded-lg bg-[#18181b] flex items-center justify-center text-[#a1a1aa] group-hover:text-white transition-colors">
-                                            <Settings className="w-5 h-5" strokeWidth={2} />
-                                        </div>
-                                        <span className="text-white text-[14px] font-bold">Paramètres</span>
-                                    </button>
-
-                                    <div className="w-full flex items-center justify-between gap-4 p-3 rounded-xl opacity-50 cursor-not-allowed mb-2">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-lg bg-[#18181b] flex items-center justify-center text-[#52525b]">
-                                                <ShoppingBag className="w-5 h-5" strokeWidth={2} />
-                                            </div>
-                                            <span className="text-[#52525b] text-[14px] font-bold">Boutique</span>
-                                        </div>
-                                        <span className="text-[9px] font-black tracking-wider uppercase px-2 py-1 rounded bg-[#18181b] text-[#71717a]">Bientôt</span>
-                                    </div>
-                                </div>
-
-                                {/* Divider */}
-                                <div className="h-px bg-[#18181b] mx-3 my-2" />
-
-                                <button className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-[#201010] transition-colors group">
-                                    <div className="w-10 h-10 rounded-lg bg-[#201010] flex items-center justify-center text-[#ef4444] group-hover:scale-110 transition-transform">
-                                        <LogOut className="w-5 h-5" strokeWidth={2.5} />
-                                    </div>
-                                    <span className="text-[#ef4444] text-[14px] font-bold">Déconnexion</span>
-                                </button>
-
-                            </div>
-                        )}
+                                        <button onClick={() => { setIsDropdownOpen(false); navigate('/profile'); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 cursor-pointer transition-colors mb-0.5">
+                                            <User className="w-4 h-4" /> Mon Profil
+                                        </button>
+                                        <button onClick={() => { setIsDropdownOpen(false); navigate('/settings'); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 cursor-pointer transition-colors mb-1">
+                                            <Settings className="w-4 h-4" /> Paramètres
+                                        </button>
+                                        <div className="w-full h-[1px] bg-white/5 my-1" />
+                                        <button onClick={() => { setIsDropdownOpen(false); handleLogout(); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-red-500 hover:bg-red-500/10 hover:text-red-400 rounded-xl flex items-center gap-3 cursor-pointer transition-colors">
+                                            <LogOut className="w-4 h-4" /> Se déconnecter
+                                        </button>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
 
             </div>
-
-            <ProfileModal isOpen={isProfileModalOpen} onClose={() => setProfileModalOpen(false)} />
         </header>
     );
+}
+
+function SearchIcon(props: any) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+    )
+}
+
+function ArrowRightIcon(props: any) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+            <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    )
 }

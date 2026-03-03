@@ -21,6 +21,12 @@ import notificationRoutes from './routes/notifications.js';
 import chatRoutes from './routes/chat.js';
 import reportsRoutes from './routes/reports.js';
 import shopifyRoutes from './routes/shopify.js';
+import tagadapayRoutes from './routes/tagadapay.js';
+import saasAuthRoutes from './routes/saas-auth.js';
+import saasModulesRoutes from './routes/saas-modules.js';
+import saasForumRoutes from './routes/saas-forum.js';
+import saasHubRoutes from './routes/saas-hub.js';
+import saasNotesRoutes from './routes/saas-notes.js';
 import { initCron } from './lib/cron.js';
 import { initWebSocket } from './lib/websocket.js';
 
@@ -48,6 +54,30 @@ app.use(cors({
 
 // Raw body parser for Shopify webhooks (must be before express.json())
 app.use('/api/shopify/webhook', express.raw({ 
+  type: 'application/json',
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  }
+}));
+
+// Debug middleware - Log ALL incoming requests
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`\n[${timestamp}] ${req.method} ${req.url}`);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  
+  // Special logging for TagadaPay webhooks
+  if (req.url.includes('tagadapay')) {
+    console.log('🎯 TAGADAPAY WEBHOOK REQUEST DETECTED!');
+    console.log('IP:', req.ip || req.connection.remoteAddress);
+    console.log('X-Forwarded-For:', req.headers['x-forwarded-for']);
+  }
+  
+  next();
+});
+
+// Raw body parser for TagadaPay webhooks (must be before express.json())
+app.use('/api/tagadapay/webhook', express.raw({ 
   type: 'application/json',
   verify: (req, res, buf) => {
     req.rawBody = buf.toString('utf8');
@@ -85,6 +115,14 @@ app.use('/api/reports', reportsRoutes);
 // Public routes (no authentication required)
 app.use('/api/track', trackRoutes);
 app.use('/api/shopify', shopifyRoutes);
+app.use('/api/tagadapay', tagadapayRoutes);
+
+// SaaS routes
+app.use('/api/saas/auth', saasAuthRoutes);
+app.use('/api/saas/modules', saasModulesRoutes);
+app.use('/api/saas/forum', saasForumRoutes);
+app.use('/api/saas/hub', saasHubRoutes);
+app.use('/api/saas/notes', saasNotesRoutes);
 
 // 404 handler
 app.use((req, res) => {
