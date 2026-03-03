@@ -14,13 +14,16 @@ import {
     Bell,
     Key,
     LogOut,
-    ShieldCheck
+    ShieldCheck,
+    X
 } from 'lucide-react';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ProfilePage() {
     const navigate = useNavigate();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     return (
         <div className="animate-in fade-in duration-500 pb-20">
@@ -28,7 +31,7 @@ export default function ProfilePage() {
             <div className="flex items-center absolute top-0 mt-6 lg:mt-0 lg:relative z-10 w-full mb-8">
                 <button
                     onClick={() => navigate('/dashboard')}
-                    className="text-[#a1a1aa] hover:text-white flex items-center gap-2 text-sm font-medium transition-colors"
+                    className="text-[#a1a1aa] hover:text-white flex items-center gap-2 text-sm font-medium transition-colors cursor-pointer"
                 >
                     <ArrowLeft className="w-4 h-4" />
                     Retour au Dashboard
@@ -42,7 +45,7 @@ export default function ProfilePage() {
                         <div className="w-20 h-20 rounded-[20px] bg-white/5 border border-white/10 flex items-center justify-center shadow-sm text-white/80">
                             <User className="w-10 h-10" strokeWidth={1.5} />
                         </div>
-                        <button className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-[#09090b] border border-white/10 flex items-center justify-center text-[#a1a1aa] hover:bg-white/10 hover:text-white transition-colors shadow-lg">
+                        <button className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-[#09090b] border border-white/10 flex items-center justify-center text-[#a1a1aa] hover:bg-white/10 hover:text-white transition-colors shadow-lg cursor-pointer">
                             <Upload className="w-4 h-4" strokeWidth={2} />
                         </button>
                     </div>
@@ -61,7 +64,10 @@ export default function ProfilePage() {
                             <Sparkles className="w-5 h-5 text-white/80" strokeWidth={2.5} />
                             <h2 className="text-white text-xl font-medium tracking-tight">Informations personnelles</h2>
                         </div>
-                        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.02] text-[#a1a1aa] hover:bg-white/[0.04] hover:text-white transition-colors text-[13px] font-medium">
+                        <button
+                            onClick={() => setIsEditModalOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.02] text-[#a1a1aa] hover:bg-white/[0.04] hover:text-white transition-colors text-[13px] font-medium cursor-pointer"
+                        >
                             <PenLine className="w-3.5 h-3.5" />
                             Modifier
                         </button>
@@ -106,7 +112,7 @@ export default function ProfilePage() {
                                 </div>
                                 <span className="text-[#a1a1aa] text-[15px] font-medium">Formule active</span>
                             </div>
-                            <span className="text-white/80 font-medium text-[15px]">Premium Mensuel</span>
+                            <span className="text-[#00A336] font-medium text-[15px]">Pro Premium</span>
                         </div>
 
                         <div className="flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors">
@@ -116,7 +122,7 @@ export default function ProfilePage() {
                                 </div>
                                 <span className="text-[#a1a1aa] text-[15px] font-medium">Statut du compte</span>
                             </div>
-                            <span className="bg-white/10 border border-white/5 text-white/90 text-[11px] font-bold px-3 py-1 rounded-md tracking-wider uppercase">Actif</span>
+                            <span className="bg-[#00A336]/10 border border-[#00A336]/30 text-[#00A336] text-[11px] font-bold px-3 py-1 rounded-md tracking-wider uppercase">Actif</span>
                         </div>
 
                     </div>
@@ -143,7 +149,7 @@ export default function ProfilePage() {
                                     </div>
                                     <span className="text-white font-medium text-[15px]">TikTok</span>
                                 </div>
-                                <button className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-[#a1a1aa] font-medium text-[13px] hover:bg-white/10 hover:text-white transition-colors">
+                                <button className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-[#a1a1aa] font-medium text-[13px] hover:bg-white/10 hover:text-white transition-colors cursor-pointer">
                                     Associer
                                 </button>
                             </div>
@@ -162,7 +168,7 @@ export default function ProfilePage() {
                                     </div>
                                     <span className="text-white font-medium text-[15px]">Instagram</span>
                                 </div>
-                                <button className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-[#a1a1aa] font-medium text-[13px] hover:bg-white/10 hover:text-white transition-colors">
+                                <button className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-[#a1a1aa] font-medium text-[13px] hover:bg-white/10 hover:text-white transition-colors cursor-pointer">
                                     Associer
                                 </button>
                             </div>
@@ -193,7 +199,7 @@ export default function ProfilePage() {
                             </div>
                             <button
                                 onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                                className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${notificationsEnabled ? 'bg-white' : 'bg-[#3f3f46]'}`}
+                                className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 ease-in-out ${notificationsEnabled ? 'bg-white' : 'bg-[#3f3f46]'}`}
                             >
                                 <div className={`w-4 h-4 rounded-full ${notificationsEnabled ? 'bg-black' : 'bg-white'} shadow-sm transform transition-transform duration-300 ease-in-out ${notificationsEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
                             </button>
@@ -237,6 +243,87 @@ export default function ProfilePage() {
                 </div>
 
             </div>
+
+            {/* Modal for Editing Informations */}
+            <AnimatePresence>
+                {isEditModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                            onClick={() => setIsEditModalOpen(false)}
+                        />
+
+                        {/* Modal Content */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            className="relative w-full max-w-md bg-[#0A0A0A] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl"
+                        >
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/5 text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            <div className="mb-8">
+                                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/80 mb-4 shadow-sm">
+                                    <PenLine className="w-6 h-6" strokeWidth={1.5} />
+                                </div>
+                                <h3 className="text-[22px] font-semibold text-white tracking-tight">Modifier tes infos</h3>
+                                <p className="text-[#a1a1aa] text-[14px] mt-1.5 font-medium">
+                                    Met à jour tes informations personnelles pour ton profil.
+                                </p>
+                            </div>
+
+                            <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setIsEditModalOpen(false); }}>
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-[#a1a1aa] mb-2 uppercase tracking-wide">Prénom</label>
+                                    <input
+                                        type="text"
+                                        defaultValue="Clement"
+                                        placeholder="Ton prénom"
+                                        className="w-full bg-[#111111] border border-white/10 rounded-xl px-4 py-3.5 text-[15px] font-medium text-white placeholder:text-[#a1a1aa]/50 focus:outline-none focus:border-[#00A336]/50 focus:ring-1 focus:ring-[#00A336]/50 transition-all shadow-sm"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-[#a1a1aa] mb-2 uppercase tracking-wide">Adresse Email</label>
+                                    <input
+                                        type="email"
+                                        defaultValue="t3mq.pro@gmail.com"
+                                        placeholder="Ton email"
+                                        className="w-full bg-[#111111] border border-white/10 rounded-xl px-4 py-3.5 text-[15px] font-medium text-white placeholder:text-[#a1a1aa]/50 focus:outline-none focus:border-[#00A336]/50 focus:ring-1 focus:ring-[#00A336]/50 transition-all shadow-sm"
+                                    />
+                                </div>
+
+                                <div className="flex items-center gap-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditModalOpen(false)}
+                                        className="flex-1 py-3.5 rounded-xl border border-white/10 text-white font-medium text-[14px] hover:bg-white/5 transition-colors cursor-pointer"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 py-3.5 rounded-xl bg-white text-black font-semibold text-[14px] hover:bg-gray-200 transition-colors shadow-sm cursor-pointer"
+                                    >
+                                        Enregistrer
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
+
