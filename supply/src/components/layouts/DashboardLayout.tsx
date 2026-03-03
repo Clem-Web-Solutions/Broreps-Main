@@ -1,4 +1,4 @@
-import { Clock, FileText, LayoutDashboard, LogOut, Package, RefreshCcw, Search, Settings, Shield, ShoppingCart, Sparkles } from 'lucide-react';
+import { Clock, CreditCard, FileText, LayoutDashboard, LogOut, Package, RefreshCcw, Search, Settings, Shield, ShoppingCart, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,6 +7,7 @@ import { NotificationBell } from '../notifications/NotificationBell';
 
 const mainNav = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
+    { path: '/paiements', label: 'Paiements', icon: CreditCard, adminOnly: true },
     { path: '/services', label: 'Services', icon: ShoppingCart, adminOnly: false },
     { path: '/commandes', label: 'Commandes', icon: Package, adminOnly: false },
     { path: '/track', label: 'Track', icon: Search, adminOnly: false },

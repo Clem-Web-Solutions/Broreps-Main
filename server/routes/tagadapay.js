@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import db from '../config/database.js';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -1174,6 +1175,150 @@ router.get('/health', (req, res) => {
     service: 'TagadaPay Integration',
     timestamp: new Date().toISOString()
   });
+});
+
+// ─── Admin Routes ─────────────────────────────────────────────────────────────
+
+// GET /api/tagadapay/admin/stats
+router.get('/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const [[stats]] = await db.query(`
+      SELECT
+        COUNT(*) AS total_payments,
+        COALESCE(SUM(amount), 0) AS total_revenue,
+        (SELECT COUNT(DISTINCT subscription_id)
+         FROM tagadapay_orders
+         WHERE order_type = 'subscription' AND subscription_id IS NOT NULL) AS total_subscriptions,
+        (SELECT COUNT(DISTINCT subscription_id)
+         FROM tagadapay_orders
+         WHERE order_type = 'subscription' AND subscription_id IS NOT NULL
+           AND subscription_status = 'active') AS active_subscriptions
+      FROM tagadapay_orders
+      WHERE payment_status IN ('paid', 'succeeded', 'success')
+    `);
+    res.json(stats);
+  } catch (error) {
+    console.error('[ERREUR] Admin stats error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/tagadapay/admin/payments — paginated one-time payments
+router.get('/admin/payments', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const offset = (page - 1) * limit;
+    const search = req.query.search ? `%${req.query.search}%` : null;
+    const status = req.query.status || null;
+
+    let where = `WHERE order_type = 'one_time'`;
+    const params = [];
+    if (search) {
+      where += ` AND (customer_email LIKE ? OR customer_name LIKE ? OR product_title LIKE ? OR social_link LIKE ? OR payment_id LIKE ?)`;
+      params.push(search, search, search, search, search);
+    }
+    if (status) {
+      where += ` AND payment_status = ?`;
+      params.push(status);
+    }
+
+    const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total FROM tagadapay_orders ${where}`, params);
+    const [payments] = await db.query(
+      `SELECT id, payment_id, order_id, order_type, customer_email, customer_name, customer_phone,
+              product_title, quantity, amount, currency, payment_status, social_link,
+              payment_created_at, created_at
+       FROM tagadapay_orders ${where}
+       ORDER BY payment_created_at DESC, created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    res.json({
+      payments,
+      total,
+      page,
+      total_pages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.error('[ERREUR] Admin payments error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/tagadapay/admin/subscriptions — paginated subscriptions (latest row per subscription_id)
+router.get('/admin/subscriptions', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const offset = (page - 1) * limit;
+    const search = req.query.search ? `%${req.query.search}%` : null;
+    const status = req.query.status || null;
+
+    let having = ``;
+    const params = [];
+    const havingParams = [];
+    if (search) {
+      having += ` HAVING (customer_email LIKE ? OR customer_name LIKE ? OR product_title LIKE ? OR social_link LIKE ?)`;
+      havingParams.push(search, search, search, search);
+    }
+    if (status) {
+      having += (having ? ' AND' : ' HAVING') + ` subscription_status = ?`;
+      havingParams.push(status);
+    }
+
+    const countQuery = await db.query(
+      `SELECT COUNT(*) AS total FROM (
+         SELECT subscription_id
+         FROM tagadapay_orders
+         WHERE order_type = 'subscription' AND subscription_id IS NOT NULL
+         GROUP BY subscription_id
+         ${having}
+       ) AS sub`,
+      havingParams
+    );
+    const total = countQuery[0][0].total;
+
+    const [subscriptions] = await db.query(
+      `SELECT
+         MAX(id) AS id,
+         subscription_id,
+         subscription_status,
+         subscription_interval,
+         subscription_next_billing_date,
+         subscription_started_at,
+         customer_email,
+         customer_name,
+         customer_phone,
+         product_title,
+         amount,
+         currency,
+         social_link,
+         COUNT(*) AS payment_count,
+         SUM(CASE WHEN payment_status = 'paid' THEN amount ELSE 0 END) AS total_paid,
+         MIN(created_at) AS created_at
+       FROM tagadapay_orders
+       WHERE order_type = 'subscription' AND subscription_id IS NOT NULL
+       GROUP BY subscription_id, subscription_status, subscription_interval,
+                subscription_next_billing_date, subscription_started_at,
+                customer_email, customer_name, customer_phone, product_title,
+                amount, currency, social_link
+       ${having}
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...havingParams, limit, offset]
+    );
+
+    res.json({
+      subscriptions,
+      total,
+      page,
+      total_pages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.error('[ERREUR] Admin subscriptions error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 export default router;
