@@ -21,7 +21,7 @@ export default function HubPage() {
     }, []);
 
     useEffect(() => {
-        hubApi.list(activeFilter).then(r => setPosts(r.posts)).catch(() => {});
+        hubApi.list(activeFilter).then(r => setPosts(r.posts)).catch(() => { });
     }, [activeFilter]);
 
     const handlePublish = async () => {
@@ -32,7 +32,7 @@ export default function HubPage() {
             setPosts(prev => [r.post, ...prev]);
             setNewContent('');
             setShowModal(false);
-        } catch {} finally {
+        } catch { } finally {
             setPosting(false);
         }
     };
@@ -41,14 +41,14 @@ export default function HubPage() {
         try {
             const r = await hubApi.like(id);
             setPosts(prev => prev.map(p => p.id === id ? { ...p, likes_count: r.likes_count, liked_by_me: r.liked } : p));
-        } catch {}
+        } catch { }
     };
 
     const handleDelete = async (id: number) => {
         try {
             await hubApi.delete(id);
             setPosts(prev => prev.filter(p => p.id !== id));
-        } catch {}
+        } catch { }
     };
 
     const filters = [
@@ -58,7 +58,7 @@ export default function HubPage() {
     ];
 
     return (
-        <div className="flex flex-col items-center w-full min-h-screen pt-4 pb-12">
+        <div className="flex flex-col items-center w-full pb-12">
             <div className="w-full max-w-[800px] flex flex-col px-4 md:px-8 min-h-[85vh]">
 
                 {/* Back Button */}
@@ -95,8 +95,8 @@ export default function HubPage() {
                                 key={filter.id}
                                 onClick={() => setActiveFilter(filter.id)}
                                 className={`flex items-center gap-2 px-6 py-2 rounded-full text-[13px] transition-all cursor-pointer ${isActive
-                                    ? 'bg-[#00FF7F] text-black font-bold'
-                                    : 'bg-[#131514] border border-[#1a1d1c] text-[#a1a1aa] hover:bg-[#1a1d1c] hover:text-white font-medium'
+                                    ? 'bg-white/10 text-white font-medium border border-white/10 shadow-sm'
+                                    : 'bg-white/[0.02] border border-white/5 text-[#a1a1aa] hover:bg-white/[0.04] hover:text-white font-medium'
                                     }`}
                             >
                                 <span className={isActive ? "" : "opacity-80"}>{filter.icon}</span>
@@ -117,17 +117,17 @@ export default function HubPage() {
                             <p className="text-[#A1A1AA] text-[15px] font-medium">Aucun post pour ce filtre</p>
                         </div>
                     ) : posts.map(post => (
-                        <div key={post.id} className="w-full bg-[#0a0a0a] border border-[#27272a] rounded-[14px] p-5">
+                        <div key={post.id} className="w-full bg-[#09090b] border border-white/5 rounded-2xl p-5 shadow-sm hover:border-white/10 transition-colors">
                             <div className="flex items-start justify-between mb-3">
                                 <div>
-                                    <span className="text-white font-bold text-[14px]">{post.author_name}</span>
+                                    <span className="text-white font-medium text-[14px]">{post.author_name}</span>
                                     {post.post_type === 'collab' && (
-                                        <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-[#00A336]/20 text-[#00FF7F] font-bold">Collab</span>
+                                        <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/90 font-medium">Collab</span>
                                     )}
-                                    <p className="text-[#52525b] text-[11px] mt-0.5">{new Date(post.created_at).toLocaleDateString('fr-FR')}</p>
+                                    <p className="text-[#a1a1aa] text-[11px] mt-0.5">{new Date(post.created_at).toLocaleDateString('fr-FR')}</p>
                                 </div>
                                 {user?.id === post.author_id && (
-                                    <button onClick={() => handleDelete(post.id)} className="text-[#52525b] hover:text-red-400 transition-colors">
+                                    <button onClick={() => handleDelete(post.id)} className="text-[#52525b] hover:text-red-400/80 transition-colors">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 )}
@@ -135,7 +135,7 @@ export default function HubPage() {
                             <p className="text-[#d4d4d8] text-[14px] font-medium leading-relaxed whitespace-pre-wrap mb-4">{post.content}</p>
                             <button
                                 onClick={() => handleLike(post.id)}
-                                className={`flex items-center gap-2 text-[13px] font-bold transition-colors ${post.liked_by_me ? 'text-[#00FF7F]' : 'text-[#a1a1aa] hover:text-[#00FF7F]'}`}
+                                className={`flex items-center gap-2 text-[13px] font-medium transition-colors ${post.liked_by_me ? 'text-white' : 'text-[#a1a1aa] hover:text-white/80'}`}
                             >
                                 <Heart className="w-4 h-4" fill={post.liked_by_me ? 'currentColor' : 'none'} />
                                 {post.likes_count}
@@ -151,7 +151,7 @@ export default function HubPage() {
                 >
                     <button
                         onClick={() => setShowModal(true)}
-                        className="w-full py-4 bg-[#00FF7F] rounded-xl text-black font-semibold text-[14px] tracking-wide flex items-center justify-center gap-2 hover:bg-[#00e371] hover:scale-[1.01] transition-all cursor-pointer">
+                        className="w-full py-4 bg-white text-[#0A0A0A] rounded-xl font-semibold text-[14px] tracking-wide flex items-center justify-center gap-2 hover:bg-gray-100 hover:scale-[1.01] transition-all cursor-pointer shadow-md">
                         <Plus className="w-5 h-5" strokeWidth={2} />
                         PUBLIER MON PROFIL
                     </button>
@@ -164,11 +164,11 @@ export default function HubPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                        className="w-full max-w-[500px] bg-[#0a0a0a] border border-[#27272a] rounded-[20px] p-6"
+                        className="w-full max-w-[500px] bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl"
                     >
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-white text-[18px] font-black">Publier sur le Hub</h3>
-                            <button onClick={() => setShowModal(false)} className="text-[#a1a1aa] hover:text-white">
+                            <h3 className="text-white text-[18px] font-semibold">Publier sur le Hub</h3>
+                            <button onClick={() => setShowModal(false)} className="text-[#a1a1aa] hover:text-white transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -177,7 +177,7 @@ export default function HubPage() {
                                 <button
                                     key={t}
                                     onClick={() => setNewType(t)}
-                                    className={`px-4 py-1.5 rounded-full text-[12px] font-bold transition-all ${newType === t ? 'bg-[#00FF7F] text-black' : 'bg-[#131514] border border-[#27272a] text-[#a1a1aa]'}`}
+                                    className={`px-4 py-1.5 rounded-full text-[12px] font-medium transition-all ${newType === t ? 'bg-white text-black' : 'bg-white/[0.02] border border-white/5 text-[#a1a1aa]'}`}
                                 >
                                     {t === 'post' ? 'Post' : '🤝 Collab'}
                                 </button>
@@ -187,12 +187,12 @@ export default function HubPage() {
                             value={newContent}
                             onChange={e => setNewContent(e.target.value)}
                             placeholder="Présente-toi, partage tes objectifs, propose une collab..."
-                            className="w-full bg-[#111] border border-[#27272a] rounded-xl p-4 text-white text-[14px] placeholder-[#52525b] min-h-[120px] resize-none focus:outline-none focus:border-[#00A336] mb-4"
+                            className="w-full bg-[#050505] border border-white/5 rounded-xl p-4 text-white text-[14px] placeholder-[#a1a1aa] min-h-[120px] resize-none focus:outline-none focus:border-white/20 transition-colors mb-4 shadow-inner"
                         />
                         <button
                             onClick={handlePublish}
                             disabled={posting || !newContent.trim()}
-                            className="w-full py-3 bg-[#00A336] text-white font-bold rounded-xl hover:brightness-110 transition-all disabled:opacity-50"
+                            className="w-full py-3 bg-white text-black font-semibold rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50"
                         >
                             {posting ? 'Publication...' : 'Publier'}
                         </button>

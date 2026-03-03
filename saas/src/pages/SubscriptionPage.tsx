@@ -13,7 +13,7 @@ export default function SubscriptionPage() {
     }, []);
 
     return (
-        <div className="flex flex-col items-center w-full min-h-screen pt-4 pb-12">
+        <div className="flex flex-col items-center w-full pb-12">
             <div className="w-full max-w-[700px] flex flex-col px-4 md:px-8">
 
                 {/* Back Button */}
@@ -28,12 +28,16 @@ export default function SubscriptionPage() {
                 {/* Main Header Banner */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className="w-full bg-[#00A336] rounded-[16px] p-6 flex flex-col items-center justify-center text-center transform -skew-x-3 mb-8 shadow-[0_0_30px_rgba(0,163,54,0.3)]"
+                    className="w-full bg-[#050505] border border-white/5 rounded-2xl p-8 flex flex-col items-center justify-center text-center mb-8 shadow-sm"
                 >
-                    <div className="transform skew-x-3">
-                        <h1 className="text-white text-[32px] md:text-[46px] font-black italic uppercase tracking-wider leading-tight">
-                            GESTION DE TON <br />
-                            ABONNEMENT
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-[14px] bg-white/5 border border-white/10 flex items-center justify-center">
+                            <Info className="w-6 h-6 text-white/80" strokeWidth={2} />
+                        </div>
+                    </div>
+                    <div>
+                        <h1 className="text-white text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight">
+                            Gestion de ton abonnement
                         </h1>
                     </div>
                 </motion.div>
@@ -41,10 +45,9 @@ export default function SubscriptionPage() {
                 {/* Subtitle Info */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className="flex items-start gap-3 justify-center text-center mb-10 px-4"
+                    className="flex flex-col items-center text-center mb-10 px-4"
                 >
-                    <Info className="w-5 h-5 text-[#00A336] flex-shrink-0 mt-0.5" strokeWidth={2} />
-                    <p className="text-white text-[15px] font-medium leading-relaxed">
+                    <p className="text-[#a1a1aa] text-[15px] font-medium leading-relaxed max-w-[500px]">
                         Tu peux ici suspendre, modifier ou annuler ton abonnement BroReps.<br />
                         Notre IA est là pour t'aider à trouver la meilleure solution.
                     </p>
@@ -53,68 +56,68 @@ export default function SubscriptionPage() {
                 {/* Form Card */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
-                    className="w-full bg-[#080808] border border-[#14321D] rounded-[16px] p-6 md:p-8"
+                    className="w-full bg-[#09090b] border border-white/5 rounded-2xl p-6 md:p-8 shadow-sm"
                 >
                     <div className="flex items-center gap-3 mb-6">
-                        <AlertCircle className="w-6 h-6 text-[#00A336]" strokeWidth={2.5} />
-                        <h2 className="text-white text-[22px] font-bold">Annuler mon abonnement</h2>
+                        <AlertCircle className="w-5 h-5 text-white/80" strokeWidth={2} />
+                        <h2 className="text-white text-[20px] font-semibold tracking-tight">Annuler mon abonnement</h2>
                     </div>
 
                     {/* Success notification */}
-                    <div className="w-full bg-[#051a0d] border border-[#145620] rounded-[10px] p-4 flex items-center gap-3 mb-8">
-                        <CheckSquare className="w-5 h-5 text-[#00FF7F] flex-shrink-0" fill="#00FF7F" color="#051a0d" />
-                        <p className="text-[#00FF7F] text-[14px] font-medium">
-                            Tu as déverrouillé <span className="font-bold">{user?.modules_unlocked || 0} module{(user?.modules_unlocked || 0) !== 1 ? 's' : ''}</span>. Tu peux procéder à la résiliation.
+                    <div className="w-full bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center gap-3 mb-8">
+                        <CheckSquare className="w-5 h-5 text-[#a1a1aa] flex-shrink-0" />
+                        <p className="text-[#a1a1aa] text-[14px] font-medium">
+                            Tu as déverrouillé <span className="font-semibold text-white">{user?.modules_unlocked || 0} module{(user?.modules_unlocked || 0) !== 1 ? 's' : ''}</span>. Tu peux procéder à la résiliation.
                         </p>
                     </div>
 
                     {/* Form Fields */}
                     <div className="flex flex-col gap-5">
                         <div className="flex flex-col gap-2">
-                            <label className="text-white text-[14px] font-bold">Nom complet *</label>
+                            <label className="text-white/80 text-[14px] font-medium">Nom complet *</label>
                             <input
                                 type="text"
                                 defaultValue={user?.name || ''}
-                                className="w-full bg-[#111111] border border-[#222222] rounded-[8px] px-4 py-3 text-white text-[14px] focus:outline-none focus:border-[#00FF7F] transition-colors"
+                                className="w-full bg-[#050505] border border-white/5 rounded-xl px-4 py-3 text-white text-[14px] focus:outline-none focus:border-white/20 transition-colors shadow-inner"
                             />
                         </div>
 
                         <div className="flex flex-col gap-2">
-                            <label className="text-white text-[14px] font-bold">Email *</label>
+                            <label className="text-white/80 text-[14px] font-medium">Email *</label>
                             <input
                                 type="email"
                                 defaultValue={user?.email || ''}
-                                className="w-full bg-[#111111] border border-[#222222] rounded-[8px] px-4 py-3 text-white text-[14px] focus:outline-none focus:border-[#00FF7F] transition-colors"
+                                className="w-full bg-[#050505] border border-white/5 rounded-xl px-4 py-3 text-white text-[14px] focus:outline-none focus:border-white/20 transition-colors shadow-inner"
                             />
                         </div>
 
                         <div className="flex flex-col gap-2">
-                            <label className="text-white text-[14px] font-bold">Téléphone</label>
+                            <label className="text-white/80 text-[14px] font-medium">Téléphone</label>
                             <input
                                 type="tel"
                                 defaultValue="+33 6 12 34 56 78"
-                                className="w-full bg-[#111111] border border-[#222222] rounded-[8px] px-4 py-3 text-[#A1A1AA] text-[14px] focus:outline-none focus:border-[#00FF7F] transition-colors"
+                                className="w-full bg-[#050505] border border-white/5 rounded-xl px-4 py-3 text-[#A1A1AA] text-[14px] focus:outline-none focus:border-white/20 transition-colors shadow-inner"
                             />
                         </div>
 
                         <div className="flex flex-col gap-2">
-                            <label className="text-white text-[14px] font-bold">Numéro de commande *</label>
+                            <label className="text-white/80 text-[14px] font-medium">Numéro de commande *</label>
                             <input
                                 type="text"
                                 defaultValue="12345"
-                                className="w-full bg-[#111111] border border-[#222222] rounded-[8px] px-4 py-3 text-white text-[14px] focus:outline-none focus:border-[#00FF7F] transition-colors"
+                                className="w-full bg-[#050505] border border-white/5 rounded-xl px-4 py-3 text-white text-[14px] focus:outline-none focus:border-white/20 transition-colors shadow-inner"
                             />
                         </div>
 
                         <div className="flex flex-col gap-2 mb-4">
-                            <label className="text-white text-[14px] font-bold">Pourquoi souhaites-tu annuler ? *</label>
+                            <label className="text-white/80 text-[14px] font-medium">Pourquoi souhaites-tu annuler ? *</label>
                             <textarea
                                 placeholder="Explique-nous ce qui ne fonctionne pas..."
-                                className="w-full bg-[#111111] border border-[#222222] rounded-[8px] px-4 py-3 text-white text-[14px] placeholder-[#444] min-h-[120px] resize-none focus:outline-none focus:border-[#00FF7F] transition-colors"
+                                className="w-full bg-[#050505] border border-white/5 rounded-xl px-4 py-3 text-white text-[14px] placeholder-[#444] min-h-[120px] resize-none focus:outline-none focus:border-white/20 transition-colors shadow-inner"
                             />
                         </div>
 
-                        <button className="w-full py-4 bg-[#00D647] hover:bg-[#00fc54] text-white font-bold text-[15px] rounded-[10px] transition-colors cursor-pointer shadow-[0_0_20px_rgba(0,214,71,0.2)]">
+                        <button className="w-full py-3.5 bg-white hover:bg-gray-200 text-black font-semibold text-[15px] rounded-xl transition-colors cursor-pointer shadow-sm">
                             Continuer
                         </button>
                     </div>

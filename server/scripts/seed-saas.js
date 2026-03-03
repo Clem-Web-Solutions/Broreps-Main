@@ -124,7 +124,7 @@ console.log(`\n📊 Notes pré-remplies (scores 5-8)`);
 // ── 4. Post Hub ────────────────────────────────────────────────────────────────
 await db.execute(`
   INSERT INTO saas_hub_posts (user_id, content, post_type, likes_count)
-  VALUES (?, ?, 'post', 0)
+  VALUES (?, ?, 'recent', 0)
   ON DUPLICATE KEY UPDATE content = content
 `, [userId, 'Salut tout le monde ! Je suis sur TikTok depuis 3 mois avec BroReps et j\'ai déjà atteint 2k abonnés. Qui veut collaborer ? 🚀']);
 

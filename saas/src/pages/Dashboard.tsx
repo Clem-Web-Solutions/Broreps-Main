@@ -1,46 +1,43 @@
 import { useState, useEffect } from 'react';
 import {
-    Lock,
     Target,
     Hourglass,
-    Play,
-    Sparkles,
-    Clock,
-    Sparkle,
-    Link,
-    Zap,
-    TrendingUp,
-    Medal,
-    Settings2,
-    Crown,
     PlayCircle,
     Users,
     Network,
     Rocket,
     Video,
-    Camera,
     BarChart2,
     MessageCircle,
-    ChevronRight,
+    Lock,
     LifeBuoy,
-    Package,
-    X,
-    Instagram
+    Sparkles,
+    Instagram,
+    ArrowRight,
+    CheckCircle2,
+    Link
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CobeGlobe from '../components/layout/CobeGlobe';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { modulesApi, type ModuleProgress } from '../lib/api';
+import { Skeleton } from '../components/ui/skeleton';
 
 export default function Dashboard() {
-    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const navigate = useNavigate();
     const { user } = useAuth();
     const [modules, setModules] = useState<ModuleProgress[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Mock link modal
+    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
     useEffect(() => {
-        modulesApi.list().then(r => setModules(r.modules)).catch(() => {});
+        modulesApi.list()
+            .then(r => setModules(r.modules))
+            .catch(() => { })
+            .finally(() => setIsLoading(false));
     }, []);
 
     const totalModules = 6;
@@ -59,665 +56,383 @@ export default function Dashboard() {
     };
 
     return (
-        <div className="flex flex-col items-center w-full min-h-screen pt-8 pb-24 px-4 lg:px-12">
-
-            {/* Top Narrow Section */}
-            <div className="w-full max-w-[800px] flex flex-col items-center">
-
-                {/* 1. Welcome Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="flex flex-col items-center text-center space-y-7 mb-16 relative z-10"
-                >
-                    <div className="flex items-center gap-2 px-5 py-2 rounded-full border border-[#14321D] bg-[#06140A] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#00A336] shadow-[0_0_8px_rgba(0,163,54,0.8)]" />
-                        <span className="text-[11px] font-bold text-[#A1A1AA] tracking-[0.2em] uppercase">
-                            {user?.name || 'Membre'} • {user?.subscription_product || 'Premium Mensuel'}
+        <div className="w-full flex flex-col pb-24">
+            {/* Header Section */}
+            <motion.header
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12"
+            >
+                <div>
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="bg-[#00A336]/10 text-[#00A336] border border-[#00A336]/20 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide uppercase">
+                            {user?.subscription_product || 'Premium Mensuel'}
+                        </span>
+                        <span className="text-[#A1A1AA] text-[13px] font-medium flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#00A336] animate-pulse" />
+                            Connecté
                         </span>
                     </div>
+                    <h1 className="text-[32px] md:text-[42px] font-semibold tracking-tight text-white leading-tight">
+                        Salut, <span className="text-[#00A336]">{user?.name?.split(' ')[0] || 'Créateur'}</span>
+                    </h1>
+                    <p className="text-[#A1A1AA] text-[15px] mt-1.5 font-medium">Contrôle ta progression et accède à tes ressources.</p>
+                </div>
 
-                    <div className="flex flex-col items-center">
-                        <h1 className="text-[56px] md:text-[64px] font-[900] tracking-[-0.04em] leading-[1.05] text-white">
-                            Salut
-                        </h1>
-                        <h1 className="text-[56px] md:text-[64px] font-[900] tracking-[-0.04em] leading-[1.05] text-[#00A336] mb-4">
-                            {user?.name?.split(' ')[0] || 'Champion'}
-                        </h1>
-
-                        <div className="text-[32px] md:text-[40px] mt-1 mb-5">
-                            <span className="inline-block transform -rotate-12 origin-bottom-right">👋</span>
-                        </div>
-
-                        <p className="text-[15px] md:text-[16px] text-[#A1A1AA] max-w-lg mx-auto font-medium">
-                            L'écosystème des créateurs qui veulent évoluer
-                        </p>
-                    </div>
-                </motion.div>
-
-                {/* 2. Stats Grid */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                    className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-6"
-                >
-                    {/* Stat Card 1 */}
-                    <div className="flex flex-col items-center justify-center p-8 rounded-[32px] bg-[#06140A] border border-[#14321D] shadow-lg group relative overflow-hidden h-[300px]">
-                        <div className="w-[72px] h-[72px] rounded-3xl bg-gradient-to-b from-[#3edb6c] to-[#12a143] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-[inset_0_2px_6px_rgba(255,255,255,0.6),0_0_20px_rgba(0,163,54,0.2)]">
-                            <Lock className="w-8 h-8 text-white relative z-10" strokeWidth={2.5} />
-                        </div>
-                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">{unlockedCount}/{totalModules}</span>
-                        <span className="text-[15px] text-[#e0e0e0] font-semibold text-center leading-tight">Modules<br />déverrouillés</span>
-                    </div>
-
-                    {/* Stat Card 2 */}
-                    <div className="flex flex-col items-center justify-center p-8 rounded-[32px] bg-[#06140A] border border-[#14321D] shadow-lg group relative overflow-hidden h-[300px]">
-                        <div className="w-[72px] h-[72px] rounded-3xl bg-gradient-to-b from-[#3edb6c] to-[#12a143] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-[inset_0_2px_6px_rgba(255,255,255,0.6),0_0_20px_rgba(0,163,54,0.2)] relative">
-                            <Target className="w-8 h-8 text-white relative z-10" strokeWidth={2.5} />
-                            <Sparkle className="w-[14px] h-[14px] text-[#fcd34d] absolute top-1.5 right-1.5 z-20" fill="currentColor" strokeWidth={1} />
-                        </div>
-                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">{progressPct}%</span>
-                        <span className="text-[15px] text-[#e0e0e0] font-semibold text-center leading-tight">Parcours<br />complété</span>
-                    </div>
-
-                    {/* Stat Card 3 */}
-                    <div className="flex flex-col items-center justify-center p-8 rounded-[32px] bg-[#06140A] border border-[#14321D] shadow-lg group relative overflow-hidden h-[300px]">
-                        <div className="w-[72px] h-[72px] rounded-3xl bg-gradient-to-b from-[#3edb6c] to-[#12a143] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-[inset_0_2px_6px_rgba(255,255,255,0.6),0_0_20px_rgba(0,163,54,0.2)] relative">
-                            <Hourglass className="w-8 h-8 text-white relative z-10" strokeWidth={2.5} />
-                        </div>
-                        <span className="text-[56px] font-black text-white mb-2 leading-none tracking-tight">
-                            {user?.next_billing_at
-                                ? Math.max(0, Math.ceil((new Date(user.next_billing_at).getTime() - Date.now()) / 86400000)) + 'j'
-                                : '–'}
-                        </span>
-                        <span className="text-[15px] text-[#e0e0e0] font-semibold text-center leading-tight">Prochain<br />renouvellement</span>
-                    </div>
-                </motion.div>
-
-                {/* Link Account Button */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.15 }}
-                    className="w-full mb-10"
-                >
+                <div className="flex gap-3">
                     <button
                         onClick={() => setIsLinkModalOpen(true)}
-                        className="w-full py-4 rounded-xl bg-[#06140A] border border-[#14321D] flex items-center justify-center gap-3 hover:bg-[#081b0d] transition-colors shadow-lg group cursor-pointer"
+                        className="h-10 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[13px] font-semibold transition-all flex items-center gap-2"
                     >
-                        <Link className="w-[18px] h-[18px] text-[#00A336] group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-                        <span className="text-white font-[700] text-[16px]">Associer un compte</span>
+                        <Network className="w-4 h-4 text-[#A1A1AA]" />
+                        Associer un compte
                     </button>
-                </motion.div>
+                    <button
+                        onClick={() => navigate('/settings')}
+                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[#A1A1AA] hover:text-white transition-all"
+                    >
+                        <Target className="w-4 h-4" />
+                    </button>
+                </div>
+            </motion.header>
 
-                {/* Ton parcours Section */}
+            {/* Stats Overview */}
+            {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-16">
+                    <Skeleton className="h-[140px] rounded-2xl bg-[#09090b] border border-white/5" />
+                    <Skeleton className="h-[140px] rounded-2xl bg-[#09090b] border border-white/5" />
+                    <Skeleton className="h-[140px] rounded-2xl bg-[#09090b] border border-white/5" />
+                </div>
+            ) : (
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                    className="w-full bg-[#06140A] border border-[#14321D] rounded-[32px] p-8 md:p-10 mb-16 shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-16"
                 >
-                    {/* Header */}
-                    <div className="flex justify-between items-start mb-10">
-                        <div>
-                            <h2 className="text-[32px] font-bold text-white mb-1.5 leading-tight">Ton parcours</h2>
-                            <p className="text-[16px] text-[#A1A1AA] font-medium leading-loose">Programme d'excellence BroReps</p>
-                        </div>
-                        {/* Icon */}
-                        <div className="w-[60px] h-[60px] rounded-[20px] bg-gradient-to-b from-[#3edb6c] to-[#12a143] flex items-center justify-center shadow-[inset_0_2px_6px_rgba(255,255,255,0.6),0_0_20px_rgba(0,163,54,0.3)] relative flex-shrink-0">
-                            <Target className="w-7 h-7 text-white relative z-10" strokeWidth={2.5} />
-                            <Sparkle className="w-3.5 h-3.5 text-[#fcd34d] absolute top-1.5 right-1.5 z-20" fill="currentColor" strokeWidth={1} />
-                        </div>
-                    </div>
-
-                    {/* Progress Bar Area */}
-                    <div className="mb-10">
-                        <div className="flex justify-between items-end mb-3">
-                            <span className="text-[16px] font-semibold text-[#e0e0e0]">Progression globale</span>
-                            <span className="text-[16px] font-bold text-[#3edb6c]">{progressPct}%</span>
-                        </div>
-                        {/* Progress Bar Background */}
-                        <div className="w-full h-[12px] rounded-full bg-[#112a18] overflow-hidden relative">
-                            <div
-                                className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#12a143] to-[#3edb6c] rounded-full shadow-[0_0_15px_rgba(62,219,108,0.7)] transition-all duration-700"
-                                style={{ width: `${progressPct}%` }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Inner Card — dynamic based on progress */}
-                    {progressPct === 100 ? (
-                        <div className="w-full rounded-[24px] border border-[#443615] bg-gradient-to-b from-[#221b08] to-[#0A0D08] p-10 flex flex-col items-center justify-center shadow-inner relative overflow-hidden">
-                            <span className="text-[48px] leading-none mb-4 drop-shadow-[0_4px_12px_rgba(252,211,77,0.4)]">🏆</span>
-                            <h3 className="text-[24px] font-bold text-white mb-2">Parcours terminé !</h3>
-                            <p className="text-[16px] text-[#A1A1AA] font-medium text-center">Félicitations champion</p>
-                        </div>
-                    ) : (
-                        <div className="w-full rounded-[24px] border border-[#14321D] bg-[#040D06] p-8 flex flex-col items-center justify-center shadow-inner relative overflow-hidden">
-                            <span className="text-[40px] leading-none mb-4">🎯</span>
-                            <h3 className="text-[20px] font-bold text-white mb-1">{completedCount}/{totalModules} modules complétés</h3>
-                            <p className="text-[14px] text-[#A1A1AA] font-medium text-center">Continue sur ta lancée !</p>
-                        </div>
-                    )}
+                    <StatCard
+                        title="Progression"
+                        value={`${progressPct}%`}
+                        subtitle="Parcours complété"
+                        icon={Target}
+                        color="text-[#00A336]"
+                        iconBg="bg-[#00A336]/10"
+                    />
+                    <StatCard
+                        title="Modules"
+                        value={`${unlockedCount}/${totalModules}`}
+                        subtitle="Déverrouillés"
+                        icon={PlayCircle}
+                        color="text-white"
+                        iconBg="bg-white/10"
+                    />
+                    <StatCard
+                        title="Renouvellement"
+                        value={user?.next_billing_at ? `${Math.max(0, Math.ceil((new Date(user.next_billing_at).getTime() - Date.now()) / 86400000))}j` : '–'}
+                        subtitle="Avant prochaine échéance"
+                        icon={Hourglass}
+                        color="text-white"
+                        iconBg="bg-white/10"
+                    />
                 </motion.div>
+            )}
 
-                {/* 3 Small Info Cards */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.25 }}
-                    className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-16"
-                >
-                    {/* Abonnement */}
-                    <div className="flex items-center py-5 px-6 md:py-6 md:px-8 rounded-[28px] bg-[#06140A] border border-[#14321D] shadow-lg group hover:bg-[#081a0d] transition-colors">
-                        <div className="w-[56px] h-[56px] rounded-[18px] bg-[#0f3b1e] flex items-center justify-center mr-6 flex-shrink-0 group-hover:scale-110 transition-transform">
-                            <Zap className="w-[28px] h-[28px] text-[#3edb6c]" strokeWidth={2.5} />
+            {/* AI Coach AI / Global Path Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="w-full flex flex-col lg:flex-row gap-6 mb-16"
+            >
+                {/* AI Coach Banner */}
+                <div className="flex-1 rounded-[24px] bg-[#050505] border border-white/10 relative overflow-hidden group min-h-[300px] flex flex-col justify-between p-8">
+                    <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-radial from-[#00A336]/10 to-transparent opacity-50 translate-x-1/3 -translate-y-1/3 pointer-events-none" />
+
+                    <div>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-[#00A336]/10 flex items-center justify-center border border-[#00A336]/20 backdrop-blur-md">
+                                <Sparkles className="w-5 h-5 text-[#00A336]" />
+                            </div>
+                            <h2 className="text-[20px] font-semibold text-white">Coach IA</h2>
+                            <span className="bg-white/10 border border-white/5 text-white/70 text-[10px] uppercase font-bold px-2 py-0.5 rounded ml-2">Beta</span>
                         </div>
-                        <div>
-                            <h3 className="text-[17px] font-bold text-white mb-0.5 leading-tight">Abonnement</h3>
-                            <p className="text-[14px] text-[#A1A1AA] font-medium leading-tight">Mensuel</p>
-                        </div>
+                        <p className="text-[#A1A1AA] text-[14px] leading-relaxed max-w-md">
+                            Pose tes questions directement sur ton contenu ou ta stratégie. Le Coach IA analyse ton profil et te guide vers tes objectifs.
+                        </p>
                     </div>
 
-                    {/* Objectif */}
-                    <div className="flex items-center py-5 px-6 md:py-6 md:px-8 rounded-[28px] bg-[#06140A] border border-[#14321D] shadow-lg group hover:bg-[#081a0d] transition-colors">
-                        <div className="w-[56px] h-[56px] rounded-[18px] bg-[#12304d] flex items-center justify-center mr-6 flex-shrink-0 group-hover:scale-110 transition-transform">
-                            <Target className="w-[28px] h-[28px] text-[#60a5fa]" strokeWidth={2.5} />
+                    <div className="mt-8 flex flex-col gap-3 relative z-10 w-full md:w-[80%]">
+                        <div className="bg-[#09090b] border border-white/10 rounded-xl p-3 flex items-center justify-between text-[#A1A1AA] text-[13px] hover:border-[#001A336]/30 cursor-text transition-colors">
+                            <span className="flex items-center gap-2">
+                                <MessageCircle className="w-4 h-4 text-white/40" />
+                                Demande conseil à ton coach...
+                            </span>
+                            <div className="px-2 py-1 rounded bg-white/5 text-[10px] font-medium text-white/50">Cmd + J</div>
                         </div>
-                        <div>
-                            <h3 className="text-[17px] font-bold text-white mb-0.5 leading-tight">Objectif</h3>
-                            <p className="text-[14px] text-[#A1A1AA] font-medium leading-tight">visibilite</p>
-                        </div>
-                    </div>
-
-                    {/* Profil */}
-                    <div className="flex items-center py-5 px-6 md:py-6 md:px-8 rounded-[28px] bg-[#06140A] border border-[#14321D] shadow-lg group hover:bg-[#081a0d] transition-colors">
-                        <div className="w-[56px] h-[56px] rounded-[18px] bg-[#321c45] flex items-center justify-center mr-6 flex-shrink-0 group-hover:scale-110 transition-transform">
-                            <TrendingUp className="w-[28px] h-[28px] text-[#c084fc]" strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <h3 className="text-[17px] font-bold text-white mb-0.5 leading-tight">Profil</h3>
-                            <p className="text-[14px] text-[#A1A1AA] font-medium leading-tight">Jeune Createur</p>
+                        <div className="flex gap-2 flex-wrap text-[12px]">
+                            <span className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Idée de short ?</span>
+                            <span className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Comment percer ?</span>
                         </div>
                     </div>
-                </motion.div>
-            </div>
+                </div>
 
-            {/* Wide Section for AI Coach and Modules */}
-            <div className="w-full max-w-[1280px] flex flex-col items-center mt-4">
-
-                {/* 3. AI Coach Banner Layout */}
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                    className="w-full flex flex-col md:flex-row gap-8 mb-16 items-center md:items-stretch"
-                >
-                    {/* Left Side: Globe & Users Count */}
-                    <div className="flex-1 w-full md:w-[40%] flex flex-col items-center justify-center pt-4">
+                {/* Growth Visualizer */}
+                <div className="w-full lg:w-[40%] rounded-[24px] bg-[#09090b] border border-white/5 p-8 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 z-0 opacity-40">
                         <CobeGlobe />
-                        <div className="mt-8 border border-[#14321D] bg-[#06140A] rounded-[24px] px-8 py-4 flex items-center gap-3 shadow-lg">
-                            <div className="w-2.5 h-2.5 rounded-full bg-[#00A336] shadow-[0_0_12px_#00A336] animate-pulse" />
-                            <span className="text-[17px] font-bold text-white tracking-wide">Utilisateurs guidés par le Coach IA</span>
-                        </div>
                     </div>
-
-                    {/* Right Side: Coach IA Form */}
-                    <div className="flex-1 w-full md:w-[60%] border border-[#00A336] bg-gradient-to-b from-[#06140A] to-[#030905] rounded-[32px] p-8 md:p-10 shadow-[0_0_40px_rgba(0,163,54,0.15)] relative overflow-hidden flex flex-col justify-between">
-
-                        {/* Header */}
-                        <div className="flex items-start gap-5 mb-8">
-                            <div className="w-[60px] h-[60px] rounded-full bg-[#00A336] flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_#00A336]">
-                                <Sparkles className="w-7 h-7 text-white" />
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-3 flex-wrap">
-                                    <h2 className="text-[26px] font-bold text-white leading-tight">Coach IA Personnalisé</h2>
-                                    <span className="bg-[#E63946] text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-[0_0_10px_rgba(230,57,70,0.5)] flex items-center gap-1">
-                                        <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
-                                        Populaire
-                                    </span>
-                                </div>
-                                <p className="text-[#A1A1AA] text-[15px] mt-1 font-medium">Des conseils adaptés pour débuter</p>
-                            </div>
-                        </div>
-
-                        {/* Fake Text Area */}
-                        <div className="w-full h-[140px] bg-[#141212] border border-[#2A2525] rounded-[24px] p-5 shadow-inner mb-6 relative group cursor-text">
-                            <p className="text-[#6B6B6B] text-[15px] flex items-center gap-1">
-                                Écrivez votre idée ici...<Sparkle className="w-4 h-4" />
-                            </p>
-                        </div>
-
-                        {/* Discuter Button */}
-                        <div className="flex justify-center mb-10 w-full relative z-10">
-                            {/* Disabled-looking dark button */}
-                            <div className="pointer-events-none py-3 px-8 rounded-full bg-[#181616] border border-[#252222] shadow-[0_0_15px_rgba(0,0,0,0.5)] flex items-center gap-2">
-                                <Sparkles className="w-4 h-4 text-[#444]" />
-                                <span className="text-[#888] font-bold text-[15px]">Discuter avec le Coach IA</span>
-                            </div>
-                        </div>
-
-                        {/* Quick Tags row */}
-                        <div className="flex flex-wrap items-center justify-center gap-3">
-                            {["Comment débuter sur TikTok ?", "Mes premiers 1000 abonnés", "Checklist pour créer ma première vidéo", "Quel matériel pour débuter ?"].map((tag, i) => (
-                                <div key={i} className="px-5 py-2.5 rounded-full border border-[#14321D] bg-[#0A1A0F] text-[#D1D5DB] text-[13px] font-medium cursor-pointer hover:bg-[#112F1B] hover:border-[#224A2D] transition-colors whitespace-nowrap">
-                                    {tag}
+                    <div className="relative z-10 w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mt-20 text-center">
+                        <h3 className="text-white font-semibold text-[15px] mb-1">Croissance Globale</h3>
+                        <p className="text-[#A1A1AA] text-[13px]">Rejoins les créateurs connectés</p>
+                        <div className="mt-4 flex -space-x-2 justify-center">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className={`w-8 h-8 rounded-full border-2 border-[#09090b] bg-white/10 flex items-center justify-center overflow-hidden z-[${4 - i}]`}>
+                                    <UserAvatar seed={i.toString()} />
                                 </div>
                             ))}
+                            <div className="w-8 h-8 rounded-full border-2 border-[#09090b] bg-[#00A336] text-black text-[10px] font-bold flex items-center justify-center z-0">
+                                +2k
+                            </div>
                         </div>
-
-                        {/* Optional subtle glow overlay */}
-                        <div className="absolute top-[-50px] right-[-50px] w-[200px] h-[200px] bg-[#00A336] opacity-[0.05] rounded-full blur-[80px] pointer-events-none" />
                     </div>
-                </motion.div>
+                </div>
+            </motion.div>
 
+            {/* Modules Grid */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="mb-16"
+            >
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-[20px] font-semibold text-white">Ton Parcours</h2>
+                        <p className="text-[#A1A1AA] text-[14px]">Complète les modules pour évoluer</p>
+                    </div>
+                    {progressPct === 100 && (
+                        <div className="flex items-center gap-2 text-[#00A336] text-[13px] font-semibold bg-[#00A336]/10 px-3 py-1.5 rounded-full">
+                            <CheckCircle2 className="w-4 h-4" /> Terminé
+                        </div>
+                    )}
+                </div>
 
-                {/* 4. Modules Grid */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full"
-                >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[
-                        { id: 1, title: "Bienvenue dans ton écosystème", subtitle: "Prends en main ton espace BroReps et démarre efficacement.", Icon: Play },
-                        { id: 2, title: "Boost multi-plateformes", subtitle: "Active TikTok + Instagram pour multiplier ta visibilité.", Icon: Clock },
-                        { id: 3, title: "Passe au niveau supérieur", subtitle: "Débloque plus de puissance et d'outils pour accélérer ta croissance.", Icon: TrendingUp },
-                        { id: 4, title: "Étape clé à venir", subtitle: "Module premium à débloquer dans ton parcours.", Icon: Medal },
-                        { id: 5, title: "Discipline & régularité", subtitle: "Nouveau niveau de structure et de progression.", Icon: Settings2 },
-                        { id: 6, title: "Maîtrise des réseaux", subtitle: "Accède aux stratégies avancées de création de contenu.", Icon: Crown },
+                        { id: 1, title: "Bienvenue dans ton écosystème", Icon: PlayCircle },
+                        { id: 2, title: "Boost multi-plateformes", Icon: Rocket },
+                        { id: 3, title: "Passe au niveau supérieur", Icon: Target },
+                        { id: 4, title: "L'art du montage", Icon: Video },
+                        { id: 5, title: "Discipline & régularité", Icon: BarChart2 },
+                        { id: 6, title: "Maîtrise des réseaux", Icon: Sparkles },
                     ].map(m => (
-                        <ModuleCard
+                        <PremiumModuleCard
                             key={m.id}
                             number={m.id}
                             title={m.title}
-                            subtitle={m.subtitle}
                             Icon={m.Icon}
                             status={getModuleStatus(m.id)}
                             progressPct={modules.find(mod => mod.id === m.id)?.progress_pct}
                             onClick={() => navigate(`/module/${m.id}`)}
                         />
                     ))}
-                </motion.div>
+                </div>
+            </motion.div>
 
-                {/* 5. Forums Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.4 }}
-                    className="w-full mt-16 p-8 md:p-10 border border-[#14321D] bg-[#06140A] rounded-[32px] flex flex-col shadow-[0_8px_30px_rgba(0,0,0,0.5)] relative overflow-hidden"
-                >
-                    {/* Header */}
-                    <div className="flex items-center gap-5 mb-10">
-                        <div className="w-[60px] h-[60px] rounded-[18px] bg-[#00A336] flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(0,163,54,0.3)]">
-                            <Users className="w-8 h-8 text-[#05140A]" strokeWidth={2} />
+            {/* Forums & Support */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+            >
+                {/* Forum Invite */}
+                <div className="rounded-[24px] bg-gradient-to-br from-[#09090b] to-[#0d0d12] border border-white/5 p-8 flex flex-col justify-between group cursor-pointer hover:border-white/10 transition-colors" onClick={() => navigate('/hub')}>
+                    <div>
+                        <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <Users className="w-6 h-6" />
                         </div>
-                        <div>
-                            <h2 className="text-[28px] font-bold text-white leading-tight mb-1">Forums entre créateurs</h2>
-                            <p className="text-[#A1A1AA] text-[15px] font-medium">Échange avec les autres membres, pose tes questions, partage tes résultats.</p>
-                        </div>
-                    </div>
-
-                    {/* Block 1: LE HUB */}
-                    <div className="w-full rounded-[24px] border border-[#14321D] bg-[#0A1A0F] relative overflow-hidden mb-8 p-10 flex flex-col items-center">
-                        {/* Grid Background Effect */}
-                        <div className="absolute inset-0 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGg0MHY0MEgwem00MCA0MEgwVjBoNDB2NDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTAgMGg0MHY0MEgwVjB6TTEgMWgzOHYzOEgxVjF6IiBmaWxsPSJyZ2JhKDAsMTYzLDU0LDAuMDUpIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=')] opacity-50 mix-blend-screen" />
-
-                        {/* Red Tag */}
-                        <div className="absolute top-6 left-6 flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#831843] bg-[#4c0519]/50 shadow-[0_0_15px_rgba(225,29,72,0.2)]">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#f43f5e] shadow-[0_0_8px_#f43f5e] animate-pulse" />
-                            <span className="text-[#f43f5e] text-[10px] font-bold uppercase tracking-wider">Le plus recommandé</span>
-                        </div>
-
-                        <div className="flex flex-col items-center relative z-10 text-center mt-6 mb-10">
-                            <div className="flex items-center gap-4 mb-4">
-                                <Network className="w-14 h-14 text-[#00A336] drop-shadow-[0_0_15px_rgba(0,163,54,0.6)]" strokeWidth={2.5} />
-                                <h2 className="text-[48px] font-black text-white tracking-tight">LE HUB</h2>
-                            </div>
-                            <p className="text-[#A1A1AA] text-[16px] font-medium max-w-lg">
-                                Connecte-toi à d'autres créateurs et fais grandir ta visibilité naturellement.
-                            </p>
-                        </div>
-
-                        {/* Feature Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-[900px] relative z-10 mb-10">
-                            <div onClick={() => navigate('/hub')} className="flex flex-col items-center justify-center p-6 rounded-[20px] bg-[#040D06] border border-[#14321D] text-center transition-all duration-300 hover:bg-[#06140A] hover:-translate-y-1 hover:border-[#00A336] hover:shadow-[0_0_20px_rgba(0,163,54,0.15)] cursor-pointer group">
-                                <Sparkles className="w-8 h-8 text-[#00A336] mb-4 drop-shadow-[0_0_8px_rgba(0,163,54,0.4)] transition-transform duration-300 group-hover:scale-110" />
-                                <span className="text-white text-[14px] font-bold leading-snug">Partage ton compte, gagne en<br />visibilité</span>
-                            </div>
-                            <div onClick={() => navigate('/hub')} className="flex flex-col items-center justify-center p-6 rounded-[20px] bg-[#040D06] border border-[#14321D] text-center transition-all duration-300 hover:bg-[#06140A] hover:-translate-y-1 hover:border-[#00A336] hover:shadow-[0_0_20px_rgba(0,163,54,0.15)] cursor-pointer group">
-                                <Users className="w-8 h-8 text-[#00A336] mb-4 drop-shadow-[0_0_8px_rgba(0,163,54,0.4)] transition-transform duration-300 group-hover:scale-110" />
-                                <span className="text-white text-[14px] font-bold leading-snug">Suis ceux qui te ressemblent et<br />crée ton cercle</span>
-                            </div>
-                            <div onClick={() => navigate('/hub')} className="flex flex-col items-center justify-center p-6 rounded-[20px] bg-[#040D06] border border-[#14321D] text-center transition-all duration-300 hover:bg-[#06140A] hover:-translate-y-1 hover:border-[#00A336] hover:shadow-[0_0_20px_rgba(0,163,54,0.15)] cursor-pointer group">
-                                <TrendingUp className="w-8 h-8 text-[#00A336] mb-4 drop-shadow-[0_0_8px_rgba(0,163,54,0.4)] transition-transform duration-300 group-hover:scale-110" />
-                                <span className="text-white text-[14px] font-bold leading-snug">Fais grandir ta communauté<br />naturellement</span>
-                            </div>
-                        </div>
-
-                        <button onClick={() => navigate('/hub')} className="relative z-10 px-8 py-3.5 rounded-xl bg-gradient-to-r from-[#00A336] to-[#04D44A] text-[#05140A] text-[16px] font-bold hover:scale-105 hover:shadow-[0_0_25px_rgba(0,163,54,0.5)] transition-all cursor-pointer">
-                            Rejoindre la communauté
-                        </button>
-                    </div>
-
-                    {/* Block 2: Category Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <ForumCategoryCard
-                            icon={Rocket}
-                            iconColor="text-[#34d399]"
-                            iconBg="bg-[#022c22]"
-                            title="Débutants & Mise en route"
-                            subtitle="Pour bien démarrer"
-                            glowColor="group-hover:shadow-[0_0_20px_rgba(52,211,153,0.1)]"
-                            onClick={() => navigate('/forum/debutants')}
-                        />
-                        <ForumCategoryCard
-                            icon={Video}
-                            iconColor="text-[#f43f5e]"
-                            iconBg="bg-[#4c0519]"
-                            title="TikTok & Shorts"
-                            subtitle="Stratégies vidéos courtes"
-                            glowColor="group-hover:shadow-[0_0_20px_rgba(244,63,94,0.1)]"
-                            onClick={() => navigate('/forum/tiktok')}
-                        />
-                        <ForumCategoryCard
-                            icon={Camera}
-                            iconColor="text-[#fb7185]"
-                            iconBg="bg-[#4c0519]"
-                            title="Instagram & Reels"
-                            subtitle="Croissance Instagram"
-                            glowColor="group-hover:shadow-[0_0_20px_rgba(251,113,133,0.1)]"
-                            onClick={() => navigate('/forum/instagram')}
-                        />
-                        <ForumCategoryCard
-                            icon={Target}
-                            iconColor="text-[#60a5fa]"
-                            iconBg="bg-[#172554]"
-                            title="Stratégie & contenu"
-                            subtitle="Planification avancée"
-                            glowColor="group-hover:shadow-[0_0_20px_rgba(96,165,250,0.1)]"
-                            onClick={() => navigate('/forum/strategie')}
-                        />
-                        <ForumCategoryCard
-                            icon={BarChart2}
-                            iconColor="text-[#fbbf24]"
-                            iconBg="bg-[#451a03]"
-                            title="Résultats & retours"
-                            subtitle="Partage tes wins"
-                            glowColor="group-hover:shadow-[0_0_20px_rgba(251,191,36,0.1)]"
-                            onClick={() => navigate('/forum/resultats')}
-                        />
-                        <ForumCategoryCard
-                            icon={MessageCircle}
-                            iconColor="text-[#c084fc]"
-                            iconBg="bg-[#2e1065]"
-                            title="Discussion générale"
-                            subtitle="Échanges libres"
-                            glowColor="group-hover:shadow-[0_0_20px_rgba(192,132,252,0.1)]"
-                            onClick={() => navigate('/forum/general')}
-                        />
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Bottom Narrow Section */}
-            <div className="w-full max-w-[800px] flex flex-col items-center mt-12">
-
-                {/* Support Actions */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5, duration: 0.5 }}
-                    className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mt-16 mb-16"
-                >
-                    {/* Assistance Card */}
-                    <div className="flex flex-col p-8 rounded-[24px] bg-[#07130A] border border-[#14321D] shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all hover:-translate-y-1 hover:border-[#00A336] group">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-[42px] h-[42px] rounded-[12px] bg-[#00A336] flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(0,163,54,0.3)]">
-                                <LifeBuoy className="w-6 h-6 text-white" strokeWidth={2} />
-                            </div>
-                            <h3 className="text-white text-[18px] font-bold uppercase tracking-wide">Centre d'assistance</h3>
-                        </div>
-                        <p className="text-[#A1A1AA] text-[14px] font-medium leading-relaxed mb-8 flex-grow">
-                            Tu as une demande, un blocage ou besoin d'un suivi avancé ? Notre équipe Premium te répond rapidement.
+                        <h3 className="text-white text-[20px] font-semibold mb-2">Le Hub Communautaire</h3>
+                        <p className="text-[#A1A1AA] text-[14px] leading-relaxed max-w-sm">
+                            Connecte-toi à d'autres créateurs, partage tes résultats et fais grandir ta visibilité naturellement.
                         </p>
-                        <button
-                            onClick={() => window.open('https://broreps-sav.base44.app/login?from_url=https%3A%2F%2Fbroreps-sav.base44.app%2F', '_blank')}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[12px] bg-gradient-to-r from-[#00A336] to-[#04D44A] text-[#05140A] font-bold transition-all hover:scale-[1.02] shadow-[0_0_20px_rgba(0,163,54,0.4)] cursor-pointer"
-                        >
-                            <Package className="w-5 h-5 text-[#05140A]" strokeWidth={2.5} />
-                            Créer un ticket
-                        </button>
                     </div>
+                    <div className="mt-8 flex items-center text-[14px] font-semibold text-white/90 group-hover:text-white group-hover:translate-x-1 transition-all">
+                        Rejoindre la communauté <ArrowRight className="w-4 h-4 ml-2 opacity-50 group-hover:opacity-100" />
+                    </div>
+                </div>
 
-                    {/* Subscription Card */}
-                    <div className="flex flex-col p-8 rounded-[24px] bg-[#040D06] border border-[#14321D] shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all hover:-translate-y-1 hover:border-[#00A336] group">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-[42px] h-[42px] rounded-[12px] bg-[#00A336] flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(0,163,54,0.3)]">
-                                <MessageCircle className="w-6 h-6 text-white" strokeWidth={2} />
-                            </div>
-                            <h3 className="text-white text-[18px] font-bold uppercase tracking-wide">Gérer mon abonnement</h3>
+                {/* Support Block */}
+                <div className="rounded-[24px] bg-gradient-to-br from-[#09090b] to-[#0a110a] border border-white/5 p-8 flex flex-col justify-between group cursor-pointer hover:border-[#00A336]/30 transition-colors" onClick={() => window.open('https://broreps-sav.base44.app/', '_blank')}>
+                    <div>
+                        <div className="w-12 h-12 rounded-xl bg-[#00A336]/10 border border-[#00A336]/20 text-[#00A336] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <LifeBuoy className="w-6 h-6" />
                         </div>
-                        <p className="text-[#A1A1AA] text-[14px] font-medium leading-relaxed mb-8 flex-grow">
-                            Accède à la page pour suspendre, modifier ou annuler ton abonnement.
+                        <h3 className="text-white text-[20px] font-semibold mb-2">Centre d'assistance</h3>
+                        <p className="text-[#A1A1AA] text-[14px] leading-relaxed max-w-sm">
+                            Tu as une demande, un blocage ou besoin d'un suivi avancé ? Notre équipe te répond rapidement.
                         </p>
-                        <button
-                            onClick={() => navigate('/subscription')}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[12px] border border-[#00A336] bg-[#00A336]/5 hover:bg-[#00A336]/10 text-white font-bold transition-all hover:scale-[1.02] cursor-pointer"
-                        >
-                            <Sparkles className="w-5 h-5" strokeWidth={2} />
-                            Gérer mon abonnement
-                        </button>
-
-                        {/* Note at the bottom */}
-                        <div className="mt-8 pt-6 border-t border-[#14321D]/40">
-                            <p className="text-[#52525B] text-[12px] font-medium text-center">
-                                Partage tes idées, suggestions ou remarques. Ton feedback est précieux pour nous.
-                            </p>
-                        </div>
                     </div>
-                </motion.div>
-            </div>
+                    <div className="mt-8 flex items-center text-[14px] font-semibold text-white/90 group-hover:text-white group-hover:translate-x-1 transition-all">
+                        Créer un ticket <ArrowRight className="w-4 h-4 ml-2 opacity-50 group-hover:opacity-100" />
+                    </div>
+                </div>
+            </motion.div>
 
             {/* Social Connect Modal */}
             <AnimatePresence>
                 {isLinkModalOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
-                            className="w-full max-w-[520px] bg-[#050505] border-[2px] border-[#00A336] rounded-[24px] p-8 md:p-10 relative overflow-hidden"
-                        >
-                            {/* Close Button */}
-                            <button
-                                onClick={() => setIsLinkModalOpen(false)}
-                                className="absolute top-6 right-6 text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
-                            >
-                                <X className="w-6 h-6" strokeWidth={2} />
-                            </button>
-
-                            {/* Modal Content */}
-                            <div className="flex flex-col items-center mt-2 mb-10 text-center">
-                                <h2 className="text-[32px] md:text-[36px] font-bold text-white leading-tight mb-4 tracking-tight">
-                                    Choisis la plateforme à<br />connecter
-                                </h2>
-                                <p className="text-[#a1a1aa] text-[15px] font-medium leading-relaxed max-w-[400px]">
-                                    Connecter ton compte permet à ton Coach IA de t'offrir des analyses ultra-personnalisées.
-                                </p>
-                            </div>
-
-                            <div className="flex flex-col gap-5">
-                                {/* TikTok Card */}
-                                <div className="flex items-start gap-5 p-6 rounded-[20px] bg-[#09090b] border border-[#27272a] hover:border-[#3f3f46] transition-colors group">
-                                    <div className="flex items-center justify-center w-[64px] h-[64px] bg-[#18181b] rounded-[16px] flex-shrink-0 group-hover:scale-105 transition-transform">
-                                        <TikTokIcon />
-                                    </div>
-                                    <div className="flex flex-col flex-1 pt-1">
-                                        <h3 className="text-white text-[20px] font-bold leading-none mb-2">TikTok</h3>
-                                        <p className="text-[#a1a1aa] text-[14px] font-medium leading-snug mb-5">
-                                            Analyse de la croissance, des vues et de ton<br />engagement.
-                                        </p>
-                                        <div className="flex">
-                                            <button className="px-6 py-2.5 rounded-lg bg-[#052e16] text-[#00A336] text-[14px] font-bold border border-[#0f4624] hover:bg-[#0a3a1f] transition-colors cursor-pointer">
-                                                Associer
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Instagram Card */}
-                                <div className="flex items-start gap-5 p-6 rounded-[20px] bg-[#09090b] border border-[#27272a] hover:border-[#3f3f46] transition-colors group">
-                                    <div className="flex items-center justify-center w-[64px] h-[64px] bg-[#18181b] rounded-[16px] flex-shrink-0 group-hover:scale-105 transition-transform">
-                                        <Instagram className="w-7 h-7 text-[#a1a1aa]" strokeWidth={1.5} />
-                                    </div>
-                                    <div className="flex flex-col flex-1 pt-1">
-                                        <h3 className="text-white text-[20px] font-bold leading-none mb-2">Instagram</h3>
-                                        <p className="text-[#a1a1aa] text-[14px] font-medium leading-snug mb-5">
-                                            Insights sur tes Reels, posts et performances<br />globales.
-                                        </p>
-                                        <div className="flex">
-                                            <button className="px-6 py-2.5 rounded-lg bg-[#052e16] text-[#00A336] text-[14px] font-bold border border-[#0f4624] hover:bg-[#0a3a1f] transition-colors cursor-pointer">
-                                                Associer
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
+                    <SocialConnectModal onClose={() => setIsLinkModalOpen(false)} />
                 )}
             </AnimatePresence>
         </div>
     );
 }
 
-// Custom TikTok SVG Icon
-const TikTokIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className="w-[30px] h-[30px] text-[#a1a1aa]">
-        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.61-5.66-.21-3.23 1.91-6.19 5.06-6.85.25-.05.51-.08.77-.09V14.4c-1.17.06-2.31.54-3.12 1.34-1.22 1.14-1.63 2.97-.97 4.54.49 1.25 1.56 2.22 2.86 2.53 1.39.38 2.91.07 4.02-.78 1.23-.97 1.91-2.48 1.91-4.07.02-3.99.01-7.98.01-11.97-.04.05-.08.1-.13.15z" />
-    </svg>
-);
+// ========================
+// Sub-Components
+// ========================
 
-// Reusable component for the module card
-export function ModuleCard({ number, title, subtitle, Icon, status, progressPct, onClick }: { number: number, title: string, subtitle: string, Icon: React.ElementType, status: 'en_cours' | 'en_attente' | 'termine' | 'verrouille', progressPct?: number, onClick?: () => void }) {
-
-    // Status visual mapping
-    const isLocked = status === 'verrouille';
-    const borderColor = isLocked ? 'border-[#0a2612] opacity-60' : 'border-[#00A336] shadow-[inset_0_0_20px_rgba(0,163,54,0.05)]';
-    const textColor = isLocked ? 'text-[#555]' : 'text-[#00A336]';
-
-    let progressFill = 0;
-    let statusBadge = null;
-
-    if (status === 'en_cours') {
-        progressFill = progressPct ?? 50;
-        statusBadge = (
-            <div className="flex items-center px-2 py-0.5 rounded-full bg-[#1e3a8a] text-[#60a5fa] text-[9px] font-bold uppercase tracking-wider">
-                En cours
-            </div>
-        );
-    } else if (status === 'termine') {
-        progressFill = 100;
-        statusBadge = (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#00A336] text-[#05140A] text-[10px] font-bold uppercase tracking-wide">
-                Terminé
-            </div>
-        );
-    } else if (status === 'verrouille') {
-        progressFill = 0;
-        statusBadge = (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#111] text-[#555] text-[9px] font-bold uppercase tracking-wider">
-                <Lock className="w-2.5 h-2.5" strokeWidth={2.5} />
-                Verrouillé
-            </div>
-        );
-    }
-
+function StatCard({ title, value, subtitle, icon: Icon, color, iconBg }: any) {
     return (
-        <div className={`relative col-span-1 rounded-[28px] bg-[#06140A] p-7 md:p-8 flex flex-col justify-between border ${borderColor} group overflow-hidden transition-all hover:-translate-y-1`}>
-
+        <div className="bg-[#09090b] border border-white/5 rounded-2xl p-6 flex flex-col justify-between transition-colors hover:bg-white/[0.02]">
             <div className="flex justify-between items-start mb-6">
-                {/* Module Badge & State */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0C2413] border border-[#14321D] ${textColor} text-[10px] font-bold uppercase tracking-wider`}>
-                            <Sparkles className="w-3.5 h-3.5" />
-                            Module {number}
-                        </div>
-                        {statusBadge}
-                    </div>
-                    {/* Last seen text */}
-                    <span className="text-[10px] font-medium text-[#71717A] ml-2">
-                        {status === 'verrouille' ? 'Prochain renouvellement' : status === 'termine' ? 'Complété ✓' : status === 'en_cours' ? `${progressPct ?? 0}% visionné` : 'Pas encore commencé'}
-                    </span>
+                <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${color}`} />
                 </div>
-
-                {/* Status Icon */}
-                <button
-                    onClick={isLocked ? undefined : onClick}
-                    className={`w-[52px] h-[52px] rounded-[18px] border flex items-center justify-center transition-all duration-300 flex-shrink-0 group/icon ${
-                        isLocked
-                            ? 'border-[#0a2612] bg-[#060e08] cursor-not-allowed'
-                            : 'border-[#14321D] bg-[#0A1D11] hover:bg-[#0D2415] hover:border-[#00A336] hover:shadow-[0_0_15px_rgba(0,163,54,0.15)] hover:-translate-y-1 cursor-pointer'
-                    }`}
-                >
-                    {isLocked
-                        ? <Lock className="w-5 h-5 text-[#3f3f3f]" strokeWidth={2} />
-                        : <Icon className={`w-6 h-6 ${textColor} transition-transform duration-300 group-hover/icon:scale-110`} strokeWidth={1.5} />
-                    }
-                </button>
             </div>
-
-            {/* Text Content */}
-            <div className="mb-8">
-                <h3 className="text-[22px] font-bold text-white mb-2 leading-tight">{title}</h3>
-                <p className="text-[#A1A1AA] text-[15px] font-medium leading-relaxed h-[45px] overflow-hidden">
-                    {subtitle}
-                </p>
-            </div>
-
-            {/* Bottom Section */}
             <div>
-                <div className="w-full h-px bg-gradient-to-r from-[#14321D] to-transparent mb-5" />
-
-                <div className="flex items-center justify-between">
-                    <button onClick={isLocked ? undefined : onClick} className={`flex items-center gap-2 font-bold ${textColor} transition-all duration-300 text-[14px] ${isLocked ? 'cursor-not-allowed opacity-30' : 'hover:brightness-125 group-hover:text-[#3edb6c] hover:translate-x-1 cursor-pointer group/btn'}`}>
-                        <PlayCircle className={`w-4 h-4 transition-transform duration-300 ${!isLocked && 'group-hover/btn:scale-110'}`} strokeWidth={2} />
-                        {isLocked ? 'Verrouillé' : 'Découvrir'}
-                    </button>
-
-                    {/* Small dash progress bar */}
-                    <div className="w-[80px] h-[4px] rounded-full bg-[#112a18] relative overflow-hidden">
-                        <div
-                            className="absolute left-0 top-0 h-full bg-[#3edb6c] shadow-[0_0_8px_#3edb6c] transition-all duration-500"
-                            style={{ width: `${progressFill}%` }}
-                        />
-                    </div>
-                </div>
+                <h3 className="text-[#A1A1AA] text-[13px] font-medium mb-1">{title}</h3>
+                <div className="text-[32px] font-semibold text-white tracking-tight leading-none mb-2">{value}</div>
+                <p className="text-white/40 text-[12px]">{subtitle}</p>
             </div>
         </div>
     );
 }
 
-// Reusable component for the Forum Categories
-export function ForumCategoryCard({ icon: Icon, iconColor, iconBg, title, subtitle, glowColor, onClick }: { icon: React.ElementType, iconColor: string, iconBg: string, title: string, subtitle: string, glowColor: string, onClick?: () => void }) {
+function PremiumModuleCard({ number, title, Icon, status, progressPct, onClick }: { number: number, title: string, Icon: React.ElementType, status: 'en_cours' | 'en_attente' | 'termine' | 'verrouille', progressPct?: number, onClick?: () => void }) {
+    const isLocked = status === 'verrouille';
+
     return (
-        <div onClick={onClick} className={`flex flex-col p-6 rounded-[24px] bg-[#090b0a] border border-[#181a19] hover:bg-[#0c0f0d] transition-all duration-300 hover:-translate-y-1 cursor-pointer group ${glowColor} hover:border-white/10`}>
-            <div className="flex justify-between items-start mb-8">
-                <div className={`w-[48px] h-[48px] rounded-[14px] ${iconBg} border border-white/5 flex items-center justify-center transition-transform duration-300 group-hover:scale-110`}>
-                    <Icon className={`w-[22px] h-[22px] ${iconColor} opacity-90 transition-transform duration-300`} strokeWidth={2} />
+        <div
+            onClick={isLocked ? undefined : onClick}
+            className={`group flex flex-col p-6 rounded-2xl border transition-all duration-300 relative overflow-hidden ${isLocked
+                ? 'bg-[#050505] border-white/5 cursor-not-allowed opacity-75'
+                : 'bg-[#09090b] border-white/5 hover:border-white/20 cursor-pointer hover:bg-white/[0.02]'
+                }`}
+        >
+            <div className="flex justify-between items-start mb-10 relative z-10">
+                <div className="flex flex-col gap-2">
+                    <span className="text-white/40 font-medium text-[11px] uppercase tracking-wider">Module {number}</span>
+                    {status === 'en_cours' && (
+                        <span className="bg-[#1e3a8a]/20 text-[#60a5fa] border border-[#1e3a8a]/50 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide w-fit">En cours</span>
+                    )}
+                    {status === 'termine' && (
+                        <span className="bg-[#00A336]/10 text-[#00A336] border border-[#00A336]/20 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide w-fit">Terminé</span>
+                    )}
+                    {status === 'verrouille' && (
+                        <span className="bg-white/5 text-white/40 border border-white/10 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide w-fit flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> Verrouillé
+                        </span>
+                    )}
                 </div>
-                <ChevronRight className={`w-5 h-5 ${iconColor} opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300`} strokeWidth={2} />
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform ${isLocked ? 'bg-white/5 text-white/20' : 'bg-white/10 text-white/80 group-hover:scale-110 group-hover:text-white group-hover:bg-white/15'}`}>
+                    <Icon className="w-5 h-5" />
+                </div>
             </div>
-            <div>
-                <h3 className="text-white text-[16px] font-bold mb-1 leading-tight transition-colors">{title}</h3>
-                <p className="text-[#A1A1AA] text-[13px] font-medium leading-snug">{subtitle}</p>
+
+            <div className="relative z-10">
+                <h3 className={`text-[16px] font-semibold leading-snug mb-4 ${isLocked ? 'text-white/40' : 'text-white'}`}>
+                    {title}
+                </h3>
+
+                {!isLocked && (
+                    <div className="flex items-center justify-between">
+                        <span className={`text-[12px] font-medium transition-colors ${status === 'termine' ? 'text-[#00A336]' : 'text-white/40 group-hover:text-white/70'}`}>
+                            {status === 'termine' ? 'Visionné' : 'Découvrir'}
+                        </span>
+                        {status === 'en_cours' && (
+                            <div className="w-1/2 h-1 bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-full bg-white transition-all duration-500" style={{ width: `${progressPct ?? 0}%` }} />
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* Subtle glow effect for active cards */}
+            {!isLocked && status !== 'termine' && (
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+            )}
+        </div>
+    )
+}
+
+function SocialConnectModal({ onClose }: { onClose: () => void }) {
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-[500px] bg-[#09090b] border border-white/10 rounded-2xl p-8 relative shadow-2xl"
+            >
+                <div className="w-12 h-12 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center mb-6">
+                    <Link className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-[24px] font-semibold text-white mb-2">Connecter un compte</h2>
+                <p className="text-[#A1A1AA] text-[14px] leading-relaxed mb-8">
+                    Le Coach IA et le Dashboard ont besoin d'accéder à tes données de visibilité pour fonctionner à plein potentiel.
+                </p>
+
+                <div className="flex flex-col gap-3">
+                    <button className="w-full bg-[#050505] p-4 rounded-xl border border-white/10 hover:border-white/20 hover:bg-white/[0.02] flex items-center justify-between transition-colors group">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center">
+                                <TikTokIcon />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="text-white font-medium text-[15px]">TikTok</h3>
+                                <p className="text-white/40 text-[12px]">Analyse de croissance et vues</p>
+                            </div>
+                        </div>
+                        <span className="text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/10 text-white group-hover:bg-white/20 transition-colors">Connecter</span>
+                    </button>
+
+                    <button className="w-full bg-[#050505] p-4 rounded-xl border border-white/10 hover:border-white/20 hover:bg-white/[0.02] flex items-center justify-between transition-colors group">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center">
+                                <Instagram className="w-5 h-5 text-white/80" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="text-white font-medium text-[15px]">Instagram</h3>
+                                <p className="text-white/40 text-[12px]">Insights publications et Reels</p>
+                            </div>
+                        </div>
+                        <span className="text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/10 text-white group-hover:bg-white/20 transition-colors">Connecter</span>
+                    </button>
+                </div>
+
+                <div className="mt-8 flex justify-end">
+                    <button onClick={onClose} className="px-5 py-2 text-[13px] font-medium text-[#A1A1AA] hover:text-white transition-colors">
+                        Annuler
+                    </button>
+                </div>
+            </motion.div>
         </div>
     );
+}
+
+const TikTokIcon = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className="w-[18px] h-[18px] text-white/80">
+        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.61-5.66-.21-3.23 1.91-6.19 5.06-6.85.25-.05.51-.08.77-.09V14.4c-1.17.06-2.31.54-3.12 1.34-1.22 1.14-1.63 2.97-.97 4.54.49 1.25 1.56 2.22 2.86 2.53 1.39.38 2.91.07 4.02-.78 1.23-.97 1.91-2.48 1.91-4.07.02-3.99.01-7.98.01-11.97-.04.05-.08.1-.13.15z" />
+    </svg>
+);
+
+// Minimal placeholder avatar
+function UserAvatar({ seed }: { seed: string }) {
+    const bgColors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500"];
+    const color = bgColors[parseInt(seed) % bgColors.length];
+    return <div className={`w-full h-full ${color} opacity-80 mix-blend-screen`} />
 }

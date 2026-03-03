@@ -2,6 +2,7 @@ import { Outlet } from 'react-router';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import ParticlesBackground from '../components/layout/ParticlesBackground';
+import { CommandMenu } from '../components/ui/command-menu';
 
 export default function DashboardLayout() {
     return (
@@ -11,18 +12,18 @@ export default function DashboardLayout() {
             {/* 2. Massive Halos (Glows Verts / Nuages) */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-black">
 
-                {/* Nuage Gauche, smooth diffuse lighting */}
-                <div className="absolute top-[10%] -left-[15%] w-[40%] h-[80%] bg-[#00A336] opacity-30 blur-[200px] rounded-[100%]"></div>
+                {/* Ambient glow, very subtle */}
+                <div className="absolute top-[0%] left-[20%] w-[50%] h-[50%] bg-[#00A336] opacity-[0.06] blur-[150px] rounded-full mix-blend-screen pointer-events-none"></div>
+                <div className="absolute bottom-[0%] right-[10%] w-[40%] h-[50%] bg-[#00A336] opacity-[0.04] blur-[150px] rounded-full mix-blend-screen pointer-events-none"></div>
 
-                {/* Nuage Droit, diffuse lighting */}
-                <div className="absolute top-[10%] -right-[15%] w-[35%] h-[70%] bg-[#00A336] opacity-25 blur-[200px] rounded-[100%]"></div>
 
                 {/* Stars/Particles ON TOP of the background clouds so they shine clearly */}
                 <ParticlesBackground />
             </div>
 
             <Header />
-            <main className="flex-grow w-full max-w-[1200px] mx-auto px-6 py-12 flex flex-col relative z-10">
+            <CommandMenu />
+            <main className="flex-grow w-full max-w-[1200px] mx-auto px-6 pt-32 pb-12 flex flex-col relative z-10">
                 <Outlet />
             </main>
             <Footer />

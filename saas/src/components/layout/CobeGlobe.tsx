@@ -1,5 +1,5 @@
 import createGlobe from 'cobe';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function CobeGlobe() {
     const canvasRef = useRef<HTMLCanvasElement>(null);

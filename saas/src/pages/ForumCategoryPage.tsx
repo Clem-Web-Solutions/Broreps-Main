@@ -19,7 +19,7 @@ export default function ForumCategoryPage() {
 
     useEffect(() => {
         if (id) {
-            forumApi.list(id).then(r => setMessages(r.messages)).catch(() => {});
+            forumApi.list(id).then(r => setMessages(r.messages)).catch(() => { });
         }
     }, [id]);
 
@@ -30,7 +30,7 @@ export default function ForumCategoryPage() {
             const r = await forumApi.post(id!, message.trim());
             setMessages(prev => [r.message, ...prev]);
             setMessage('');
-        } catch {} finally {
+        } catch { } finally {
             setPosting(false);
         }
     };
@@ -39,7 +39,7 @@ export default function ForumCategoryPage() {
         try {
             await forumApi.delete(msgId);
             setMessages(prev => prev.filter(m => m.id !== msgId));
-        } catch {}
+        } catch { }
     };
 
     const forumData = {
@@ -108,7 +108,7 @@ export default function ForumCategoryPage() {
     const data = forumData[id as keyof typeof forumData] || forumData.debutants;
 
     return (
-        <div className="flex flex-col items-center w-full min-h-screen pt-4 pb-12">
+        <div className="flex flex-col items-center w-full pb-12">
             <div className="w-full max-w-[900px] flex flex-col px-4 md:px-8">
 
                 {/* Back Button */}
@@ -136,7 +136,7 @@ export default function ForumCategoryPage() {
                         </h1>
                         <div className="flex items-center gap-1.5 text-[#a1a1aa] text-[13px] font-medium">
                             <Users className="w-4 h-4" strokeWidth={2.5} />
-                    <span className="text-[#a1a1aa] text-[13px] font-medium">{messages.length} message{messages.length !== 1 ? 's' : ''}</span>
+                            <span className="text-[#a1a1aa] text-[13px] font-medium">{messages.length} message{messages.length !== 1 ? 's' : ''}</span>
                         </div>
                     </div>
                 </motion.div>
@@ -144,7 +144,7 @@ export default function ForumCategoryPage() {
                 {/* Banner Guideline */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl border border-[#14321D] bg-[#0A1A0F] mb-6"
+                    className="w-full flex items-center gap-3 p-4 rounded-xl border border-white/5 bg-white/[0.02] mb-6 shadow-sm"
                 >
                     <Sparkles className={`w-4 h-4 ${data.themeColor} flex-shrink-0`} />
                     <span className="text-[#a1a1aa] text-[13px] font-medium">
@@ -155,7 +155,7 @@ export default function ForumCategoryPage() {
                 {/* Composer Section */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                    className="w-full bg-[#0a0a0a] border border-[#27272a] rounded-[16px] p-4 flex flex-col focus-within:border-[#4f4f56] transition-colors mb-20 shadow-lg"
+                    className="w-full bg-[#050505] border border-white/5 rounded-2xl p-4 flex flex-col focus-within:border-white/10 transition-colors mb-20 shadow-sm"
                 >
                     <textarea
                         value={message}
@@ -187,7 +187,7 @@ export default function ForumCategoryPage() {
                             <motion.div
                                 key={msg.id}
                                 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                                className="w-full bg-[#0a0a0a] border border-[#27272a] rounded-[14px] p-4"
+                                className="w-full bg-[#09090b] border border-white/5 rounded-2xl p-5 shadow-sm hover:border-white/10 transition-colors"
                             >
                                 <div className="flex items-center justify-between mb-2">
                                     <span className={`text-[13px] font-bold ${data.themeColor}`}>{msg.author_name}</span>

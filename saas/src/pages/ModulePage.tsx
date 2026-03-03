@@ -127,7 +127,7 @@ export default function ModulePage() {
             parseInt(moduleId),
             Math.floor(video.currentTime),
             Math.floor(video.duration)
-        ).catch(() => {});
+        ).catch(() => { });
     };
 
     const handleTimeUpdate = () => {
@@ -164,7 +164,7 @@ export default function ModulePage() {
     // Locked screen
     if (!loadingProgress && moduleProgress && !moduleProgress.unlocked) {
         return (
-            <div className="flex flex-col items-center w-full min-h-screen pt-4 pb-24">
+            <div className="flex flex-col items-center w-full pb-24">
                 <div className="w-full max-w-[800px] flex justify-start px-4 md:px-8 mb-8">
                     <button
                         onClick={() => navigate('/dashboard')}
@@ -175,16 +175,16 @@ export default function ModulePage() {
                     </button>
                 </div>
                 <div className="flex flex-col items-center justify-center flex-1 gap-6 px-8 text-center py-24">
-                    <div className="w-20 h-20 rounded-full bg-[#0A1A0F] border border-[#00A336]/30 flex items-center justify-center">
-                        <Lock className="w-10 h-10 text-[#00A336]" />
+                    <div className="w-20 h-20 rounded-[20px] bg-white/5 border border-white/10 flex items-center justify-center shadow-sm">
+                        <Lock className="w-8 h-8 text-white/80" />
                     </div>
-                    <h2 className="text-white text-2xl font-black">Module {moduleId} verrouillé</h2>
+                    <h2 className="text-white text-2xl font-semibold">Module {moduleId} verrouillé</h2>
                     <p className="text-[#A1A1AA] text-[14px] max-w-[340px] leading-relaxed">
                         Ce module se débloque automatiquement à ton prochain renouvellement d'abonnement. Continue ta progression !
                     </p>
                     <button
                         onClick={() => navigate('/dashboard')}
-                        className="px-8 py-3 bg-[#00A336] text-white font-bold rounded-xl hover:brightness-110 transition-all"
+                        className="px-8 py-3 bg-white text-black font-semibold rounded-xl hover:bg-gray-200 transition-all shadow-sm"
                     >
                         Retour au Dashboard
                     </button>
@@ -194,7 +194,7 @@ export default function ModulePage() {
     }
 
     return (
-        <div className="flex flex-col items-center w-full min-h-screen pt-4 pb-24">
+        <div className="flex flex-col items-center w-full pb-24">
 
             {/* Top Navigation Row */}
             <div className="w-full max-w-[800px] flex justify-start px-4 md:px-8 mb-8">
@@ -209,53 +209,39 @@ export default function ModulePage() {
 
             <div className="w-full max-w-[800px] flex flex-col items-center px-4 md:px-8 relative z-10">
 
-                {/* 1. Pill "MODULE PREMIUM 1" with specific icon */}
+                {/* 1. Pill "MODULE PREMIUM X" with specific icon */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    className="flex items-center gap-2 px-5 py-2 rounded-full border border-[#14321D] bg-[#0A1A0F] mb-6 shadow-[0_0_15px_rgba(0,163,54,0.15)]"
+                    className="flex items-center gap-2 px-5 py-2 rounded-full border border-white/5 bg-white/[0.02] mb-6 shadow-sm"
                 >
-                    <Sparkles className="w-3.5 h-3.5 text-[#00A336]" fill="currentColor" />
-                    <span className="text-[#00A336] text-[11px] font-black uppercase tracking-widest mt-0.5">Module Premium {moduleId}</span>
+                    <Sparkles className="w-3.5 h-3.5 text-white/80" fill="currentColor" />
+                    <span className="text-white font-semibold text-[11px] uppercase tracking-widest mt-0.5">Module Premium {moduleId}</span>
                     {data.pillIcon}
                 </motion.div>
 
-                {/* 2. Slanted Green Title Box */}
+                {/* 2. Slanted Title Box -> Replaced with modern clean box */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
                     className="w-[90%] md:w-full max-w-[750px] relative mb-12"
                 >
-                    <div
-                        className="w-full relative border-[2px] border-[#00A336] shadow-[0_0_40px_rgba(0,163,54,0.3)] rounded-[12px] overflow-hidden"
-                        style={{ transform: "skewX(-8deg)" }}
-                    >
-                        {/* Gradient background */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#011406] via-[#00A336]/80 to-[#00A336]" />
-
-                        <div
-                            className="relative z-10 text-center py-6 md:py-8 px-4 flex items-center justify-center min-h-[140px]"
-                            style={{ transform: "skewX(8deg)" }}
-                        >
-                            <h1
-                                className="text-white text-[28px] md:text-[44px] lg:text-[46px] font-black uppercase italic leading-[1.05] tracking-wide"
-                                style={{ textShadow: "0px 4px 15px rgba(0,0,0,0.5)" }}
-                            >
-                                {data.title}
-                            </h1>
-                        </div>
+                    <div className="w-full relative border border-white/10 bg-[#050505] shadow-sm rounded-3xl overflow-hidden p-8 flex items-center justify-center min-h-[140px]">
+                        <h1 className="text-white text-[28px] md:text-[40px] lg:text-[42px] font-semibold tracking-tight text-center leading-tight">
+                            {data.title}
+                        </h1>
                     </div>
                 </motion.div>
 
                 {/* 3. Vertical Video Player */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                    className="relative w-full max-w-[340px] aspect-[9/16] rounded-[24px] overflow-hidden mb-12 border-2 border-[#14321D] shadow-[0_0_40px_rgba(0,163,54,0.2)] bg-black group"
+                    className="relative w-full max-w-[340px] aspect-[9/16] rounded-3xl overflow-hidden mb-12 border border-white/10 shadow-xl bg-[#09090b] group"
                 >
                     <video
                         ref={videoRef}
                         src={data.videoSrc}
                         controls={isPlaying}
                         onClick={isPlaying ? undefined : togglePlay}
-                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isPlaying ? 'opacity-100' : 'opacity-80 group-hover:scale-105'}`}
+                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isPlaying ? 'opacity-100' : 'opacity-80 group-hover:opacity-100'}`}
                         playsInline
                         onPause={() => { setIsPlaying(false); handleSaveProgress(); }}
                         onEnded={() => { setIsPlaying(false); handleSaveProgress(); }}
@@ -265,15 +251,12 @@ export default function ModulePage() {
 
                     {!isPlaying && (
                         <div
-                            className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center group/play"
+                            className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center group/play bg-black/30 group-hover:bg-black/10 transition-colors"
                             onClick={togglePlay}
                         >
-                            {/* Subtle dark gradient overlay to make the play button pop */}
-                            <div className="absolute inset-0 bg-black/40 group-hover/play:bg-black/50 transition-colors duration-300 pointer-events-none" />
-
                             {/* Minimal & modern play button */}
-                            <div className="w-[80px] h-[80px] rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover/play:scale-110 group-hover/play:border-[#00A336]/50 group-hover/play:shadow-[0_0_30px_rgba(0,163,54,0.3)] transition-all duration-300 relative z-10 pointer-events-none">
-                                <Play className="w-10 h-10 text-white ml-2 opacity-90 group-hover/play:text-[#3edb6c] transition-colors" fill="currentColor" />
+                            <div className="w-[80px] h-[80px] rounded-[24px] bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover/play:scale-105 group-hover/play:bg-white/20 transition-all duration-300 relative z-10 pointer-events-none">
+                                <Play className="w-10 h-10 text-white ml-2 opacity-90 transition-colors" fill="currentColor" />
                             </div>
                         </div>
                     )}
@@ -285,60 +268,61 @@ export default function ModulePage() {
                     className="w-full flex flex-col gap-6"
                 >
                     {/* Card 1: À propos */}
-                    <div className="w-full bg-[#030A05] border-[1px] border-[#00A336] rounded-[24px] p-8 md:p-10 relative overflow-hidden shadow-[0_0_20px_rgba(0,163,54,0.05)]">
+                    <div className="w-full bg-[#09090b] border border-white/5 rounded-3xl p-8 md:p-10 relative overflow-hidden shadow-sm">
                         <div className="flex items-center gap-3 mb-6">
-                            <Sparkles className="w-6 h-6 text-[#00A336]" />
-                            <h2 className="text-[24px] font-bold text-[#00A336]">{data.aboutTitle}</h2>
+                            <Sparkles className="w-6 h-6 text-white" />
+                            <h2 className="text-[24px] font-semibold text-white tracking-tight">{data.aboutTitle}</h2>
                         </div>
-                        <div className="space-y-6 text-[#A1A1AA] text-[14px] font-medium leading-[1.7]">
+                        <div className="space-y-6 text-[#A1A1AA] text-[15px] font-medium leading-[1.8]">
                             {data.aboutText}
                         </div>
                     </div>
 
                     {/* Card 2: Coach IA */}
-                    <div className="w-full bg-[#030A05] border-[1px] border-[#00A336] rounded-[24px] p-6 md:p-8 relative overflow-hidden shadow-[0_0_20px_rgba(0,163,54,0.05)]">
+                    <div className="w-full border border-white/10 bg-[#050505] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-sm">
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="w-[42px] h-[42px] bg-[#00A336] rounded-[12px] flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(0,163,54,0.3)]">
-                                <MessageSquare className="w-5 h-5 text-[#030A05]" fill="currentColor" strokeWidth={0} />
+                            <div className="w-[42px] h-[42px] bg-white/5 border border-white/10 rounded-[12px] flex items-center justify-center flex-shrink-0 shadow-sm">
+                                <MessageSquare className="w-5 h-5 text-white/80" fill="currentColor" strokeWidth={0} />
                             </div>
                             <div className="flex flex-col">
-                                <h2 className="text-[20px] font-bold text-white flex items-center gap-2">
+                                <h2 className="text-[20px] font-semibold text-white flex items-center gap-2 tracking-tight">
                                     🤖 Ton Coach IA
                                 </h2>
-                                <span className="text-[#A1A1AA] text-[12px] font-medium mt-0.5">Aide personnalisée pour ce module</span>
+                                <span className="text-[#A1A1AA] text-[13px] font-medium mt-0.5">Aide personnalisée pour ce module</span>
                             </div>
                         </div>
                         <p className="text-[#A1A1AA] text-[14px] font-medium leading-relaxed mb-6">
-                            Pose tes questions, débloque tes blocages, et reçois des conseils personnalisés en lien avec <span className="text-[#00A336] font-bold">ce module</span>.
+                            Pose tes questions, débloque tes blocages, et reçois des conseils personnalisés en lien avec <span className="text-white font-medium">ce module</span>.
                         </p>
-                        <button className="w-full py-3 bg-[#00A336] rounded-[10px] text-white font-black text-[14px] hover:bg-[#008f2f] transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,163,54,0.2)] cursor-pointer">
+                        <button className="w-full py-3.5 bg-white rounded-xl text-black font-semibold text-[14px] hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer">
                             <MessageSquare className="w-4 h-4" />
                             Ouvrir le Coach IA
                         </button>
                     </div>
 
                     {/* Card 3: Besoin d'aide */}
-                    <div className="w-full bg-[#030A05] border-[1px] border-[#00A336] rounded-[24px] p-6 md:p-8 relative overflow-hidden shadow-[0_0_20px_rgba(0,163,54,0.05)]">
+                    <div className="w-full border border-white/10 bg-[#050505] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-sm">
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="w-[42px] h-[42px] bg-[#8b5cf6] rounded-[12px] flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(139,92,246,0.3)]">
-                                <Ticket className="w-5 h-5 text-white" strokeWidth={2.5} />
+                            <div className="w-[42px] h-[42px] bg-[#8b5cf6]/20 border border-[#8b5cf6]/30 rounded-[12px] flex items-center justify-center flex-shrink-0">
+                                <Ticket className="w-5 h-5 text-[#a78bfa]" strokeWidth={2.5} />
                             </div>
                             <div className="flex flex-col">
-                                <h2 className="text-[20px] font-bold text-white flex items-center gap-2">
+                                <h2 className="text-[20px] font-semibold text-white flex items-center gap-2 tracking-tight">
                                     🎫 Besoin d'aide ?
                                 </h2>
-                                <span className="text-[#A1A1AA] text-[12px] font-medium mt-0.5">Support technique dédié</span>
+                                <span className="text-[#A1A1AA] text-[13px] font-medium mt-0.5">Support technique dédié</span>
                             </div>
                         </div>
                         <p className="text-[#A1A1AA] text-[14px] font-medium leading-relaxed mb-6">
                             Un problème avec ce module ? Notre équipe peut t'aider rapidement.
                         </p>
-                        <button className="w-full py-3 bg-[#8b5cf6] rounded-[10px] text-white font-black text-[14px] hover:bg-[#7c3aed] transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(139,92,246,0.2)] cursor-pointer">
+                        <button className="w-full py-3.5 bg-[#8b5cf6] rounded-xl text-white font-semibold text-[14px] hover:bg-[#7c3aed] transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer">
                             <Ticket className="w-4 h-4" strokeWidth={2.5} />
                             Ouvrir un ticket
                         </button>
                     </div>
                 </motion.div>
+
                 {/* Next / Previous Module Navigation */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
@@ -346,17 +330,17 @@ export default function ModulePage() {
                 >
                     <button
                         onClick={() => navigate(moduleId === "1" ? '/dashboard' : `/module/${parseInt(moduleId) - 1}`)}
-                        className="flex items-center gap-2 px-6 py-3 rounded-lg bg-[#0E0E0E] text-[#A1A1AA] font-bold text-[13px] border border-[#27272A] hover:bg-[#18181B] hover:text-white transition-all cursor-pointer shadow-md"
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#09090b] text-[#A1A1AA] font-semibold text-[13px] border border-white/10 hover:bg-white/5 hover:text-white transition-all cursor-pointer shadow-sm"
                     >
                         <ChevronLeft className="w-4 h-4" strokeWidth={3} />
-                        Module précédent
+                        Précédent
                     </button>
 
                     <button
                         onClick={() => navigate(parseInt(moduleId) >= Object.keys(moduleData).length ? '/dashboard' : `/module/${parseInt(moduleId) + 1}`)}
-                        className="flex items-center gap-2 px-6 py-3 rounded-lg bg-[#00A336] text-[#05140A] font-bold text-[13px] hover:brightness-110 transition-all cursor-pointer shadow-[0_0_15px_rgba(0,163,54,0.3)]"
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-black font-semibold text-[13px] hover:bg-gray-200 transition-all cursor-pointer shadow-sm"
                     >
-                        Module suivant
+                        Suivant
                         <ChevronRight className="w-4 h-4" strokeWidth={3} />
                     </button>
                 </motion.div>
