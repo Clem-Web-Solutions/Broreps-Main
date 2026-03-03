@@ -113,7 +113,7 @@ export function Drip() {
                 console.log('[STANDARD] Loading standard orders...');
                 const ordersData = await api.getOrders({}, false, 1, 2000); // NO sync, load up to 2000 orders
                 const standardOrders = ordersData.orders?.filter((order: Order) =>
-                    !order.parent_order_id && (!order.runs || order.runs === 0) && order.status !== 'Completed'
+                    !order.parent_order_id && (!order.runs || order.runs === 0) && order.status?.toLowerCase() !== 'completed'
                 ) || [];
                 console.log('[STANDARD] Standard orders loaded (excluding completed):', standardOrders.length);
                 setAccounts(standardOrders as any);
@@ -134,12 +134,12 @@ export function Drip() {
                 const groupedForStats = groupDripFeedOrders(dripFeedOrders);
 
                 const activeOrders = groupedForStats.filter((o: Order) =>
-                    ['Pending', 'In progress', 'Processing'].includes(o.status)
+                    ['pending', 'in progress', 'processing'].includes(o.status?.toLowerCase() ?? '')
                 ).length;
-                const completedOrders = groupedForStats.filter((o: Order) => o.status === 'Completed').length;
+                const completedOrders = groupedForStats.filter((o: Order) => o.status?.toLowerCase() === 'completed').length;
                 // Count queued orders from grouped data (count each parent group once)
                 const queuedOrders = groupedForStats.filter((o: Order) =>
-                    o.status === 'Pending' || (o as any).totalRuns > (o as any).executedRuns
+                    o.status?.toLowerCase() === 'pending' || (o as any).totalRuns > (o as any).executedRuns
                 ).length;
                 // Calculate remaining cost (only for pending runs, not the full order cost)
                 const totalCost = groupedForStats.reduce((sum: number, o: Order) => {
@@ -194,7 +194,7 @@ export function Drip() {
                 
                 // Separate standard and drip feed orders
                 const standardCompleted = allOrders.filter((order: Order) =>
-                    order.status === 'Completed' && !order.parent_order_id && (!order.runs || order.runs === 0)
+                    order.status?.toLowerCase() === 'completed' && !order.parent_order_id && (!order.runs || order.runs === 0)
                 );
                 
                 const dripFeedOrders = allOrders.filter((order: Order) =>
@@ -203,7 +203,7 @@ export function Drip() {
                 
                 // Group drip feed orders and keep only completed ones
                 const groupedDripFeed = groupDripFeedOrders(dripFeedOrders, true); // includeCompleted = true
-                const dripFeedCompleted = groupedDripFeed.filter((order: Order) => order.status === 'Completed');
+                const dripFeedCompleted = groupedDripFeed.filter((order: Order) => order.status?.toLowerCase() === 'completed');
                 
                 // Combine both types
                 const completedOrders = [...standardCompleted, ...dripFeedCompleted]
@@ -282,9 +282,10 @@ export function Drip() {
 
             // Count executed orders (vraiment exécutées = ont un provider_order_id)
             const executedOrders = subOrders.filter(o =>
-                (o as any).provider_order_id && o.status && !['', 'Scheduled', 'Queued', 'Pending'].includes(o.status)
+                (o as any).provider_order_id && o.status &&
+                !['', 'scheduled', 'queued', 'pending'].includes(o.status?.toLowerCase() ?? '')
             );
-            const completedCount = subOrders.filter(o => o.status === 'Completed').length;
+            const completedCount = subOrders.filter(o => o.status?.toLowerCase() === 'completed').length;
             const totalRuns = parentOrder.runs;
             const totalQuantity = parentOrder.quantity;
 
@@ -297,41 +298,37 @@ export function Drip() {
 
             // Calculate totalDelivered: sum of all delivered quantities from executed orders
             const totalDelivered = subOrders.reduce((sum, o) => {
-                const isExecuted = (o as any).provider_order_id && o.status && !['', 'Scheduled', 'Queued', 'Pending'].includes(o.status);
+                const isExecuted = (o as any).provider_order_id && o.status &&
+                    !['', 'scheduled', 'queued', 'pending'].includes(o.status?.toLowerCase() ?? '');
                 if (!isExecuted) {
                     console.log(`    ⏸️  Order ${o.order_id || o.id}: NON EXÉCUTÉE (status: ${o.status || 'N/A'}) - 0 delivered`);
                     return sum;
                 }
-                // Pour les commandes exécutées: delivered = quantity - remains
-                // Si remains est undefined ou null, considérer que tout est livré si status = Completed
                 let delivered = 0;
-                if (o.status === 'Completed') {
-                    // Si completed, tout est livré
+                if (o.status?.toLowerCase() === 'completed') {
+                    // Completed = everything delivered
                     delivered = o.quantity;
                 } else if (o.remains !== undefined && o.remains !== null) {
-                    // Sinon utiliser le calcul normal
                     delivered = o.quantity - o.remains;
                 } else {
-                    // Si pas de remains et pas completed, considérer 0 livré
-                    delivered = 0;
+                    // remains not synced yet but order was sent to provider — count as delivered
+                    delivered = o.quantity;
                 }
-                console.log(`    ✅ Order ${o.order_id || o.id}: EXÉCUTÉE - quantity: ${o.quantity}, remains: ${o.remains ?? 'undefined'}, status: ${o.status}, delivered: ${delivered}`);
+                console.log(`    ✅ Order ${o.order_id || o.id}: EXÉCUTÉE - quantity: ${o.quantity}, remains: ${o.remains ?? 'null'}, status: ${o.status}, delivered: ${delivered}`);
                 return sum + delivered;
             }, 0);
 
             // Calculate totalRemains: sum of remains from all sub-orders
             const totalRemains = subOrders.reduce((sum, o) => {
-                const isExecuted = (o as any).provider_order_id && o.status && !['', 'Scheduled', 'Queued', 'Pending'].includes(o.status);
+                const isExecuted = (o as any).provider_order_id && o.status &&
+                    !['', 'scheduled', 'queued', 'pending'].includes(o.status?.toLowerCase() ?? '');
                 if (!isExecuted) {
-                    // Pour les commandes non exécutées, tout reste à livrer
                     return sum + o.quantity;
                 }
-                // Pour les commandes exécutées, utiliser remains
-                // Si status = Completed, remains devrait être 0
-                if (o.status === 'Completed') {
-                    return sum + 0;
+                if (o.status?.toLowerCase() === 'completed') {
+                    return sum; // 0 remains
                 }
-                // Sinon utiliser remains ou 0 si undefined
+                // If remains is null, assume 0 (already counted as delivered above)
                 return sum + (o.remains ?? 0);
             }, 0);
 
@@ -373,27 +370,32 @@ export function Drip() {
 
             // Determine overall status based on parent and sub-orders
             let overallStatus = 'Pending';
+            const parentStatusLower = parentOrder.status?.toLowerCase() ?? '';
             
             // Check if all sub-orders are completed (remains = 0)
             const allSubOrdersCompleted = subOrders.every(o => {
                 const isExecuted = (o as any).provider_order_id && o.status;
                 if (!isExecuted) return false;
-                return o.status === 'Completed' || (o.remains !== undefined && o.remains === 0);
+                return o.status?.toLowerCase() === 'completed' || (o.remains !== undefined && o.remains === 0);
             });
             
             // Check if all runs are executed and delivered
             const allRunsExecuted = executedOrders.length === totalRuns;
             const allDelivered = totalRemains === 0;
             
-            if (allSubOrdersCompleted || allRunsExecuted && allDelivered || completedCount === totalRuns || parentOrder.status === 'Completed') {
+            if (allSubOrdersCompleted || (allRunsExecuted && allDelivered) || completedCount === totalRuns || parentStatusLower === 'completed') {
                 overallStatus = 'Completed';
                 console.log(`[DRIP GROUP] ✅ Order ${parentId} marked as COMPLETED`);
-            } else if (executedOrders.length > 0 || parentOrder.status === 'Processing' || parentOrder.status === 'In progress') {
+            } else if (executedOrders.length > 0 || parentStatusLower === 'processing' || parentStatusLower === 'in progress') {
                 overallStatus = 'In progress';
             }
 
             // Si complété, pas de solde à immobiliser
             const finalCharge = overallStatus === 'Completed' ? 0 : Math.max(0, totalCharge);
+
+            // Force correct totals if order is fully completed (sub-orders may not be synced)
+            const finalTotalDelivered = overallStatus === 'Completed' ? totalQuantity : totalDelivered;
+            const finalTotalRemains   = overallStatus === 'Completed' ? 0 : totalRemains;
 
             // Create consolidated order using PARENT data
             const consolidatedOrder: Order = {
@@ -401,7 +403,7 @@ export function Drip() {
                 id: parentOrder.id,
                 order_id: parentOrder.order_id || parentOrder.id.toString(),
                 quantity: totalQuantity,
-                remains: totalRemains,
+                remains: finalTotalRemains,
                 status: overallStatus,
                 runs: totalRuns,
                 charge: finalCharge,
@@ -409,11 +411,10 @@ export function Drip() {
                 parent_order_id: undefined // Clear to show it's consolidated
             };
 
-            // Add metadata for display - CRITICAL for showing correct progress and values
             (consolidatedOrder as any).executedRuns = executedOrders.length;
             (consolidatedOrder as any).totalRuns = totalRuns;
-            (consolidatedOrder as any).totalDelivered = totalDelivered; // Used by progress bar and display
-            (consolidatedOrder as any).totalRemains = totalRemains; // For consistency checks
+            (consolidatedOrder as any).totalDelivered = finalTotalDelivered;
+            (consolidatedOrder as any).totalRemains = finalTotalRemains;
 
             console.log(`[DRIP GROUP] 📊 Order ${parentId} metadata:`, {
                 executedRuns: executedOrders.length,
@@ -430,7 +431,7 @@ export function Drip() {
         // Filter completed orders based on includeCompleted parameter
         let result = grouped;
         if (!includeCompleted) {
-            result = grouped.filter(order => order.status !== 'Completed');
+            result = grouped.filter(order => order.status?.toLowerCase() !== 'completed');
             console.log('[DRIP GROUP] Commandes actives après filtrage des complétées:', result.length, '/', grouped.length);
         } else {
             console.log('[DRIP GROUP] Toutes les commandes conservées (incluant complétées):', result.length);
@@ -440,17 +441,17 @@ export function Drip() {
         result = result.sort((a, b) => {
             // Priority: In progress > Pending > Processing > Partial > Completed
             const statusPriority: Record<string, number> = {
-                'In progress': 1,
-                'Processing': 2,
-                'Pending': 3,
-                'Partial': 4,
-                'Completed': 10,
-                'Canceled': 11,
-                'Refunded': 12
+                'in progress': 1,
+                'processing': 2,
+                'pending': 3,
+                'partial': 4,
+                'completed': 10,
+                'canceled': 11,
+                'refunded': 12
             };
             
-            const aPriority = statusPriority[a.status] || 5;
-            const bPriority = statusPriority[b.status] || 5;
+            const aPriority = statusPriority[a.status?.toLowerCase() ?? ''] ?? 5;
+            const bPriority = statusPriority[b.status?.toLowerCase() ?? ''] ?? 5;
             
             // If different statuses, sort by priority
             if (aPriority !== bPriority) {
@@ -512,7 +513,7 @@ export function Drip() {
     };
 
     const getOrderProgress = (order: Order) => {
-        if (order.status === 'Completed') return 100;
+        if (order.status?.toLowerCase() === 'completed') return 100;
 
         // For grouped drip feed orders, use REAL delivered/quantity (not executedRuns/totalRuns)
         // This ensures progress bar matches the displayed "X / Y envoyés" text
@@ -521,8 +522,11 @@ export function Drip() {
             const total = order.quantity;
             if (total === 0) return 0;
             const progress = Math.round((delivered / total) * 100);
-            console.log(`[PROGRESS] Order ${order.order_id}: ${delivered}/${total} = ${progress}%`);
-            return Math.min(100, progress);
+            // Only return if meaningful; if 0 fall through to runs-based calc below
+            if (progress > 0) {
+                console.log(`[PROGRESS] Order ${order.order_id}: ${delivered}/${total} = ${progress}%`);
+                return Math.min(100, progress);
+            }
         }
 
         // For grouped drip feed orders, extract progress from service name (FALLBACK)
@@ -776,10 +780,10 @@ export function Drip() {
                                             {paginatedOrders.map((order: Order) => {
                                                 const progress = getOrderProgress(order);
                                                 const statusColor =
-                                                    order.status === 'Completed' ? 'text-green-400 bg-green-500/10 border-green-500/20' :
-                                                        order.status === 'Partial' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' :
-                                                        order.status === 'In progress' || order.status === 'Processing' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' :
-                                                            order.status === 'Pending' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
+                                                    order.status?.toLowerCase() === 'completed' ? 'text-green-400 bg-green-500/10 border-green-500/20' :
+                                                        order.status?.toLowerCase() === 'partial' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' :
+                                                        order.status?.toLowerCase() === 'in progress' || order.status?.toLowerCase() === 'processing' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' :
+                                                            order.status?.toLowerCase() === 'pending' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
                                                                 'text-red-400 bg-red-500/10 border-red-500/20';
 
                                                 const delivered = order.quantity - (order.remains || 0);
@@ -851,8 +855,8 @@ export function Drip() {
                                                                     <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-1">
                                                                         <div className={cn(
                                                                             "h-full transition-all duration-1000 ease-out rounded-full",
-                                                                            order.status === 'Completed' ? 'bg-green-500' :
-                                                                                order.status === 'In progress' || order.status === 'Processing' ? 'bg-blue-500' :
+                                                                            order.status?.toLowerCase() === 'completed' ? 'bg-green-500' :
+                                                                                order.status?.toLowerCase() === 'in progress' || order.status?.toLowerCase() === 'processing' ? 'bg-blue-500' :
                                                                                     'bg-orange-500'
                                                                         )} style={{ width: `${progress}%` }}></div>
                                                                     </div>
@@ -864,8 +868,8 @@ export function Drip() {
                                                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/5">
                                                             <div className={cn(
                                                                 "h-full transition-all duration-1000 ease-out",
-                                                                order.status === 'Completed' ? 'bg-green-500' :
-                                                                    order.status === 'In progress' || order.status === 'Processing' ? 'bg-blue-500' :
+                                                                order.status?.toLowerCase() === 'completed' ? 'bg-green-500' :
+                                                                    order.status?.toLowerCase() === 'in progress' || order.status?.toLowerCase() === 'processing' ? 'bg-blue-500' :
                                                                         'bg-orange-500'
                                                             )} style={{ width: `${progress}%` }}></div>
                                                         </div>
@@ -951,16 +955,16 @@ export function Drip() {
                                             {paginatedOrders.map((order) => {
                                                 const progress = getOrderProgress(order);
                                                 const statusColor =
-                                                    order.status === 'Completed' ? 'text-green-400 bg-green-500/10 border-green-500/20' :
-                                                        order.status === 'Partial' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' :
-                                                        order.status === 'In progress' || order.status === 'Processing' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' :
-                                                            order.status === 'Pending' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
-                                                                order.status === 'Queued' || order.status === 'Scheduled' ? 'text-purple-400 bg-purple-500/10 border-purple-500/20' :
+                                                    order.status?.toLowerCase() === 'completed' ? 'text-green-400 bg-green-500/10 border-green-500/20' :
+                                                        order.status?.toLowerCase() === 'partial' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' :
+                                                        order.status?.toLowerCase() === 'in progress' || order.status?.toLowerCase() === 'processing' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' :
+                                                            order.status?.toLowerCase() === 'pending' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
+                                                                order.status?.toLowerCase() === 'queued' || order.status?.toLowerCase() === 'scheduled' ? 'text-purple-400 bg-purple-500/10 border-purple-500/20' :
                                                                     'text-red-400 bg-red-500/10 border-red-500/20';
 
                                                 const queueBadge =
-                                                    order.status === 'Queued' ? '⏳ En attente' :
-                                                        order.status === 'Scheduled' ? '📅 Programmée' :
+                                                    order.status?.toLowerCase() === 'queued' ? '⏳ En attente' :
+                                                        order.status?.toLowerCase() === 'scheduled' ? '📅 Programmée' :
                                                             null;
 
                                                 const executedRuns = (order as any).executedRuns || 0;
@@ -984,7 +988,7 @@ export function Drip() {
                                                 // Use the pre-calculated charge which already represents cost to reserve
                                                 // Si complété ou négatif, afficher 0
                                                 let costToReserve = parseFloat(order.charge?.toString() || '0') || 0;
-                                                if (order.status === 'Completed' || costToReserve < 0) {
+                                                if (order.status?.toLowerCase() === 'completed' || costToReserve < 0) {
                                                     costToReserve = 0;
                                                 }
 
@@ -1010,7 +1014,7 @@ export function Drip() {
 
                                                 // Determine next run display text
                                                 let nextRunFormatted = 'Terminé';
-                                                if (order.status === 'Completed' || remains === 0) {
+                                                if (order.status?.toLowerCase() === 'completed' || remains === 0) {
                                                     nextRunFormatted = 'Terminé ✅';
                                                 } else if (executedRuns >= totalRuns) {
                                                     nextRunFormatted = 'Dernière livraison en cours';
@@ -1064,7 +1068,7 @@ export function Drip() {
                                                                             </div>
                                                                         )}
                                                                         {/* Warning if data seems outdated */}
-                                                                        {(delivered + remains !== order.quantity) && order.status !== 'Completed' && !hasInconsistentData && (
+                                                                        {(delivered + remains !== order.quantity) && order.status?.toLowerCase() !== 'completed' && !hasInconsistentData && (
                                                                             <div className="text-xs text-yellow-400 font-mono bg-yellow-500/10 w-fit px-2 py-1 rounded border border-yellow-500/20 font-bold flex items-center gap-1"
                                                                                 title={`Données non synchronisées: ${delivered} + ${remains} ≠ ${order.quantity}`}>
                                                                                 ⚠️ Sync requis
@@ -1127,8 +1131,8 @@ export function Drip() {
                                                                     <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-1">
                                                                         <div className={cn(
                                                                             "h-full transition-all duration-1000 ease-out rounded-full",
-                                                                            order.status === 'Completed' ? 'bg-green-500' :
-                                                                                order.status === 'In progress' || order.status === 'Processing' ? 'bg-blue-500' :
+                                                                            order.status?.toLowerCase() === 'completed' ? 'bg-green-500' :
+                                                                                order.status?.toLowerCase() === 'in progress' || order.status?.toLowerCase() === 'processing' ? 'bg-blue-500' :
                                                                                     'bg-orange-500'
                                                                         )} style={{ width: `${progress}%` }}></div>
                                                                     </div>
@@ -1140,8 +1144,8 @@ export function Drip() {
                                                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/5">
                                                             <div className={cn(
                                                                 "h-full transition-all duration-1000 ease-out",
-                                                                order.status === 'Completed' ? 'bg-green-500' :
-                                                                    order.status === 'In progress' || order.status === 'Processing' ? 'bg-blue-500' :
+                                                                order.status?.toLowerCase() === 'completed' ? 'bg-green-500' :
+                                                                    order.status?.toLowerCase() === 'in progress' || order.status?.toLowerCase() === 'processing' ? 'bg-blue-500' :
                                                                         'bg-orange-500'
                                                             )} style={{ width: `${progress}%` }}></div>
                                                         </div>

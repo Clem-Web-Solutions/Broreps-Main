@@ -22,6 +22,7 @@ interface Order {
     is_drip_feed?: boolean;
     runs?: number;
     run_interval?: number;
+    dripfeed_current_run?: number;
     retry_count?: number;
     error_message?: string;
     queue_status?: string;
@@ -147,23 +148,26 @@ export function Orders() {
                 return;
             }
 
-            // Count executed orders (those with provider_order_id)
-            const executedOrders = subOrders.filter(o =>
-                (o as any).provider_order_id && o.status && !['', 'Scheduled', 'Queued', 'Pending'].includes(o.status)
-            );
-            const completedCount = subOrders.filter(o => o.status === 'Completed').length;
+            // Use parent's dripfeed_current_run as the reliable executed count
+            // (sub-order counting can miss rows if provider_order_id is absent)
+            const executedCount = parentOrder.dripfeed_current_run ?? subOrders.filter(o =>
+                (o as any).provider_order_id && o.status &&
+                !['', 'scheduled', 'queued', 'pending'].includes(o.status?.toLowerCase() ?? '')
+            ).length;
+            const completedCount = subOrders.filter(o => o.status?.toLowerCase() === 'completed').length;
             const totalRuns = parentOrder.runs;
             const totalQuantity = parentOrder.quantity;
             const totalRemains = subOrders.reduce((sum, o) => sum + (o.remains || 0), 0);
 
-            console.log(`   ✅ Exécutés: ${executedOrders.length}/${totalRuns}`);
+            console.log(`   ✅ Exécutés: ${executedCount}/${totalRuns}`);
             console.log(`   ✅ Complétés: ${completedCount}/${totalRuns}`);
 
             // Determine overall status based on parent and sub-orders
+            const parentStatusLower = parentOrder.status?.toLowerCase() ?? '';
             let overallStatus = 'Pending';
-            if (completedCount === totalRuns || parentOrder.status === 'Completed') {
+            if (completedCount === totalRuns || parentStatusLower === 'completed') {
                 overallStatus = 'Completed';
-            } else if (executedOrders.length > 0 || parentOrder.status === 'Processing' || parentOrder.status === 'In progress') {
+            } else if (executedCount > 0 || parentStatusLower === 'processing' || parentStatusLower === 'in progress') {
                 overallStatus = 'In progress';
             }
 
@@ -176,7 +180,7 @@ export function Orders() {
                 remains: totalRemains,
                 status: overallStatus,
                 runs: totalRuns,
-                service_name: `💧 ${(parentOrder.service_name || 'Drip Feed').split('|')[0].trim()} (${executedOrders.length}/${totalRuns} exécutés)`,
+                service_name: `💧 ${(parentOrder.service_name || 'Drip Feed').split('|')[0].trim()} (${executedCount}/${totalRuns} exécutés)`,
                 parent_order_id: undefined // Clear to show it's consolidated
             };
 
@@ -193,7 +197,7 @@ export function Orders() {
         return orders.filter(order => {
             // Status filter
             if (filters.status) {
-                if (order.status !== filters.status) {
+                if (order.status?.toLowerCase() !== filters.status?.toLowerCase()) {
                     return false;
                 }
             }
@@ -222,17 +226,17 @@ export function Orders() {
 
     const getStatusInfo = (status: string) => {
         const statusMap: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-            'Pending': { label: 'En attente', color: 'text-orange-400', icon: Clock },
-            'Awaiting Launch': { label: 'En attente', color: 'text-orange-400', icon: Clock },
-            'In progress': { label: 'En cours', color: 'text-blue-400', icon: RefreshCw },
-            'Processing': { label: 'En cours', color: 'text-blue-400', icon: RefreshCw },
-            'Completed': { label: 'Terminé', color: 'text-green-400', icon: CheckCircle2 },
-            'Partial': { label: 'Partiel', color: 'text-yellow-400', icon: Clock },
-            'Canceled': { label: 'Annulé', color: 'text-red-400', icon: XCircle },
-            'Refunded': { label: 'Remboursé', color: 'text-red-400', icon: XCircle },
-            'Error': { label: 'Erreur', color: 'text-red-400', icon: XCircle }
+            'pending': { label: 'En attente', color: 'text-orange-400', icon: Clock },
+            'awaiting launch': { label: 'En attente', color: 'text-orange-400', icon: Clock },
+            'in progress': { label: 'En cours', color: 'text-blue-400', icon: RefreshCw },
+            'processing': { label: 'En cours', color: 'text-blue-400', icon: RefreshCw },
+            'completed': { label: 'Terminé', color: 'text-green-400', icon: CheckCircle2 },
+            'partial': { label: 'Partiel', color: 'text-yellow-400', icon: Clock },
+            'canceled': { label: 'Annulé', color: 'text-red-400', icon: XCircle },
+            'refunded': { label: 'Remboursé', color: 'text-red-400', icon: XCircle },
+            'error': { label: 'Erreur', color: 'text-red-400', icon: XCircle }
         };
-        return statusMap[status] || { label: status, color: 'text-slate-400', icon: Clock };
+        return statusMap[status?.toLowerCase()] || { label: status, color: 'text-slate-400', icon: Clock };
     };
 
     const getPlatformFromService = (serviceName: string) => {
@@ -242,7 +246,7 @@ export function Orders() {
     };
 
     const getProgress = (order: Order) => {
-        if (order.status === 'Completed') return 100;
+        if (order.status?.toLowerCase() === 'completed') return 100;
 
         // For grouped drip feed orders, extract progress from service name
         if (order.runs && order.runs > 1) {
