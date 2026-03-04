@@ -37,6 +37,7 @@ try {
   // Liste des colonnes à ajouter
   const columns = [
     { name: 'order_type', sql: "ADD COLUMN `order_type` ENUM('one_time', 'subscription') DEFAULT 'one_time' COMMENT 'Type de commande' AFTER `order_id`" },
+    { name: 'shopify_order_number', sql: "ADD COLUMN `shopify_order_number` INT DEFAULT NULL COMMENT 'Shopify order number' AFTER `payment_created_at`" },
     { name: 'subscription_id', sql: "ADD COLUMN `subscription_id` VARCHAR(255) DEFAULT NULL COMMENT 'TagadaPay subscription ID' AFTER `order_type`" },
     { name: 'subscription_status', sql: "ADD COLUMN `subscription_status` VARCHAR(50) DEFAULT NULL COMMENT 'active, cancelled, paused, expired' AFTER `subscription_id`" },
     { name: 'subscription_interval', sql: "ADD COLUMN `subscription_interval` VARCHAR(50) DEFAULT NULL COMMENT 'monthly, yearly, weekly' AFTER `subscription_status`" },

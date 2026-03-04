@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS `tagadapay_orders` (
   `metadata` JSON DEFAULT NULL COMMENT 'Additional metadata from TagadaPay',
   `internal_order_id` INT DEFAULT NULL COMMENT 'Link to orders table',
   `is_processed` BOOLEAN DEFAULT FALSE COMMENT 'Whether order was processed into internal system',
+  `shopify_order_number` INT DEFAULT NULL COMMENT 'Shopify order number (#6530)',
   `payment_created_at` DATETIME DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

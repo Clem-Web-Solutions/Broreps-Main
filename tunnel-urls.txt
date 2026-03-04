@@ -7,3 +7,6 @@ Suivis (Client) (Port 5174): https://pitch-sauce-cowboy-deeper.trycloudflare.com
 Server (API) (Port 3005): https://salvador-tablet-belong-considered.trycloudflare.com
 Supply (Admin) (Port 5173): https://parenting-disposition-brand-literacy.trycloudflare.com
 Suivis (Client) (Port 5174): https://toddler-trying-humanities-seniors.trycloudflare.com
+Server (API) (Port 3005): https://commander-lines-insurance-fairfield.trycloudflare.com
+Supply (Admin) (Port 5173): https://kitty-million-ranger-timer.trycloudflare.com
+Suivis (Client) (Port 5174): https://dip-vanilla-switch-cut.trycloudflare.com

@@ -1,6 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import db from '../config/database.js';
+import { normalizeSocialLink } from '../lib/username-extractor.js';
 
 // Extract real quantity from Shopify variant title (handles French "2.500" → 2500)
 function extractQuantityFromVariant(variantTitle, fallback = 1) {
@@ -221,6 +222,12 @@ async function processShopifyOrder(order) {
 
   if (!socialLink) {
     console.log('[WARN] Aucun lien/username social trouvé pour commande #' + order_number);
+  }
+
+  // Normalize: turn bare usernames into full profile URLs
+  if (socialLink) {
+    const fullTitle = `${lineItem.title} ${lineItem.variant_title || ''}`;
+    socialLink = normalizeSocialLink(socialLink, fullTitle);
   }
 
   // Check if order already exists

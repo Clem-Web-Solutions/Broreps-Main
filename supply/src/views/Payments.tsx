@@ -13,6 +13,8 @@ import {
     Repeat,
     CalendarClock,
     TrendingUp,
+    Zap,
+    X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../libs/api';
@@ -22,6 +24,7 @@ import { cn } from '../libs/utils';
 interface Payment {
     id: number;
     payment_id: string;
+    order_id: string | null;
     order_type: string;
     customer_email: string;
     customer_name: string;
@@ -31,6 +34,7 @@ interface Payment {
     currency: string;
     payment_status: string;
     social_link: string;
+    shopify_order_number: number | null;
     payment_created_at: string;
     created_at: string;
 }
@@ -131,6 +135,42 @@ export function Payments() {
 
     /* stats */
     const [stats, setStats] = useState<StatsData | null>(null);
+
+    /* complete-order modal */
+    const [completeModal, setCompleteModal] = useState<Payment | null>(null);
+    const [completeSocialLink, setCompleteSocialLink] = useState('');
+    const [completeEmail, setCompleteEmail] = useState('');
+    const [completeLoading, setCompleteLoading] = useState(false);
+    const [completeError, setCompleteError] = useState('');
+
+    const openComplete = (p: Payment) => {
+        setCompleteModal(p);
+        setCompleteSocialLink('');
+        setCompleteEmail(p.customer_email || '');
+        setCompleteError('');
+    };
+    const closeComplete = () => { setCompleteModal(null); setCompleteError(''); };
+    const submitComplete = async () => {
+        if (!completeModal || !completeSocialLink.trim()) return;
+        setCompleteLoading(true);
+        setCompleteError('');
+        try {
+            await api.request(`/tagadapay/admin/complete-order/${completeModal.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    social_link: completeSocialLink.trim(),
+                    customer_email: completeEmail.trim() || undefined,
+                }),
+            });
+            closeComplete();
+            loadPayments(payPage, paySearch);
+        } catch (e: any) {
+            setCompleteError(e.message || 'Erreur inconnue');
+        } finally {
+            setCompleteLoading(false);
+        }
+    };
 
     /* ── Fetch ────────────────────────────────────────────────────────────── */
     const loadPayments = async (page = 1, search = '') => {
@@ -260,14 +300,15 @@ export function Payments() {
                                     <th className="px-4 py-3 text-left">Lien social</th>
                                     <th className="px-4 py-3 text-right">Montant</th>
                                     <th className="px-4 py-3 text-center">Statut</th>
-                                    <th className="px-4 py-3 text-center">ID</th>
+                                    <th className="px-4 py-3 text-center">IDs</th>
+                                    <th className="px-4 py-3 text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {payLoading ? (
-                                    <tr><td colSpan={7} className="text-center py-12 text-slate-500">Chargement…</td></tr>
+                                    <tr><td colSpan={8} className="text-center py-12 text-slate-500">Chargement…</td></tr>
                                 ) : payments.length === 0 ? (
-                                    <tr><td colSpan={7} className="text-center py-12 text-slate-500">Aucun paiement trouvé</td></tr>
+                                    <tr><td colSpan={8} className="text-center py-12 text-slate-500">Aucun paiement trouvé</td></tr>
                                 ) : payments.map(p => (
                                     <tr key={p.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
                                         <td className="px-4 py-3 text-slate-400 whitespace-nowrap text-xs">{formatDate(p.payment_created_at || p.created_at)}</td>
@@ -295,7 +336,22 @@ export function Payments() {
                                             <PaymentStatusBadge status={p.payment_status} />
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <span className="text-slate-600 text-[10px] font-mono">{p.payment_id?.slice(0, 8)}…</span>
+                                            <div className="flex flex-col gap-0.5 items-center">
+                                                <span className="text-slate-400 text-[10px] font-mono font-semibold">#{p.id}</span>
+                                                {p.shopify_order_number && <span className="text-blue-400 text-[10px] font-mono">Shopify #{p.shopify_order_number}</span>}
+                                                <span className="text-slate-600 text-[10px] font-mono">{p.payment_id?.slice(0, 8)}…</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            {['paid', 'succeeded', 'success'].includes(p.payment_status) && !p.social_link && (
+                                                <button
+                                                    onClick={() => openComplete(p)}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 transition-colors text-[11px] font-semibold"
+                                                >
+                                                    <Zap size={10} />
+                                                    Compléter
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -432,6 +488,97 @@ export function Payments() {
                                 className="p-1.5 rounded-lg bg-white/5 text-slate-400 disabled:opacity-30 hover:text-white transition-colors">
                                 <ChevronRight size={16} />
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Complete Order Modal ─────────────────────────────────────── */}
+            {completeModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                        <div className="flex items-center justify-between mb-5">
+                            <div>
+                                <h2 className="text-white font-bold text-base">Compléter la commande</h2>
+                                <p className="text-slate-500 text-xs mt-0.5 truncate max-w-[320px]">{completeModal.product_title}</p>
+                            </div>
+                            <button onClick={closeComplete} className="text-slate-500 hover:text-white transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-slate-400 text-xs font-medium mb-1.5 block">
+                                    Lien / pseudo du compte <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={completeSocialLink}
+                                    onChange={e => setCompleteSocialLink(e.target.value)}
+                                    placeholder="https://www.tiktok.com/@pseudo  ou  @pseudo"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary"
+                                    autoFocus
+                                    onKeyDown={e => e.key === 'Enter' && submitComplete()}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-slate-400 text-xs font-medium mb-1.5 block">Email client (optionnel)</label>
+                                <input
+                                    type="email"
+                                    value={completeEmail}
+                                    onChange={e => setCompleteEmail(e.target.value)}
+                                    placeholder="client@email.com"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary"
+                                />
+                            </div>
+
+                            <div className="bg-white/3 border border-white/5 rounded-lg p-3 text-xs text-slate-400 space-y-1.5">
+                                <div className="flex justify-between">
+                                    <span>Produit</span>
+                                    <span className="text-white truncate max-w-[200px] text-right">{completeModal.product_title}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Montant</span>
+                                    <span className="text-green-400 font-semibold">{formatAmount(completeModal.amount, completeModal.currency)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Quantité</span>
+                                    <span className="text-white">{completeModal.quantity?.toLocaleString('fr-FR')}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Payment ID</span>
+                                    <span className="text-slate-500 font-mono">{completeModal.payment_id?.slice(0, 20)}…</span>
+                                </div>
+                            </div>
+
+                            {completeError && (
+                                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-red-400 text-xs">
+                                    {completeError}
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-1">
+                                <button
+                                    onClick={closeComplete}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-colors text-sm"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={submitComplete}
+                                    disabled={!completeSocialLink.trim() || completeLoading}
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/80 transition-colors disabled:opacity-40"
+                                >
+                                    {completeLoading ? (
+                                        <RefreshCw size={14} className="animate-spin" />
+                                    ) : (
+                                        <Zap size={14} />
+                                    )}
+                                    Lancer la commande
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

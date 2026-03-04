@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import db from '../config/database.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import { normalizeSocialLink, extractUsername } from '../lib/username-extractor.js';
 
 const router = express.Router();
 
@@ -281,8 +282,9 @@ async function findServiceByProductName(productName, variantName = '') {
     }
   }
   
-  if (bestMatch && bestScore >= 10) {
-    console.log('[SMART MATCH] Service trouvé:', {
+  // Score >= 20 requires BOTH platform AND service type to match — prevents false positives
+  if (bestMatch && bestScore >= 20) {
+    console.log('[SMART MATCH] ✅ Service trouvé:', {
       id: bestMatch.id,
       name: bestMatch.service_name,
       score: bestScore
@@ -290,7 +292,8 @@ async function findServiceByProductName(productName, variantName = '') {
     return bestMatch;
   }
   
-  console.log('[SMART MATCH] Aucun service correspondant trouvé (meilleur score:', bestScore, ')');
+  console.log('[SMART MATCH] ❌ Aucun service correspondant trouvé (meilleur score:', bestScore, '— minimum requis: 20)');
+  console.log('[SMART MATCH] → Vérifiez que le nom du service dans le catalogue contient la plateforme ET le type (ex: "Abonnés TikTok")');
   return null;
 }
 
@@ -428,14 +431,109 @@ function sendSaasSetupEmail(email, name, token) {
   });
 }
 
+// Fetch full order details from TagadaPay API (enriches webhook with email + form fields)
+// Tries multiple endpoints in cascade: GET /orders/{id} → POST /orders/list → GET /payments/{id}
+async function fetchTagadaPayOrder({ orderId, paymentId, cartToken } = {}) {
+  const apiKey = process.env.TAGADAPAY_API_KEY;
+  const isDev = (process.env.TAGADAPAY_ENVIRONMENT || '').toLowerCase().includes('dev');
+  const defaultBase = isDev
+    ? 'https://app.tagadapay.dev/api/public/v1'
+    : 'https://app.tagadapay.com/api/public/v1';
+  const baseUrl = process.env.TAGADAPAY_BASE_URL || defaultBase;
+
+  if (!apiKey) {
+    console.warn('[TAGADAPAY API] TAGADAPAY_API_KEY non configurée — enrichissement ignoré');
+    return null;
+  }
+
+  const headers = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Helper: GET request
+  const tryGet = async (label, url) => {
+    try {
+      const r = await fetch(url, { method: 'GET', headers });
+      if (!r.ok) { console.warn(`[TAGADAPAY API] ${label} → ${r.status} ${r.statusText}`); return null; }
+      const d = await r.json();
+      console.log(`[TAGADAPAY API] ✅ Enrichissement via ${label}:`, JSON.stringify(d, null, 2));
+      return d;
+    } catch (e) { console.error(`[TAGADAPAY API] ❌ ${label}:`, e.message); return null; }
+  };
+
+  // Helper: POST /orders/list filtered by orderId
+  const tryOrdersList = async () => {
+    if (!orderId) return null;
+    try {
+      const r = await fetch(`${baseUrl}/orders/list`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          filters: { 'orders.id': { condition: 'is-equal', value: orderId } },
+          pagination: { page: 1, pageSize: 1 },
+        }),
+      });
+      if (!r.ok) { console.warn(`[TAGADAPAY API] POST /orders/list → ${r.status} ${r.statusText}`); return null; }
+      const d = await r.json();
+      const item = d?.data?.[0] || d?.orders?.[0] || d?.items?.[0] || null;
+      if (item) console.log(`[TAGADAPAY API] ✅ Enrichissement via POST /orders/list:`, JSON.stringify(item, null, 2));
+      return item;
+    } catch (e) { console.error('[TAGADAPAY API] ❌ POST /orders/list:', e.message); return null; }
+  };
+
+  // Cascade: GET by orderId → POST list → GET by paymentId
+  const result =
+    (orderId   ? await tryGet(`GET /orders/${orderId}`, `${baseUrl}/orders/${orderId}`) : null) ||
+    await tryOrdersList() ||
+    (paymentId ? await tryGet(`GET /payments/${paymentId}`, `${baseUrl}/payments/${paymentId}`) : null);
+
+  if (!result) console.warn('[TAGADAPAY API] Aucun endpoint n\'a retourné de données — commande sans enrichissement');
+  return result;
+}
+
 // Process successful payment (one-time)
 async function processPaymentSuccess(payment, orderType = 'one_time') {
   console.log('[DEBUG] processPaymentSuccess called with:', JSON.stringify(payment, null, 2));
   
   // TagadaPay structure: payment has paymentId, orderId, lineItems, etc.
   const payment_id = payment.paymentId || payment.id || payment.payment_id || 'unknown';
-  const order_id = payment.orderId || payment.order_id;
-  const timestamp = payment.timestamp || payment.createdAt || payment.created_at;
+  const order_id   = payment.orderId || payment.order_id;
+  const cart_token = payment.cartToken || payment.cart_token;
+  const timestamp  = payment.timestamp || payment.createdAt || payment.created_at;
+
+  // ── Enrichissement via API TagadaPay ──────────────────────────────────────
+  const orderDetails = await fetchTagadaPayOrder({
+    paymentId: payment_id !== 'unknown' ? payment_id : null,
+    orderId:   order_id,
+    cartToken: cart_token,
+  });
+  // Unwrap response: { order: { ... } } or { data: { ... } } or direct
+  const enriched = orderDetails?.order || orderDetails?.data || orderDetails || {};
+
+  // Email + nom client depuis l'API
+  const enrichedCustomer = enriched.customer || enriched.customerInfo || enriched.buyerInfo || {};
+  const enrichedEmail = enrichedCustomer.email || enrichedCustomer.billingAddress?.email || enriched.email || enriched.customerEmail || null;
+  const enrichedFirstName = enrichedCustomer.firstName || '';
+  const enrichedLastName  = enrichedCustomer.lastName  || '';
+  const enrichedName = enrichedCustomer.name || enrichedCustomer.fullName || enriched.customerName
+    || ((enrichedFirstName || enrichedLastName) ? `${enrichedFirstName} ${enrichedLastName}`.trim() : null);
+
+  // Shopify order number (stocké dans metadata.shopify_order_number)
+  const shopifyOrderNumber = enriched.metadata?.shopify_order_number || enriched.metadata?.shopify_number || null;
+
+  // Social link — TagadaPay stocke le lien dans metadata.cartCustomAttributes: [{name: "Nom D'utilisateur", value: "..."}]
+  const isSocialFieldKey = (str) => ['link','url','instagram','tiktok','twitch','social','profil','compte','utilisateur','username'].some(k => str.toLowerCase().includes(k));
+  const cartCustomAttrs = enriched.metadata?.cartCustomAttributes || [];
+  const socialFromCart = Array.isArray(cartCustomAttrs)
+    ? (cartCustomAttrs.find(a => isSocialFieldKey(a.name || ''))?.value || '')
+    : '';
+  const formFields = enriched.formFields || enriched.customFields || enriched.orderFields || enriched.fields || [];
+  const socialFieldFromApi = Array.isArray(formFields)
+    ? formFields.find(f => isSocialFieldKey(f.key || f.name || f.label || ''))
+    : null;
+  const socialLinkFromApi = socialFromCart || socialFieldFromApi?.value || socialFieldFromApi?.answer || '';
+  // ─────────────────────────────────────────────────────────────────────────
   
   // Extract first line item for product info
   const lineItem = payment.lineItems?.[0] || {};
@@ -449,7 +547,8 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
   
   // Extract metadata (optional - we can auto-detect service)
   const metadata = payment.metadata || {};
-  const socialLink = metadata.social_link || metadata.instagram || metadata.tiktok || '';
+  // Priorité : API formFields > metadata webhook > vide
+  const socialLink = socialLinkFromApi || metadata.social_link || metadata.instagram || metadata.tiktok || '';
   
   // Smart service matching - auto-detect if not provided
   let serviceId = metadata.service_id || null;
@@ -472,10 +571,10 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
     }
   }
   
-  // Extract customer info if available
+  // Extract customer info — priorise les données enrichies de l'API
   const customer = payment.customer || {};
-  const customerEmail = customer.email || payment.email || payment.customerEmail || null;
-  const customerName = customer.name || customer.fullName || payment.customerName || null;
+  const customerEmail = enrichedEmail || customer.email || payment.email || payment.customerEmail || null;
+  const customerName  = enrichedName  || customer.name  || customer.fullName || payment.customerName || null;
 
   const currency = payment.currency || 'EUR';
   const status = payment.status || 'succeeded';
@@ -501,6 +600,9 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
     metadata,
     autoMatched
   });
+
+  // Normalize: turn bare usernames into full profile URLs
+  const normalizedSocialLink = socialLink ? normalizeSocialLink(socialLink, `${productName} ${variantName}`) : '';
 
   // Check if payment already processed
   const [existing] = await db.query(
@@ -535,8 +637,9 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
       payment_status,
       metadata,
       payment_created_at,
+      shopify_order_number,
       is_processed
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     payment_id,
     null, // checkoutSessionId
@@ -549,11 +652,12 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
     quantity,
     amount, // Amount in cents
     currency.toUpperCase(),
-    socialLink,
+    normalizedSocialLink,
     serviceId,
     status,
     JSON.stringify(metadata),
     timestamp || new Date().toISOString(),
+    shopifyOrderNumber || null,
     false
   ]);
 
@@ -561,19 +665,20 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
     id: result.insertId,
     payment_id: payment_id,
     email: customerEmail || 'unknown',
-    social_link: socialLink || 'NON FOURNI',
+    social_link: normalizedSocialLink || 'NON FOURNI',
     amount: `${amount / 100} ${currency}`,
     status: 'paid'
   });
 
   // Create internal order automatically
-  if (serviceId && socialLink && quantity) {
+  if (serviceId && normalizedSocialLink && quantity) {
     try {
       await createInternalOrder(result.insertId, {
         serviceId,
-        socialLink,
+        socialLink: normalizedSocialLink,
         quantity,
-        customerEmail: customerEmail
+        customerEmail: customerEmail,
+        shopifyOrderNumber: shopifyOrderNumber || null,
       });
     } catch (error) {
       console.error('[ERREUR] Failed to create internal order:', error);
@@ -581,7 +686,7 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
   } else {
     console.log('[WARN] Missing required fields for auto-order creation:', {
       serviceId: serviceId ? `✓ ${autoMatched ? '(auto-détecté)' : '(metadata)'}` : '✗ MANQUANT',
-      socialLink: socialLink ? '✓' : '✗ MANQUANT',
+      socialLink: normalizedSocialLink ? '✓' : '✗ MANQUANT',
       quantity: quantity ? '✓' : '✗'
     });
     
@@ -615,9 +720,26 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
 
 // Process payment failure
 async function processPaymentFailed(payment) {
-  const { id: payment_id, orderId, customer } = payment;
+  const payment_id = payment.paymentId || payment.id || payment.payment_id || null;
+  const order_id   = payment.orderId   || payment.order_id || null;
+  const customer   = payment.customer || {};
 
-  console.log(`[PAYMENT] Payment #${payment_id} failed`);
+  console.log(`[PAYMENT] Payment #${payment_id || order_id || 'unknown'} failed`);
+
+  // Can't INSERT with null payment_id (NOT NULL constraint) — update by order_id if possible
+  if (!payment_id) {
+    if (order_id) {
+      await db.query(`
+        UPDATE tagadapay_orders
+        SET payment_status = 'failed', updated_at = NOW()
+        WHERE order_id = ?
+      `, [order_id]);
+      console.log('[WARN] Payment failed (no payment_id) — updated by order_id:', order_id);
+    } else {
+      console.warn('[WARN] Payment failed event with no payment_id nor order_id — ignored');
+    }
+    return;
+  }
 
   await db.query(`
     INSERT INTO tagadapay_orders (
@@ -632,7 +754,7 @@ async function processPaymentFailed(payment) {
       updated_at = NOW()
   `, [
     payment_id,
-    orderId || null,
+    order_id,
     customer?.email?.toLowerCase() || null,
     'failed',
     false
@@ -851,14 +973,15 @@ async function processSubscriptionPaymentSuccess(payment) {
     status: 'succeeded'
   });
 
-  // TODO: Create internal order automatically for this recurring payment
+  // Create internal order automatically for this recurring payment
   if (serviceId && socialLink && quantity) {
     try {
       await createInternalOrder(result.insertId, {
         serviceId,
         socialLink,
         quantity,
-        customerEmail: customer?.email || subscription?.customer_email
+        customerEmail: customer?.email || subscription?.customer_email,
+        shopifyOrderNumber: null,
       });
     } catch (error) {
       console.error('[ERREUR] Failed to create internal order for subscription payment:', error);
@@ -983,7 +1106,7 @@ async function processSubscriptionResumed(subscription) {
 
 // Create internal order automatically
 async function createInternalOrder(tagadapay_order_id, orderData) {
-  const { serviceId, socialLink, quantity, customerEmail } = orderData;
+  const { serviceId, socialLink, quantity, customerEmail, shopifyOrderNumber } = orderData;
 
   // Get TagadaPay default user
   const [users] = await db.query(
@@ -997,42 +1120,74 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
 
   const userId = users[0].id;
 
-  // Get service details
+  // Get service details — includes delivery_mode and dripfeed_quantity
   const [services] = await db.query(
     'SELECT * FROM allowed_services WHERE id = ? LIMIT 1',
     [serviceId]
   );
 
   if (services.length === 0) {
-    throw new Error(`Service ${serviceId} not found`);
+    throw new Error(`Service id=${serviceId} introuvable dans le catalogue — vérifiez la configuration`);
   }
 
-  const service = services[0];
+  const service      = services[0];
+  const deliveryMode = service.delivery_mode || 'standard';
+  const dripfeedQty  = service.dripfeed_quantity && service.dripfeed_quantity > 0
+    ? service.dripfeed_quantity
+    : 250;
 
-  // Calculate charge (assuming service has a rate)
+  // Extract username from social link for duplicate detection
+  const userInfo = extractUsername(socialLink);
+  const username = userInfo ? userInfo.username : null;
+
+  // Calculate charge
   const charge = (quantity / 1000) * (service.rate || 0);
 
-  // Create order
-  const [orderResult] = await db.query(`
-    INSERT INTO orders (
-      user_id,
-      service_id,
-      link,
-      quantity,
-      charge,
-      status,
-      created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, NOW())
-  `, [
-    userId,
-    service.service_id,
-    socialLink,
-    quantity,
-    charge,
-    'pending'
-  ]);
+  let internalOrderId;
 
-  const internalOrderId = orderResult.insertId;
+  if (deliveryMode === 'dripfeed') {
+    // ── Drip-feed parent order ─────────────────────────────────────────────
+    const dripfeedRuns     = Math.ceil(quantity / dripfeedQty);
+    const dripfeedInterval = 1440; // 24h in minutes
+
+    const [orderResult] = await db.query(`
+      INSERT INTO orders (
+        user_id, service_id, link, username, quantity, remains, charge,
+        shopify_order_number, status,
+        dripfeed_runs, dripfeed_interval, dripfeed_current_run
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'processing', ?, ?, 0)
+    `, [
+      userId, service.service_id, socialLink, username,
+      quantity, quantity, charge,
+      shopifyOrderNumber || null,
+      dripfeedRuns, dripfeedInterval,
+    ]);
+
+    internalOrderId = orderResult.insertId;
+    console.log('[OK] Drip-feed parent order created:', {
+      tagadapay_order_id, internal_order_id: internalOrderId,
+      service: service.service_name, quantity,
+      dripfeed_qty: dripfeedQty, runs: dripfeedRuns,
+    });
+  } else {
+    // ── Standard order ─────────────────────────────────────────────────────
+    const [orderResult] = await db.query(`
+      INSERT INTO orders (
+        user_id, service_id, link, username, quantity, remains, charge,
+        shopify_order_number, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    `, [
+      userId, service.service_id, socialLink, username,
+      quantity, quantity, charge,
+      shopifyOrderNumber || null,
+    ]);
+
+    internalOrderId = orderResult.insertId;
+    console.log('[OK] Standard order created (pending):', {
+      tagadapay_order_id, internal_order_id: internalOrderId,
+      service: service.service_name, quantity,
+    });
+  }
 
   // Link TagadaPay order to internal order
   await db.query(`
@@ -1040,13 +1195,6 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
     SET internal_order_id = ?, is_processed = true
     WHERE id = ?
   `, [internalOrderId, tagadapay_order_id]);
-
-  console.log('[OK] Internal order created automatically:', {
-    tagadapay_order_id,
-    internal_order_id: internalOrderId,
-    service: service.service_name,
-    quantity
-  });
 
   return internalOrderId;
 }
@@ -1231,7 +1379,7 @@ router.get('/admin/payments', authenticateToken, requireAdmin, async (req, res) 
     const [payments] = await db.query(
       `SELECT id, payment_id, order_id, order_type, customer_email, customer_name, customer_phone,
               product_title, quantity, amount, currency, payment_status, social_link,
-              payment_created_at, created_at
+              shopify_order_number, payment_created_at, created_at
        FROM tagadapay_orders ${where}
        ORDER BY payment_created_at DESC, created_at DESC
        LIMIT ? OFFSET ?`,
@@ -1321,6 +1469,79 @@ router.get('/admin/subscriptions', authenticateToken, requireAdmin, async (req, 
     });
   } catch (error) {
     console.error('[ERREUR] Admin subscriptions error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/tagadapay/admin/complete-order/:id
+// Manually set social_link (+ optional email) and trigger internal order creation
+router.post('/admin/complete-order/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { social_link, customer_email, service_id } = req.body;
+
+    if (!social_link) {
+      return res.status(400).json({ error: 'social_link requis' });
+    }
+
+    // Fetch the existing order
+    const [rows] = await db.query(
+      'SELECT * FROM tagadapay_orders WHERE id = ? LIMIT 1',
+      [id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Commande introuvable' });
+    const order = rows[0];
+
+    if (order.is_processed) {
+      return res.status(409).json({ error: 'Cette commande a déjà été traitée' });
+    }
+
+    // Normalize the social link
+    const normalizedLink = normalizeSocialLink(social_link, order.product_title || '');
+
+    // Update DB
+    await db.query(
+      `UPDATE tagadapay_orders
+       SET social_link = ?,
+           customer_email = COALESCE(NULLIF(?, ''), customer_email),
+           updated_at = NOW()
+       WHERE id = ?`,
+      [normalizedLink, customer_email || null, id]
+    );
+
+    // Determine service
+    const resolvedServiceId = service_id || order.service_id;
+    if (!resolvedServiceId) {
+      return res.status(400).json({
+        error: 'service_id introuvable — précisez-le dans le body',
+        saved: true,
+        social_link: normalizedLink
+      });
+    }
+
+    // Create internal order
+    const internalOrderId = await createInternalOrder(order.id, {
+      serviceId:           resolvedServiceId,
+      socialLink:          normalizedLink,
+      quantity:            order.quantity,
+      customerEmail:       customer_email || order.customer_email,
+      shopifyOrderNumber:  order.shopify_order_number || null,
+    });
+
+    console.log('[ADMIN] ✅ Commande complétée manuellement:', {
+      tagadapay_order_id: order.id,
+      internal_order_id: internalOrderId,
+      social_link: normalizedLink,
+    });
+
+    res.json({
+      success: true,
+      tagadapay_order_id: order.id,
+      internal_order_id: internalOrderId,
+      social_link: normalizedLink,
+    });
+  } catch (error) {
+    console.error('[ERREUR] Admin complete-order:', error);
     res.status(500).json({ error: error.message });
   }
 });

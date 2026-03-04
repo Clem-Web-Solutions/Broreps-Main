@@ -4,6 +4,222 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import api from "../libs/api";
 
+// ─── Predefined Offers (catalogue Shopify) ─────────────────────────────────
+
+interface PresetVariant {
+    label: string;
+    quantity: number;
+    price: number;
+    badge?: string;
+}
+
+interface PackSubOrder {
+    label: string;
+    keywords: string[];
+    quantity: number;
+    deliveryMode: 'standard' | 'dripfeed';
+}
+
+interface PackVariant {
+    label: string;
+    price: number;
+    subOrders: PackSubOrder[];
+}
+
+interface SinglePreset {
+    id: string;
+    title: string;
+    platform: string;
+    icon: string;
+    color: string;
+    isPack: false;
+    serviceKeywords: string[];
+    deliveryMode: 'standard' | 'dripfeed';
+    variants: PresetVariant[];
+}
+
+interface PackPreset {
+    id: string;
+    title: string;
+    platform: string;
+    icon: string;
+    color: string;
+    isPack: true;
+    variants: PackVariant[];
+}
+
+type Preset = SinglePreset | PackPreset;
+
+const PREDEFINED_OFFERS: Preset[] = [
+    {
+        id: 'abonnes-tiktok', title: 'Abonnés TikTok', platform: 'tiktok', icon: '🎵', color: '#00f2ea',
+        isPack: false, serviceKeywords: ['tiktok', 'follower'], deliveryMode: 'dripfeed',
+        variants: [
+            { label: '1 000', quantity: 1000, price: 19.99 },
+            { label: '2 500', quantity: 2500, price: 25 },
+            { label: '5 000', quantity: 5000, price: 35 },
+            { label: '8 500', quantity: 8500, price: 44 },
+            { label: '10 000', quantity: 10000, price: 49.99, badge: '⭐ Monétisable' },
+            { label: '25 000', quantity: 25000, price: 129.99 },
+        ]
+    },
+    {
+        id: 'abonnes-twitch', title: 'Abonnés Twitch', platform: 'twitch', icon: '🎮', color: '#9146ff',
+        isPack: false, serviceKeywords: ['twitch', 'follower'], deliveryMode: 'dripfeed',
+        variants: [
+            { label: '1 000', quantity: 1000, price: 15 },
+            { label: '2 500', quantity: 2500, price: 25 },
+            { label: '5 000', quantity: 5000, price: 45 },
+            { label: '8 500', quantity: 8500, price: 65 },
+            { label: '10 000', quantity: 10000, price: 80 },
+            { label: '25 000', quantity: 25000, price: 110 },
+        ]
+    },
+    {
+        id: 'abonnes-instagram', title: 'Abonnés Instagram', platform: 'instagram', icon: '📸', color: '#d62976',
+        isPack: false, serviceKeywords: ['instagram', 'follower'], deliveryMode: 'dripfeed',
+        variants: [
+            { label: '500', quantity: 500, price: 19.99 },
+            { label: '1 000', quantity: 1000, price: 25 },
+            { label: '2 500', quantity: 2500, price: 45 },
+            { label: '5 000', quantity: 5000, price: 55 },
+            { label: '10 000', quantity: 10000, price: 69.99 },
+            { label: '25 000', quantity: 25000, price: 129.99 },
+        ]
+    },
+    {
+        id: 'membres-discord', title: 'Membres Discord', platform: 'discord', icon: '💬', color: '#5865f2',
+        isPack: false, serviceKeywords: ['discord', 'member'], deliveryMode: 'standard',
+        variants: [
+            { label: '50', quantity: 50, price: 20 },
+            { label: '100', quantity: 100, price: 25 },
+            { label: '200', quantity: 200, price: 30 },
+            { label: '300', quantity: 300, price: 40 },
+        ]
+    },
+    {
+        id: 'pack-tiktok-video', title: 'Pack Visibilité TikTok', platform: 'tiktok', icon: '📹', color: '#00f2ea',
+        isPack: true,
+        variants: [
+            { label: '10k Vues', price: 15, subOrders: [
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 10000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 2500, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 500, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 400, deliveryMode: 'standard' },
+            ]},
+            { label: '25k Vues', price: 25, subOrders: [
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 25000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 5000, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 1000, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 800, deliveryMode: 'standard' },
+            ]},
+            { label: '50k Vues', price: 45, subOrders: [
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 50000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 10000, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 2500, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 1500, deliveryMode: 'standard' },
+            ]},
+            { label: '100k Vues', price: 80, subOrders: [
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 100000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 25000, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 4500, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 3500, deliveryMode: 'standard' },
+            ]},
+            { label: '250k Vues', price: 140, subOrders: [
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 250000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 50000, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 10000, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 8500, deliveryMode: 'standard' },
+            ]},
+            { label: '500k Vues', price: 180, subOrders: [
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 500000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 100000, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 25000, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 20000, deliveryMode: 'standard' },
+            ]},
+        ]
+    },
+    {
+        id: 'pack-instagram-video', title: 'Pack Visibilité Instagram', platform: 'instagram', icon: '🎬', color: '#d62976',
+        isPack: true,
+        variants: [
+            { label: '10k Vues', price: 15, subOrders: [
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 10000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 2500, deliveryMode: 'standard' },
+            ]},
+            { label: '25k Vues', price: 25, subOrders: [
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 25000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 5000, deliveryMode: 'standard' },
+            ]},
+            { label: '50k Vues', price: 45, subOrders: [
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 50000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 10000, deliveryMode: 'standard' },
+            ]},
+            { label: '100k Vues', price: 80, subOrders: [
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 100000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 25000, deliveryMode: 'standard' },
+            ]},
+            { label: '250k Vues', price: 140, subOrders: [
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 250000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 50000, deliveryMode: 'standard' },
+            ]},
+        ]
+    },
+    {
+        id: 'abonnement-tiktok', title: 'Abonnement TikTok', platform: 'tiktok', icon: '🚀', color: '#00f2ea',
+        isPack: true,
+        variants: [
+            { label: '1k Pack', price: 19.99, subOrders: [
+                { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 1000, deliveryMode: 'dripfeed' },
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 60000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 15000, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 1500, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 900, deliveryMode: 'standard' },
+            ]},
+            { label: '2.5k Pack', price: 39.99, subOrders: [
+                { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 2500, deliveryMode: 'dripfeed' },
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 150000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 45000, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 3000, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 1500, deliveryMode: 'standard' },
+            ]},
+            { label: '4k Pack', price: 79.99, subOrders: [
+                { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 4000, deliveryMode: 'dripfeed' },
+                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 240000, deliveryMode: 'standard' },
+                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 72000, deliveryMode: 'standard' },
+                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 4800, deliveryMode: 'standard' },
+                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 2400, deliveryMode: 'standard' },
+            ]},
+        ]
+    },
+    {
+        id: 'abonnement-instagram', title: 'Abonnement Instagram', platform: 'instagram', icon: '🚀', color: '#d62976',
+        isPack: true,
+        variants: [
+            { label: '1k Pack', price: 19.99, subOrders: [
+                { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 1000, deliveryMode: 'dripfeed' },
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 30000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 3000, deliveryMode: 'standard' },
+            ]},
+            { label: '2.5k Pack', price: 39.99, subOrders: [
+                { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 2500, deliveryMode: 'dripfeed' },
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 120000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 9000, deliveryMode: 'standard' },
+            ]},
+            { label: '5k Pack', price: 70, subOrders: [
+                { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 5000, deliveryMode: 'dripfeed' },
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 300000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 30000, deliveryMode: 'standard' },
+            ]},
+            { label: '10k Pack', price: 120, subOrders: [
+                { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 10000, deliveryMode: 'dripfeed' },
+                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 600000, deliveryMode: 'standard' },
+                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 60000, deliveryMode: 'standard' },
+            ]},
+        ]
+    },
+];
+
 interface PlatformCardProps {
     name: string;
     active?: boolean;
@@ -192,6 +408,97 @@ export function Services() {
 
         fetchAllowedServices();
     }, []);
+
+    // ─── Preset state ─────────────────────────────────────────────────────────
+    const [showPresets, setShowPresets] = useState(true);
+    const [packModal, setPackModal] = useState<{ open: boolean; preset: PackPreset | null; variant: PackVariant | null }>({
+        open: false, preset: null, variant: null
+    });
+    const [packForm, setPackForm] = useState({ link: '', shopifyOrderNumber: '' });
+    const [packSubmitting, setPackSubmitting] = useState(false);
+    const [packProgress, setPackProgress] = useState<{ label: string; status: 'pending' | 'ok' | 'error'; msg?: string }[]>([]);
+    const [packDone, setPackDone] = useState(false);
+
+    /** Find first service whose name (normalized) contains ALL keywords */
+    const findServiceByKeywords = (keywords: string[]): Service | null => {
+        const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return services.find(s => keywords.every(k => norm(s.name).includes(norm(k)))) ?? null;
+    };
+
+    const handlePresetSelect = (preset: SinglePreset, variant: PresetVariant) => {
+        const svc = findServiceByKeywords(preset.serviceKeywords);
+        if (!svc) {
+            alert(`⚠️ Service introuvable pour "${preset.title}". Vérifie que le service est bien activé dans la liste.`);
+            return;
+        }
+        setSelectedService(svc);
+        setOrderForm({
+            link: '',
+            quantity: variant.quantity.toString(),
+            shopifyOrderNumber: '',
+            deliveryMode: preset.deliveryMode,
+        });
+        setIsModalOpen(true);
+    };
+
+    const handlePackSelect = (preset: PackPreset, variant: PackVariant) => {
+        setPackForm({ link: '', shopifyOrderNumber: '' });
+        setPackProgress([]);
+        setPackDone(false);
+        setPackModal({ open: true, preset, variant });
+    };
+
+    const handleSubmitPack = async () => {
+        if (!packModal.variant || !packModal.preset) return;
+        if (!packForm.link) { alert('Veuillez entrer un lien.'); return; }
+
+        const results: { label: string; status: 'pending' | 'ok' | 'error'; msg?: string }[] =
+            packModal.variant.subOrders.map(s => ({ label: s.label, status: 'pending' }));
+        setPackProgress([...results]);
+        setPackSubmitting(true);
+
+        for (let i = 0; i < packModal.variant.subOrders.length; i++) {
+            const sub = packModal.variant.subOrders[i];
+            const svc = findServiceByKeywords(sub.keywords);
+
+            if (!svc) {
+                results[i] = { label: sub.label, status: 'error', msg: 'Service introuvable' };
+                setPackProgress([...results]);
+                continue;
+            }
+
+            try {
+                const orderData: any = {
+                    provider: selectedProvider,
+                    service: svc.service,
+                    service_name: svc.name,
+                    service_rate: parseFloat(svc.rate),
+                    link: packForm.link,
+                    quantity: sub.quantity,
+                    shopify_order_number: packForm.shopifyOrderNumber || undefined,
+                };
+                if (sub.deliveryMode === 'dripfeed') {
+                    orderData.dripfeed_enabled = true;
+                    orderData.dripfeed_quantity = 250;
+                }
+                await api.createDripFeedOrder(orderData);
+                results[i] = { label: sub.label, status: 'ok' };
+            } catch (err: any) {
+                results[i] = { label: sub.label, status: 'error', msg: err.message };
+            }
+            setPackProgress([...results]);
+        }
+
+        setPackSubmitting(false);
+        setPackDone(true);
+    };
+
+    const closePackModal = () => {
+        setPackModal({ open: false, preset: null, variant: null });
+        setPackProgress([]);
+        setPackDone(false);
+        if (packDone) navigate('/commandes');
+    };
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -539,6 +846,121 @@ export function Services() {
                         />
                     </div>
 
+                    {/* ─── Commandes Rapides ────────────────────────────── */}
+                    <div className="rounded-2xl overflow-hidden border border-white/10">
+                        {/* Header */}
+                        <button
+                            onClick={() => setShowPresets(p => !p)}
+                            className="w-full flex items-center justify-between px-5 py-4 bg-white/5 hover:bg-white/8 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center">
+                                    <Zap size={14} className="text-primary" fill="currentColor" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="text-white font-bold text-sm leading-none">Commandes Rapides</div>
+                                    <div className="text-slate-500 text-[11px] mt-0.5">Sélectionne une offre pour pré-remplir automatiquement</div>
+                                </div>
+                            </div>
+                            <ChevronRight size={16} className={cn('text-slate-400 transition-transform duration-200', showPresets && 'rotate-90')} />
+                        </button>
+
+                        {showPresets && (() => {
+                            const platforms = [
+                                { key: 'tiktok',    label: 'TikTok',    dot: '#00f2ea' },
+                                { key: 'instagram', label: 'Instagram', dot: '#e1306c' },
+                                { key: 'twitch',    label: 'Twitch',    dot: '#9146ff' },
+                                { key: 'discord',   label: 'Discord',   dot: '#5865f2' },
+                            ];
+                            return (
+                                <div className="divide-y divide-white/6">
+                                    {platforms.map(plt => {
+                                        const group = PREDEFINED_OFFERS.filter(o => o.platform === plt.key);
+                                        if (group.length === 0) return null;
+                                        const singles = group.filter(o => !o.isPack) as SinglePreset[];
+                                        const packs   = group.filter(o =>  o.isPack) as PackPreset[];
+                                        const allRows: { id: string; icon: string; title: string; isPack: boolean; offer: Preset }[] = [
+                                            ...singles.map(o => ({ id: o.id, icon: o.icon, title: o.title, isPack: false, offer: o })),
+                                            ...packs.map(o   => ({ id: o.id, icon: o.icon, title: o.title, isPack: true,  offer: o })),
+                                        ];
+                                        return (
+                                            <div key={plt.key}>
+                                                {/* Platform header row */}
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-white/2">
+                                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: plt.dot }} />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: plt.dot }}>{plt.label}</span>
+                                                </div>
+
+                                                {/* One row per offer */}
+                                                <div className="divide-y divide-white/4">
+                                                    {allRows.map(row => (
+                                                        <div key={row.id} className="flex items-center gap-3 px-4 py-2.5">
+                                                            {/* Left label — fixed width */}
+                                                            <div className="flex items-center gap-2 w-44 shrink-0">
+                                                                <span className="text-sm leading-none">{row.icon}</span>
+                                                                <span className="text-white text-xs font-semibold leading-tight truncate">{row.title}</span>
+                                                                {row.isPack
+                                                                    ? <span className="text-[9px] font-bold px-1.5 py-px rounded bg-blue-500/20 text-blue-400 border border-blue-500/20 shrink-0">PACK</span>
+                                                                    : <span className="text-[9px] text-slate-600 shrink-0">drip</span>
+                                                                }
+                                                            </div>
+
+                                                            {/* Chips — horizontally scrollable */}
+                                                            <div className="flex gap-1.5 overflow-x-auto scrollbar-none flex-1 pb-0.5">
+                                                                {!row.isPack && (row.offer as SinglePreset).variants.map((v: PresetVariant) => (
+                                                                    <button
+                                                                        key={v.label}
+                                                                        onClick={() => handlePresetSelect(row.offer as SinglePreset, v)}
+                                                                        disabled={loading}
+                                                                        className="relative flex flex-col items-center shrink-0 px-3 py-1.5 rounded-lg border border-white/10 bg-black/20 hover:bg-black/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                                                                        onMouseEnter={e => (e.currentTarget.style.borderColor = plt.dot + '90')}
+                                                                        onMouseLeave={e => (e.currentTarget.style.borderColor = '')}
+                                                                    >
+                                                                        <span className="text-white font-black text-xs leading-none whitespace-nowrap">{v.label}</span>
+                                                                        <span className="text-[10px] font-bold mt-0.5 whitespace-nowrap" style={{ color: plt.dot }}>{v.price}€</span>
+                                                                        {v.badge && (
+                                                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[7px] font-black px-1 py-px rounded-full whitespace-nowrap leading-none">
+                                                                                ⭐
+                                                                            </span>
+                                                                        )}
+                                                                    </button>
+                                                                ))}
+
+                                                                {row.isPack && (row.offer as PackPreset).variants.map((v: PackVariant) => (
+                                                                    <button
+                                                                        key={v.label}
+                                                                        onClick={() => handlePackSelect(row.offer as PackPreset, v)}
+                                                                        disabled={loading}
+                                                                        className="flex flex-col items-start shrink-0 px-3 py-1.5 rounded-lg border border-white/10 bg-black/20 hover:bg-black/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                                                                        onMouseEnter={e => (e.currentTarget.style.borderColor = '#3b82f680')}
+                                                                        onMouseLeave={e => (e.currentTarget.style.borderColor = '')}
+                                                                    >
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-white font-black text-xs leading-none whitespace-nowrap">{v.label}</span>
+                                                                            <span className="text-blue-400 font-bold text-[10px] whitespace-nowrap">{v.price}€</span>
+                                                                        </div>
+                                                                        <div className="flex gap-1.5 mt-1">
+                                                                            {v.subOrders.map(s => (
+                                                                                <span key={s.label} className="text-[9px] text-slate-500 whitespace-nowrap">
+                                                                                    {s.quantity >= 1000 ? (s.quantity / 1000) + 'k' : s.quantity}
+                                                                                    {' '}{s.label.replace(/tiktok|instagram|twitch|discord/gi, '').trim().split(' ')[0]}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
+                    </div>
+
                     {/* Search Bar */}
                     <div className="relative group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
@@ -727,6 +1149,114 @@ export function Services() {
                     )}
                 </div>
             </div>
+
+            {/* ─── Pack Confirmation Modal ─────────────────────────────── */}
+            {packModal.open && packModal.preset && packModal.variant && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-surface border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
+                        <div className="sticky top-0 bg-surface border-b border-white/10 p-6 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white">{packModal.preset.icon} {packModal.preset.title}</h2>
+                                <p className="text-slate-400 text-sm mt-0.5">{packModal.variant.label} — <span className="text-primary font-bold">{packModal.variant.price}€</span></p>
+                            </div>
+                            {!packSubmitting && (
+                                <button onClick={closePackModal} className="p-2 hover:bg-white/5 rounded-xl transition-colors">
+                                    <X size={22} className="text-slate-400" />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="p-6 space-y-5">
+                            {/* Sub-orders breakdown */}
+                            <div className="bg-black/20 border border-white/5 rounded-2xl p-4 space-y-2">
+                                <div className="text-xs font-bold text-slate-500 uppercase mb-3">Contenu du pack</div>
+                                {packModal.variant.subOrders.map((s, i) => {
+                                    const found = !loading && findServiceByKeywords(s.keywords);
+                                    const prog = packProgress[i];
+                                    return (
+                                        <div key={s.label} className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                {prog ? (
+                                                    prog.status === 'ok' ? <CheckCircle size={14} className="text-green-400" />
+                                                    : prog.status === 'error' ? <X size={14} className="text-red-400" />
+                                                    : <RefreshCw size={14} className="text-yellow-400 animate-spin" />
+                                                ) : (
+                                                    found ? <CheckCircle size={14} className="text-green-500/50" />
+                                                    : <X size={14} className="text-red-500/60" />
+                                                )}
+                                                <span className="text-sm text-white">{s.label}</span>
+                                                {prog?.msg && <span className="text-xs text-red-400">({prog.msg})</span>}
+                                            </div>
+                                            <span className="font-mono text-xs text-slate-400">{s.quantity.toLocaleString()}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {!packDone && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-bold text-white mb-2">
+                                            <Link2 size={14} className="inline mr-2" />Lien du réseau social *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={packForm.link}
+                                            onChange={e => setPackForm(f => ({ ...f, link: e.target.value }))}
+                                            placeholder="https://..."
+                                            disabled={packSubmitting}
+                                            className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-primary/50 transition-colors disabled:opacity-50"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-white mb-2">
+                                            <ShoppingCart size={14} className="inline mr-2" />N° commande Shopify
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={packForm.shopifyOrderNumber}
+                                            onChange={e => setPackForm(f => ({ ...f, shopifyOrderNumber: e.target.value }))}
+                                            placeholder="Ex: #1001"
+                                            disabled={packSubmitting}
+                                            className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-primary/50 transition-colors disabled:opacity-50"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {packDone && (
+                                <div className={cn(
+                                    'rounded-xl p-4 text-sm font-bold text-center',
+                                    packProgress.every(p => p.status === 'ok') ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                )}>
+                                    {packProgress.filter(p => p.status === 'ok').length}/{packProgress.length} commandes créées avec succès.
+                                </div>
+                            )}
+
+                            <div className="flex gap-3">
+                                {!packDone ? (
+                                    <>
+                                        <button onClick={closePackModal} disabled={packSubmitting} className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-colors disabled:opacity-40">
+                                            Annuler
+                                        </button>
+                                        <button
+                                            onClick={handleSubmitPack}
+                                            disabled={!packForm.link || packSubmitting}
+                                            className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            {packSubmitting ? <><RefreshCw size={16} className="animate-spin" /> Création...</> : 'Commander le pack'}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button onClick={() => { closePackModal(); navigate('/commandes'); }} className="flex-1 px-4 py-3 bg-primary text-black font-bold rounded-xl transition-colors">
+                                        Voir les commandes →
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {isModalOpen && selectedService && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
