@@ -184,6 +184,7 @@ export function Config() {
             fetchMembers();
         } else if (activeTab === 'catalog') {
             fetchAllowedServices();
+            if (providers.length === 0) fetchProviders();
         }
     }, [activeTab]);
 
@@ -517,15 +518,15 @@ export function Config() {
                 {activeTab === 'catalog' && (
                     <button
                         onClick={() => {
-                            // Get first active provider as default
                             const defaultProvider = providers.find(p => p.active) || providers[0];
                             setServiceFormData({ 
                                 service_id: '', 
                                 service_name: '', 
-                                provider: defaultProvider?.name || 'default', 
+                                provider: defaultProvider?.name || '', 
                                 delivery_mode: 'standard', 
                                 dripfeed_quantity: 250, 
-                                dripfeed_custom: '' 
+                                dripfeed_custom: '',
+                                is_pack: false,
                             });
                             setShowServiceModal(true);
                         }}
@@ -818,7 +819,7 @@ export function Config() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {service.is_pack && (
+                                            {!!service.is_pack && (
                                                 <button
                                                     onClick={() => togglePackExpand(service.id)}
                                                     className="flex items-center gap-1 px-3 py-1.5 text-xs text-orange-400 hover:bg-orange-500/10 rounded-lg transition-colors border border-orange-500/30"
@@ -838,7 +839,7 @@ export function Config() {
                                     </div>
 
                                     {/* Pack items panel */}
-                                    {service.is_pack && packExpandedId === service.id && (
+                                    {!!service.is_pack && packExpandedId === service.id && (
                                         <div className="border-t border-white/5 bg-background/50 p-4 space-y-3">
                                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sous-services du pack</p>
                                             {(packItemsMap[service.id] || []).length === 0 ? (
@@ -1319,8 +1320,7 @@ export function Config() {
                                 <button
                                     onClick={() => {
                                         setShowServiceModal(false);
-                                        const defaultProvider = providers.find(p => p.active) || providers[0];
-                                        setServiceFormData({ service_id: '', service_name: '', provider: defaultProvider?.name || 'default', delivery_mode: 'standard', dripfeed_quantity: 250, dripfeed_custom: '' });
+                                        setServiceFormData({ service_id: '', service_name: '', provider: '', delivery_mode: 'standard', dripfeed_quantity: 250, dripfeed_custom: '', is_pack: false });
                                     }}
                                     className="flex-1 px-4 py-2 bg-surface border border-white/10 text-white font-semibold rounded-xl hover:bg-white/5 transition-colors"
                                 >
