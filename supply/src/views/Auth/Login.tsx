@@ -28,7 +28,7 @@ export function Login() {
 
         try {
             await login(email, password);
-            // Navigation will happen automatically via useEffect when isAuthenticated becomes true
+            navigate('/dashboard', { replace: true });
         } catch (err: any) {
             console.error('Login error:', err);
             
