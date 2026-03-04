@@ -2,6 +2,36 @@ import express from 'express';
 import crypto from 'crypto';
 import db from '../config/database.js';
 
+// Extract real quantity from Shopify variant title (handles French "2.500" → 2500)
+function extractQuantityFromVariant(variantTitle, fallback = 1) {
+  if (!variantTitle) return fallback;
+
+  // Normalize French thousand separator: "2.500" → "2500"
+  const normalized = variantTitle.replace(/(\d)\.(\d{3})(?!\d)/g, '$1$2');
+
+  const patterns = [
+    /(\d+)k[\s›•·]?/i, // "5k"
+    /(\d+)\s*[›>]/, // "1000 ›"
+    /[•·]\s*(\d+)/, // "• 1000"
+    /(\d+)\s*abonné/i,
+    /(\d+)\s*like/i,
+    /(\d+)\s*vue/i,
+    /(\d+)/ // last fallback: any number
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match) {
+      let qty = parseInt(match[1]);
+      if (pattern === patterns[0]) qty *= 1000; // k suffix
+      console.log('[QUANTITY] Shopify variant parsed:', { variantTitle, normalized, qty });
+      return qty;
+    }
+  }
+
+  return fallback;
+}
+
 const router = express.Router();
 
 // Middleware to verify Shopify webhook signature
@@ -135,54 +165,62 @@ async function processShopifyOrder(order) {
 
   // Extract first line item (assuming one product per order)
   const lineItem = line_items[0];
-  
+
+  // --- Real quantity from variant title (e.g. "• 2.500 ›" → 2500) ---
+  // lineItem.quantity is the cart count (almost always 1); the real follower/like
+  // count lives in the variant title.
+  const realQuantity = extractQuantityFromVariant(
+    lineItem.variant_title || '',
+    lineItem.quantity || 1
+  );
+
   // Log what we received for debugging
   console.log('[DEBUG] Order data received:', {
-    note: note,
-    note_attributes: note_attributes,
+    note,
+    note_attributes,
     line_item_properties: lineItem.properties,
-    line_item_title: lineItem.title
+    line_item_title: lineItem.title,
+    variant_title: lineItem.variant_title,
+    cart_quantity: lineItem.quantity,
+    real_quantity: realQuantity
   });
-  
-  // Extract social media link from multiple sources
+
+  // --- Extract social link / username from multiple sources ---
   let socialLink = '';
-  
+
+  // Keywords that indicate the field contains a social URL or username
+  const socialKeywords = [
+    'link', 'url', 'instagram', 'tiktok', 'twitch', 'youtube',
+    'compte', 'profil', 'username', 'utilisateur', 'nom'
+  ];
+  const isSocialKey = (name) => socialKeywords.some(k => name.toLowerCase().includes(k));
+
   // 1. Check note field
   if (note && note.trim()) {
     socialLink = note.trim();
     console.log('[FOUND] Social link in note:', socialLink);
   }
-  
-  // 2. Check note_attributes (custom form fields)
+
+  // 2. Check note_attributes (custom form fields — includes "Nom D'utilisateur")
   if (!socialLink && note_attributes && note_attributes.length > 0) {
-    const linkAttr = note_attributes.find(attr => {
-      const name = attr.name.toLowerCase();
-      return name.includes('link') || name.includes('url') || 
-             name.includes('instagram') || name.includes('tiktok') ||
-             name.includes('compte') || name.includes('profil');
-    });
-    if (linkAttr && linkAttr.value) {
+    const linkAttr = note_attributes.find(attr => isSocialKey(attr.name) && attr.value);
+    if (linkAttr) {
       socialLink = linkAttr.value.trim();
-      console.log('[FOUND] Social link in note_attributes:', socialLink);
+      console.log('[FOUND] Social link in note_attributes:', { key: linkAttr.name, value: socialLink });
     }
   }
-  
+
   // 3. Check line item properties
   if (!socialLink && lineItem.properties && lineItem.properties.length > 0) {
-    const linkProp = lineItem.properties.find(p => {
-      const name = p.name.toLowerCase();
-      return name.includes('link') || name.includes('url') ||
-             name.includes('instagram') || name.includes('tiktok') ||
-             name.includes('compte') || name.includes('profil');
-    });
-    if (linkProp && linkProp.value) {
+    const linkProp = lineItem.properties.find(p => isSocialKey(p.name) && p.value);
+    if (linkProp) {
       socialLink = linkProp.value.trim();
-      console.log('[FOUND] Social link in line item properties:', socialLink);
+      console.log('[FOUND] Social link in line item properties:', { key: linkProp.name, value: socialLink });
     }
   }
-  
+
   if (!socialLink) {
-    console.log('[WARN] Aucun lien social trouve pour commande #' + order_number);
+    console.log('[WARN] Aucun lien/username social trouvé pour commande #' + order_number);
   }
 
   // Check if order already exists
@@ -226,7 +264,7 @@ async function processShopifyOrder(order) {
     customer?.last_name || null,
     lineItem.title,
     lineItem.variant_title || null,
-    lineItem.quantity,
+    realQuantity,
     parseFloat(lineItem.price),
     parseFloat(total_price),
     socialLink,

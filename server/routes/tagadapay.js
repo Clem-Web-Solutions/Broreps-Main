@@ -297,7 +297,10 @@ async function findServiceByProductName(productName, variantName = '') {
 // Extract quantity from variant name
 function extractQuantityFromVariant(variantName, fallbackQuantity = 1) {
   if (!variantName) return fallbackQuantity;
-  
+
+  // Normalize French thousand separator: "2.500" → "2500", "10.000" → "10000"
+  const normalized = variantName.replace(/(\d)\.(\d{3})(?!\d)/g, '$1$2');
+
   // Match patterns like "1000 ›", "• 1000", "5k", "10K"
   const patterns = [
     /(\d+)k[\s›•·]?/i, // "5k " or "5K›" (k immediately after number)
@@ -310,24 +313,25 @@ function extractQuantityFromVariant(variantName, fallbackQuantity = 1) {
   ];
   
   for (const pattern of patterns) {
-    const match = variantName.match(pattern);
+    const match = normalized.match(pattern);
     if (match) {
       let quantity = parseInt(match[1]);
-      
+
       // Handle "k" suffix (thousands) - only if it's the first pattern
       if (pattern === patterns[0]) {
         quantity *= 1000;
       }
-      
-      console.log('[QUANTITY] Extracted from variant:', { 
-        variant: variantName, 
-        quantity 
+
+      console.log('[QUANTITY] Extracted from variant:', {
+        variant: variantName,
+        normalized,
+        quantity
       });
-      
+
       return quantity;
     }
   }
-  
+
   return fallbackQuantity;
 }
 
