@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "seed": "node scripts/seed.js",
+    "seed:fresh": "node scripts/seed.js --fresh",
     "seed:saas": "node scripts/seed-saas.js"
   },
   "keywords": [

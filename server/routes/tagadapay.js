@@ -301,8 +301,10 @@ async function findServiceByProductName(productName, variantName = '') {
 function extractQuantityFromVariant(variantName, fallbackQuantity = 1) {
   if (!variantName) return fallbackQuantity;
 
-  // Normalize French thousand separator: "2.500" → "2500", "10.000" → "10000"
-  const normalized = variantName.replace(/(\d)\.(\d{3})(?!\d)/g, '$1$2');
+  // Normalize French thousand separators: "2.500" → "2500", "10 000" → "10000", "10.000" → "10000"
+  const normalized = variantName
+    .replace(/(\d)\.(\d{3})(?!\d)/g, '$1$2')   // dot separator: 10.000 → 10000
+    .replace(/(\d)\s(\d{3})(?!\d)/g, '$1$2');   // space separator: 10 000 → 10000
 
   // Match patterns like "1000 ›", "• 1000", "5k", "10K"
   const patterns = [
