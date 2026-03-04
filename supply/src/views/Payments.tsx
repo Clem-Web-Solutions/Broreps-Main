@@ -34,10 +34,12 @@ interface Payment {
     amount: number;
     currency: string;
     payment_status: string;
-    social_link: string;
+    social_link: string | null;
     shopify_order_number: number | null;
     payment_created_at: string;
     created_at: string;
+    is_processed: number | boolean;
+    internal_order_id: number | null;
 }
 
 interface Subscription {
@@ -356,15 +358,28 @@ export function Payments() {
                                             </div>
                                         </td>
                                         <td className="px-5 py-4 text-center">
-                                            {['paid', 'succeeded', 'success'].includes(p.payment_status) && !p.social_link && (
-                                                <button
-                                                    onClick={() => openComplete(p)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 transition-all font-semibold hover:scale-105"
-                                                >
-                                                    <Zap size={10} />
-                                                    Compléter
-                                                </button>
-                                            )}
+                                            {['paid', 'succeeded', 'success'].includes(p.payment_status) ? (
+                                                <div className="flex flex-col items-center gap-1.5">
+                                                    {p.internal_order_id && (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-[11px] font-semibold">
+                                                            <CheckCircle2 size={10} />
+                                                            #{p.internal_order_id}
+                                                        </span>
+                                                    )}
+                                                    <button
+                                                        onClick={() => openComplete(p)}
+                                                        className={cn(
+                                                            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-semibold hover:scale-105 text-[11px]',
+                                                            p.is_processed
+                                                                ? 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                                                                : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
+                                                        )}
+                                                    >
+                                                        {p.is_processed ? <RotateCcw size={10} /> : <Zap size={10} />}
+                                                        {p.is_processed ? 'Relancer' : 'Compléter'}
+                                                    </button>
+                                                </div>
+                                            ) : null}
                                         </td>
                                     </tr>
                                 ))}

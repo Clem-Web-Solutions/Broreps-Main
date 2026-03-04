@@ -169,7 +169,7 @@ export function NotificationBell() {
             </button>
 
             {showDropdown && (
-                <div className="absolute right-0 mt-2 w-105 max-h-125 bg-surface border border-white/10 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden">
+                <div className="absolute right-0 mt-2 w-105 max-h-125 bg-surface border border-white/10 rounded-2xl shadow-2xl z-[9999] flex flex-col overflow-hidden">
                     {/* Header */}
                     <div className="p-4 border-b border-white/5 flex items-center justify-between bg-surface/60 backdrop-blur-sm">
                         <div>

@@ -934,12 +934,6 @@ export function Drip() {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="text-center text-sm text-slate-400 mb-4">
-                                            <span className="font-bold text-white">{filteredOrders.length}</span> commande{filteredOrders.length > 1 ? 's' : ''} trouvée{filteredOrders.length > 1 ? 's' : ''}
-                                            {totalPages > 1 && (
-                                                <span className="ml-2">• Page <span className="text-white font-bold">{currentPage}</span> / {totalPages}</span>
-                                            )}
-                                        </div>
                                         <div className="grid grid-cols-1 gap-4">
                                             {paginatedOrders.map((order: Order) => {
                                                 const progress = getOrderProgress(order);
@@ -1109,12 +1103,6 @@ export function Drip() {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="text-center text-sm text-slate-400 mb-4">
-                                            <span className="font-bold text-white">{filteredOrders.length}</span> commande{filteredOrders.length > 1 ? 's' : ''} trouvée{filteredOrders.length > 1 ? 's' : ''}
-                                            {totalPages > 1 && (
-                                                <span className="ml-2">• Page <span className="text-white font-bold">{currentPage}</span> / {totalPages}</span>
-                                            )}
-                                        </div>
                                         <div className="grid grid-cols-1 gap-4">
                                             {paginatedOrders.map((order) => {
                                                 const progress = getOrderProgress(order);
@@ -1362,12 +1350,6 @@ export function Drip() {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="text-center text-sm text-slate-400 mb-4">
-                                            <span className="font-bold text-white">{filteredOrders.length}</span> commande{filteredOrders.length > 1 ? 's' : ''} en attente
-                                            {totalPages > 1 && (
-                                                <span className="ml-2">• Page <span className="text-white font-bold">{currentPage}</span> / {totalPages}</span>
-                                            )}
-                                        </div>
                                         <div className="grid grid-cols-1 gap-4">
                                             {paginatedOrders.map((order: Order) => {
                                                 const statusColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20';
@@ -1423,7 +1405,7 @@ export function Drip() {
                                                                 </div>
                                                                 <div className="bg-white/5 rounded-xl p-3">
                                                                     <div className="text-xs text-slate-500 mb-1">Coût</div>
-                                                                    <div className="text-lg font-bold text-white">${(order.charge || 0).toFixed(2)}</div>
+                                                                    <div className="text-lg font-bold text-white">${parseFloat(order.charge?.toString() || '0').toFixed(2)}</div>
                                                                 </div>
                                                                 <div className="bg-white/5 rounded-xl p-3">
                                                                     <div className="text-xs text-slate-500 mb-1">Créée</div>
@@ -1497,12 +1479,6 @@ export function Drip() {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="text-center text-sm text-slate-400 mb-4">
-                                            <span className="font-bold text-white">{filteredOrders.length}</span> commande{filteredOrders.length > 1 ? 's' : ''} complétée{filteredOrders.length > 1 ? 's' : ''}
-                                            {totalPages > 1 && (
-                                                <span className="ml-2">• Page <span className="text-white font-bold">{currentPage}</span> / {totalPages}</span>
-                                            )}
-                                        </div>
                                         <div className="grid grid-cols-1 gap-4">
                                             {paginatedOrders.map((order: Order) => {
                                                 const delivered = order.quantity - (order.remains || 0);

@@ -106,7 +106,7 @@ export function DashboardLayout() {
                 <ParticlesBackground />
             </div>
 
-            <header className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-[#111111]/80 backdrop-blur-xl relative z-10 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+            <header className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-[#111111]/80 backdrop-blur-xl relative z-30 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
                 <div className="flex items-center gap-12">
                     <div className="flex items-center gap-2">
                         <img src="/logo.png" alt="BroReps Supply" className="h-10 w-auto object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105" />
@@ -164,7 +164,7 @@ export function DashboardLayout() {
                 </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden relative z-10">
+            <div className="flex flex-1 overflow-hidden relative">
                 <nav className="w-64 hidden lg:flex flex-col border-r border-white/5 p-6 h-[calc(100vh-80px)] overflow-y-auto bg-[#0a0a0a]/50 backdrop-blur-md">
                     <div className="space-y-2">
                         <h4 className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">M E N U</h4>

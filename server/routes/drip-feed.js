@@ -4,6 +4,7 @@ import db from '../config/database.js';
 import { extractUsername } from '../lib/username-extractor.js';
 import { smmRequest } from './smm.js';
 import { notifyAdmins, createNotification } from './notifications.js';
+import { fulfillShopifyOrder } from '../lib/shopify.js';
 
 const router = express.Router();
 
@@ -149,6 +150,13 @@ router.post('/create-order', authenticateToken, async (req, res) => {
                     [parentOrderId]
                 );
 
+                // Mark Shopify order as fulfilled on first batch dispatch
+                if (shopify_order_number) {
+                    fulfillShopifyOrder(shopify_order_number).catch(e =>
+                        console.error('[Shopify] fulfillment error (drip first batch):', e.message)
+                    );
+                }
+
                 console.log(`✅ First sub-order created and sent to API`);
 
             } catch (smmError) {
@@ -225,6 +233,13 @@ router.post('/create-order', authenticateToken, async (req, res) => {
                     'UPDATE orders SET provider_order_id = ?, status = ? WHERE id = ?',
                     [providerOrderId, 'processing', orderId]
                 );
+
+                // Mark Shopify order as fulfilled when standard order is dispatched
+                if (shopify_order_number) {
+                    fulfillShopifyOrder(shopify_order_number).catch(e =>
+                        console.error('[Shopify] fulfillment error (standard order):', e.message)
+                    );
+                }
 
                 await connection.commit();
 
@@ -417,6 +432,13 @@ router.post('/process', authenticateCron, async (req, res) => {
                     'UPDATE orders SET dripfeed_current_run = ?, status = ? WHERE id = ?',
                     [currentRun, newStatus, parentOrder.id]
                 );
+
+                // Mark Shopify order as fulfilled on FIRST batch from cron
+                if (currentRun === 1 && parentOrder.shopify_order_number) {
+                    fulfillShopifyOrder(parentOrder.shopify_order_number).catch(e =>
+                        console.error('[Shopify] fulfillment error (cron first batch):', e.message)
+                    );
+                }
 
                 processedCount++;
                 executedRuns++;

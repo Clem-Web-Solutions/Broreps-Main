@@ -1568,7 +1568,8 @@ router.get('/admin/payments', authenticateToken, requireAdmin, async (req, res) 
     const [payments] = await db.query(
       `SELECT id, payment_id, order_id, order_type, customer_email, customer_name, customer_phone,
               product_title, quantity, amount, currency, payment_status, social_link,
-              shopify_order_number, payment_created_at, created_at
+              shopify_order_number, payment_created_at, created_at,
+              is_processed, internal_order_id
        FROM tagadapay_orders ${where}
        ORDER BY payment_created_at DESC, created_at DESC
        LIMIT ? OFFSET ?`,

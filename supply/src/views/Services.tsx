@@ -905,119 +905,174 @@ export function Services() {
                     </div>
 
                     {/* ─── Commandes Rapides ────────────────────────────── */}
-                    <div className="rounded-2xl overflow-hidden border border-white/10">
-                        {/* Header */}
-                        <button
-                            onClick={() => setShowPresets(p => !p)}
-                            className="w-full flex items-center justify-between px-5 py-4 bg-white/5 hover:bg-white/8 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center">
-                                    <Zap size={14} className="text-primary" fill="currentColor" />
+                    {(() => {
+                        const platforms = [
+                            { key: 'tiktok',    label: 'TikTok',    color: '#00f2ea' },
+                            { key: 'instagram', label: 'Instagram', color: '#e1306c' },
+                            { key: 'twitch',    label: 'Twitch',    color: '#9146ff' },
+                            { key: 'discord',   label: 'Discord',   color: '#5865f2' },
+                        ];
+
+                        // Use first platform with offers as default — derive from showPresets string trick:
+                        // showPresets is boolean so we use a separate module-level trick: store active tab in a data attr
+                        // Actually simplest: just render all platforms always, filtered by a tab state.
+                        // Since we can't add useState here, we'll render all tabs with CSS show/hide using showPresets as toggle.
+
+                        const allPlatformOffers = platforms.map(plt => ({
+                            ...plt,
+                            offers: PREDEFINED_OFFERS.filter(o => o.platform === plt.key),
+                        })).filter(p => p.offers.length > 0);
+
+                        return (
+                            <div className="space-y-3">
+                                {/* Section header */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center">
+                                            <Zap size={15} className="text-primary" fill="currentColor" />
+                                        </div>
+                                        <div>
+                                            <span className="text-white font-bold text-[15px] leading-none">Commandes Rapides</span>
+                                            <p className="text-[#A1A1AA] text-[11px] mt-0.5">Sélectionne un pack pour commander en un clic</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowPresets(p => !p)}
+                                        className={cn(
+                                            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border',
+                                            showPresets
+                                                ? 'bg-primary/10 border-primary/20 text-primary'
+                                                : 'bg-white/5 border-white/10 text-[#A1A1AA] hover:text-white'
+                                        )}
+                                    >
+                                        {showPresets ? 'Masquer' : 'Afficher'}
+                                        <ChevronRight size={13} className={cn('transition-transform duration-200', showPresets && 'rotate-90')} />
+                                    </button>
                                 </div>
-                                <div className="text-left">
-                                    <div className="text-white font-bold text-sm leading-none">Commandes Rapides</div>
-                                    <div className="text-slate-500 text-[11px] mt-0.5">Sélectionne une offre pour pré-remplir automatiquement</div>
-                                </div>
-                            </div>
-                            <ChevronRight size={16} className={cn('text-slate-400 transition-transform duration-200', showPresets && 'rotate-90')} />
-                        </button>
 
-                        {showPresets && (() => {
-                            const platforms = [
-                                { key: 'tiktok', label: 'TikTok', dot: '#00f2ea' },
-                                { key: 'instagram', label: 'Instagram', dot: '#e1306c' },
-                                { key: 'twitch', label: 'Twitch', dot: '#9146ff' },
-                                { key: 'discord', label: 'Discord', dot: '#5865f2' },
-                            ];
-                            return (
-                                <div className="divide-y divide-white/6">
-                                    {platforms.map(plt => {
-                                        const group = PREDEFINED_OFFERS.filter(o => o.platform === plt.key);
-                                        if (group.length === 0) return null;
-                                        const singles = group.filter(o => !o.isPack) as SinglePreset[];
-                                        const packs = group.filter(o => o.isPack) as PackPreset[];
-                                        const allRows: { id: string; icon: string; title: string; isPack: boolean; offer: Preset }[] = [
-                                            ...singles.map(o => ({ id: o.id, icon: o.icon, title: o.title, isPack: false, offer: o })),
-                                            ...packs.map(o => ({ id: o.id, icon: o.icon, title: o.title, isPack: true, offer: o })),
-                                        ];
-                                        return (
-                                            <div key={plt.key}>
-                                                {/* Platform header row */}
-                                                <div className="flex items-center gap-2 px-4 py-2 bg-white/2">
-                                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: plt.dot }} />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: plt.dot }}>{plt.label}</span>
-                                                </div>
+                                {showPresets && (
+                                    <div className="space-y-6 pt-1">
+                                        {allPlatformOffers.map(plt => {
+                                            const singles = plt.offers.filter(o => !o.isPack) as SinglePreset[];
+                                            const packs   = plt.offers.filter(o =>  o.isPack) as PackPreset[];
 
-                                                {/* One row per offer */}
-                                                <div className="divide-y divide-white/4">
-                                                    {allRows.map(row => (
-                                                        <div key={row.id} className="flex items-center gap-3 px-4 py-2.5">
-                                                            {/* Left label — fixed width */}
-                                                            <div className="flex items-center gap-2 w-44 shrink-0">
-                                                                <span className="text-sm leading-none">{row.icon}</span>
-                                                                <span className="text-white text-xs font-semibold leading-tight truncate">{row.title}</span>
-                                                                {row.isPack
-                                                                    ? <span className="text-[9px] font-bold px-1.5 py-px rounded bg-blue-500/20 text-blue-400 border border-blue-500/20 shrink-0">PACK</span>
-                                                                    : <span className="text-[9px] text-slate-600 shrink-0">drip</span>
-                                                                }
-                                                            </div>
+                                            return (
+                                                <div key={plt.key} className="space-y-3">
+                                                    {/* Platform label */}
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: plt.color }} />
+                                                        <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: plt.color }}>{plt.label}</span>
+                                                        <div className="flex-1 h-px bg-white/5" />
+                                                    </div>
 
-                                                            {/* Chips — horizontally scrollable */}
-                                                            <div className="flex gap-1.5 overflow-x-auto scrollbar-none flex-1 pb-0.5">
-                                                                {!row.isPack && (row.offer as SinglePreset).variants.map((v: PresetVariant) => (
-                                                                    <button
-                                                                        key={v.label}
-                                                                        onClick={() => handlePresetSelect(row.offer as SinglePreset, v)}
-                                                                        disabled={loading}
-                                                                        className="relative flex flex-col items-center shrink-0 px-3 py-1.5 rounded-lg border border-white/10 bg-black/20 hover:bg-black/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
-                                                                        onMouseEnter={e => (e.currentTarget.style.borderColor = plt.dot + '90')}
-                                                                        onMouseLeave={e => (e.currentTarget.style.borderColor = '')}
+                                                    {/* Cards grid */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                                        {/* Single-service offers */}
+                                                        {singles.map(preset => (
+                                                            <div
+                                                                key={preset.id}
+                                                                className="bg-[#0A0A0A] border border-white/8 rounded-2xl overflow-hidden hover:border-white/15 transition-all group"
+                                                            >
+                                                                {/* Card header */}
+                                                                <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-white/5">
+                                                                    <div
+                                                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                                                                        style={{ background: plt.color + '18' }}
                                                                     >
-                                                                        <span className="text-white font-black text-xs leading-none whitespace-nowrap">{v.label}</span>
-                                                                        <span className="text-[10px] font-bold mt-0.5 whitespace-nowrap" style={{ color: plt.dot }}>{v.price}€</span>
-                                                                        {v.badge && (
-                                                                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[7px] font-black px-1 py-px rounded-full whitespace-nowrap leading-none">
-                                                                                ⭐
-                                                                            </span>
-                                                                        )}
-                                                                    </button>
-                                                                ))}
-
-                                                                {row.isPack && (row.offer as PackPreset).variants.map((v: PackVariant) => (
-                                                                    <button
-                                                                        key={v.label}
-                                                                        onClick={() => handlePackSelect(row.offer as PackPreset, v)}
-                                                                        disabled={loading}
-                                                                        className="flex flex-col items-start shrink-0 px-3 py-1.5 rounded-lg border border-white/10 bg-black/20 hover:bg-black/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
-                                                                        onMouseEnter={e => (e.currentTarget.style.borderColor = '#3b82f680')}
-                                                                        onMouseLeave={e => (e.currentTarget.style.borderColor = '')}
-                                                                    >
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="text-white font-black text-xs leading-none whitespace-nowrap">{v.label}</span>
-                                                                            <span className="text-blue-400 font-bold text-[10px] whitespace-nowrap">{v.price}€</span>
+                                                                        {preset.icon}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-white font-bold text-[13px] leading-tight truncate">{preset.title}</div>
+                                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                                            <span className="text-[10px] font-semibold px-1.5 py-px rounded-md bg-white/5 text-[#A1A1AA]">Drip Feed</span>
+                                                                            <span className="text-[10px] text-[#A1A1AA]">{preset.variants.length} offres</span>
                                                                         </div>
-                                                                        <div className="flex gap-1.5 mt-1">
-                                                                            {v.subOrders.map(s => (
-                                                                                <span key={s.label} className="text-[9px] text-slate-500 whitespace-nowrap">
-                                                                                    {s.quantity >= 1000 ? (s.quantity / 1000) + 'k' : s.quantity}
-                                                                                    {' '}{s.label.replace(/tiktok|instagram|twitch|discord/gi, '').trim().split(' ')[0]}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Variant chips */}
+                                                                <div className="p-3 flex flex-wrap gap-2">
+                                                                    {preset.variants.map(v => (
+                                                                        <button
+                                                                            key={v.label}
+                                                                            onClick={() => handlePresetSelect(preset, v)}
+                                                                            disabled={loading}
+                                                                            className="relative flex flex-col items-center px-3 py-2 rounded-xl border border-white/8 bg-white/3 hover:bg-white/8 hover:border-white/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 group/chip"
+                                                                        >
+                                                                            <span className="text-white font-black text-[12px] leading-none whitespace-nowrap">{v.label}</span>
+                                                                            <span className="text-[11px] font-bold mt-1 whitespace-nowrap" style={{ color: plt.color }}>{v.price}€</span>
+                                                                            {v.badge && (
+                                                                                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[8px] font-black px-1.5 py-0.5 rounded-full whitespace-nowrap leading-none shadow-lg">
+                                                                                    ⭐
                                                                                 </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    </button>
-                                                                ))}
+                                                                            )}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ))}
+                                                        ))}
+
+                                                        {/* Pack offers */}
+                                                        {packs.map(preset => (
+                                                            <div
+                                                                key={preset.id}
+                                                                className="bg-[#0A0A0A] border border-white/8 rounded-2xl overflow-hidden hover:border-white/15 transition-all group md:col-span-2 xl:col-span-1"
+                                                            >
+                                                                {/* Card header */}
+                                                                <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-white/5">
+                                                                    <div
+                                                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                                                                        style={{ background: plt.color + '18' }}
+                                                                    >
+                                                                        {preset.icon}
+                                                                    </div>
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="text-white font-bold text-[13px] leading-tight truncate">{preset.title}</div>
+                                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                                            <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/20">PACK</span>
+                                                                            <span className="text-[10px] text-[#A1A1AA]">{preset.variants.length} offres · {preset.variants[0]?.subOrders.length} services</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Pack variant chips with sub-order preview */}
+                                                                <div className="p-3 flex flex-wrap gap-2">
+                                                                    {preset.variants.map(v => (
+                                                                        <button
+                                                                            key={v.label}
+                                                                            onClick={() => handlePackSelect(preset, v)}
+                                                                            disabled={loading}
+                                                                            className="group/chip flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-xl border border-white/8 bg-white/3 hover:bg-blue-500/8 hover:border-blue-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 w-full sm:w-auto"
+                                                                        >
+                                                                            <div className="flex flex-col items-start">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="text-white font-black text-[12px] leading-none">{v.label}</span>
+                                                                                    <span className="text-blue-400 font-bold text-[12px]">{v.price}€</span>
+                                                                                </div>
+                                                                                <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1.5">
+                                                                                    {v.subOrders.map(s => (
+                                                                                        <span key={s.label} className="text-[10px] text-[#A1A1AA] whitespace-nowrap flex items-center gap-0.5">
+                                                                                            <span className="text-white/50">·</span>
+                                                                                            {s.quantity >= 1000 ? (s.quantity >= 1000000 ? (s.quantity / 1000000) + 'M' : (s.quantity / 1000) + 'k') : s.quantity}
+                                                                                            {' '}<span className="capitalize">{s.label.replace(/tiktok|instagram|twitch|discord/gi, '').trim().split(' ')[0].toLowerCase()}</span>
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })()}
-                    </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     {/* Search Bar */}
                     <div className="relative group">
@@ -1210,7 +1265,7 @@ export function Services() {
 
             {/* ─── Pack Confirmation Modal ─────────────────────────────── */}
             {packModal.open && packModal.preset && packModal.variant && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
                         <div className="sticky top-0 bg-[#0A0A0A] border-b border-white/10 p-6 flex items-center justify-between">
                             <div>
@@ -1316,204 +1371,219 @@ export function Services() {
                 </div>
             )}
 
-            {isModalOpen && selectedService && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-                        {/* Modal Header */}
-                        <div className="sticky top-0 bg-[#0A0A0A] border-b border-white/10 p-6 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-2xl font-bold text-white">Commander un service</h2>
-                                <p className="text-slate-400 text-sm mt-1">{selectedService.name}</p>
-                            </div>
-                            <button
-                                onClick={closeOrderModal}
-                                className="p-2 hover:bg-white/5 rounded-xl transition-colors"
-                            >
-                                <X size={24} className="text-slate-400" />
-                            </button>
-                        </div>
+            {isModalOpen && selectedService && (() => {
+                const nameNorm = normalizeText(selectedService.name);
+                const isFollowers = nameNorm.includes('follower') || nameNorm.includes('abonne') || nameNorm.includes('subscriber');
+                const isTikTok    = nameNorm.includes('tiktok');
+                const isInstagram = nameNorm.includes('instagram');
+                const isTwitch    = nameNorm.includes('twitch');
+                const isDiscord   = nameNorm.includes('discord');
+                const platformColor = isTikTok ? '#00f2ea' : isInstagram ? '#e1306c' : isTwitch ? '#9146ff' : isDiscord ? '#5865f2' : '#bef264';
+                const platformIcon  = isTikTok ? '🎵' : isInstagram ? '📸' : isTwitch ? '🎮' : isDiscord ? '💬' : '⚡';
+                const estimatedCost = calculateEstimatedCost();
 
-                        {/* Modal Body */}
-                        <div className="p-6 space-y-6">
-                            {/* Service Info */}
-                            <div className="bg-black/20 border border-white/5 rounded-2xl p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-slate-400 text-sm">Service ID</span>
-                                    <span className="font-mono font-bold text-green-400">#{selectedService.service}</span>
+                return (
+                    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-md">
+                        <div className="bg-[#0A0A0A] border border-white/10 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-160 shadow-[0_24px_80px_rgba(0,0,0,0.7)] flex flex-col max-h-[96vh] overflow-hidden">
+
+                            {/* ── Header ─────────────────────────────────── */}
+                            <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-white/5 shrink-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 border border-white/8"
+                                        style={{ background: platformColor + '18' }}>
+                                        {platformIcon}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h2 className="text-white font-bold text-[17px] leading-tight truncate">Commander</h2>
+                                        <p className="text-[#A1A1AA] text-[12px] mt-0.5 leading-tight truncate max-w-[320px]">{selectedService.name}</p>
+                                    </div>
                                 </div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-slate-400 text-sm">Prix</span>
-                                    <span className="font-bold text-white">${selectedService.rate} / 1000</span>
+                                <button onClick={closeOrderModal} className="shrink-0 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#A1A1AA] hover:text-white transition-all ml-3 mt-0.5">
+                                    <X size={15} />
+                                </button>
+                            </div>
+
+                            {/* ── Service meta pills ──────────────────────── */}
+                            <div className="flex items-center gap-2 px-6 py-3 border-b border-white/5 shrink-0 flex-wrap">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/8 text-[11px] font-mono font-bold text-[#A1A1AA]">
+                                    #{selectedService.service}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[11px] font-bold text-primary">
+                                    ${selectedService.rate} / 1 000
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/8 text-[11px] font-medium text-[#A1A1AA]">
+                                    Min {Number(selectedService.min).toLocaleString('fr-FR')} · Max {Number(selectedService.max).toLocaleString('fr-FR')}
+                                </span>
+                                {isFollowers && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] font-bold text-blue-400">
+                                        💧 Drip Feed uniquement
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* ── Scrollable body ──────────────────────────── */}
+                            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+                                {/* Link */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-[13px] font-bold text-white">
+                                        <Link2 size={13} className="text-[#A1A1AA]" />
+                                        Lien de destination <span className="text-primary ml-0.5">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="url"
+                                            value={orderForm.link}
+                                            onChange={(e) => setOrderForm({ ...orderForm, link: e.target.value })}
+                                            placeholder="https://www.tiktok.com/@pseudo"
+                                            className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-[13px] text-white placeholder-[#A1A1AA]/50 outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
+                                            autoFocus
+                                        />
+                                    </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400 text-sm">Min/Max</span>
-                                    <span className="font-mono text-white text-sm">{selectedService.min} - {typeof selectedService.max === 'number' ? selectedService.max.toLocaleString() : parseInt(selectedService.max).toLocaleString()}</span>
-                                </div>
-                            </div>
 
-                            {/* Link Input */}
-                            <div>
-                                <label className="block text-sm font-bold text-white mb-2">
-                                    <Link2 size={16} className="inline mr-2" />
-                                    Lien du réseau social *
-                                </label>
-                                <input
-                                    type="url"
-                                    value={orderForm.link}
-                                    onChange={(e) => setOrderForm({ ...orderForm, link: e.target.value })}
-                                    placeholder="https://..."
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-primary/50 transition-colors"
-                                    required
-                                />
-                            </div>
-
-                            {/* Quantity Input */}
-                            <div>
-                                <label className="block text-sm font-bold text-white mb-2">
-                                    Quantité *
-                                </label>
-                                <input
-                                    type="number"
-                                    value={orderForm.quantity}
-                                    onChange={(e) => setOrderForm({ ...orderForm, quantity: e.target.value })}
-                                    min={selectedService.min}
-                                    max={selectedService.max}
-                                    placeholder={`Min: ${selectedService.min} - Max: ${selectedService.max}`}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-primary/50 transition-colors"
-                                    required
-                                />
-                            </div>
-
-                            {/* Shopify Order Number */}
-                            <div>
-                                <label className="block text-sm font-bold text-white mb-2">
-                                    <ShoppingCart size={16} className="inline mr-2" />
-                                    Numéro de commande Shopify *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={orderForm.shopifyOrderNumber}
-                                    onChange={(e) => setOrderForm({ ...orderForm, shopifyOrderNumber: e.target.value })}
-                                    placeholder="Ex: #1001"
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-primary/50 transition-colors"
-                                    required
-                                />
-                            </div>
-
-                            {/* Delivery Mode */}
-                            <div>
-                                <label className="block text-sm font-bold text-white mb-3">
-                                    Mode de livraison
-                                </label>
-                                <div className="space-y-3">
-                                    {/* Masquer l'option Standard pour les services d'abonnés */}
+                                {/* Quantity */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center justify-between text-[13px] font-bold text-white">
+                                        <span>Quantité <span className="text-primary">*</span></span>
+                                        <span className="text-[11px] font-normal text-[#A1A1AA]">
+                                            Min {Number(selectedService.min).toLocaleString('fr-FR')} · Max {Number(selectedService.max).toLocaleString('fr-FR')}
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={orderForm.quantity}
+                                        onChange={(e) => setOrderForm({ ...orderForm, quantity: e.target.value })}
+                                        min={selectedService.min}
+                                        max={selectedService.max}
+                                        placeholder={`Ex : ${Number(selectedService.min).toLocaleString('fr-FR')}`}
+                                        className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-[13px] text-white placeholder-[#A1A1AA]/50 outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
+                                    />
+                                    {/* Quick-pick quantity chips */}
                                     {(() => {
-                                        const nameNormalized = normalizeText(selectedService.name);
-                                        const isFollowersService = nameNormalized.includes('follower') ||
-                                            nameNormalized.includes('abonne') ||
-                                            nameNormalized.includes('subscriber');
+                                        const min = Number(selectedService.min);
+                                        const max = Number(selectedService.max);
+                                        const candidates = [500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
+                                        const chips = candidates.filter(v => v >= min && v <= max).slice(0, 6);
+                                        if (chips.length === 0) return null;
+                                        return (
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                {chips.map(v => (
+                                                    <button key={v} type="button"
+                                                        onClick={() => setOrderForm({ ...orderForm, quantity: String(v) })}
+                                                        className={cn(
+                                                            'px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all',
+                                                            orderForm.quantity === String(v)
+                                                                ? 'bg-primary/15 border-primary/40 text-primary'
+                                                                : 'bg-white/4 border-white/8 text-[#A1A1AA] hover:text-white hover:border-white/20'
+                                                        )}>
+                                                        {v >= 1000 ? (v / 1000) + 'k' : v}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
 
-                                        return !isFollowersService ? (
-                                            <button
-                                                type="button"
+                                {/* Shopify order number */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-[13px] font-bold text-white">
+                                        <ShoppingCart size={13} className="text-[#A1A1AA]" />
+                                        N° commande Shopify <span className="text-[11px] font-normal text-[#A1A1AA]">(optionnel)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={orderForm.shopifyOrderNumber}
+                                        onChange={(e) => setOrderForm({ ...orderForm, shopifyOrderNumber: e.target.value })}
+                                        placeholder="#1001"
+                                        className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-[13px] text-white placeholder-[#A1A1AA]/50 outline-none focus:border-white/30 transition-all"
+                                    />
+                                </div>
+
+                                {/* Delivery mode */}
+                                {!isFollowers && (
+                                    <div className="space-y-2">
+                                        <label className="text-[13px] font-bold text-white">Mode de livraison</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {/* Standard */}
+                                            <button type="button"
                                                 onClick={() => setOrderForm({ ...orderForm, deliveryMode: 'standard' })}
                                                 className={cn(
-                                                    "w-full p-4 rounded-xl border-2 transition-all text-left",
+                                                    'relative flex flex-col items-start gap-1 p-4 rounded-2xl border-2 text-left transition-all',
                                                     orderForm.deliveryMode === 'standard'
-                                                        ? "border-primary bg-primary/10"
-                                                        : "border-white/10 bg-black/20 hover:border-white/20"
-                                                )}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <div className="font-bold text-white">Standard</div>
-                                                        <div className="text-sm text-slate-400">Livraison en 1 fois</div>
-                                                    </div>
-                                                    <div className={cn(
-                                                        "w-5 h-5 rounded-full border-2",
-                                                        orderForm.deliveryMode === 'standard'
-                                                            ? "border-primary bg-primary"
-                                                            : "border-white/20"
-                                                    )} />
-                                                </div>
+                                                        ? 'border-primary bg-primary/8 shadow-[0_0_16px_rgba(190,242,100,0.08)]'
+                                                        : 'border-white/8 bg-white/3 hover:border-white/15'
+                                                )}>
+                                                <div className="text-[20px] leading-none mb-1">⚡</div>
+                                                <div className="text-white font-bold text-[13px]">Standard</div>
+                                                <div className="text-[11px] text-[#A1A1AA] leading-snug">Envoi immédiat en une seule fois</div>
+                                                <div className={cn('absolute top-3 right-3 w-4 h-4 rounded-full border-2 transition-all',
+                                                    orderForm.deliveryMode === 'standard' ? 'border-primary bg-primary' : 'border-white/20'
+                                                )} />
                                             </button>
-                                        ) : null;
-                                    })()}
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setOrderForm({ ...orderForm, deliveryMode: 'dripfeed' })}
-                                        className={cn(
-                                            "w-full p-4 rounded-xl border-2 transition-all text-left",
-                                            orderForm.deliveryMode === 'dripfeed'
-                                                ? "border-blue-500 bg-blue-500/10"
-                                                : "border-white/10 bg-black/20 hover:border-white/20"
-                                        )}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <div className="font-bold text-white">💧 Drip Feed</div>
-                                                <div className="text-sm text-slate-400">
-                                                    {(() => {
-                                                        const nameNormalized = normalizeText(selectedService.name);
-                                                        const isFollowersService = nameNormalized.includes('follower') ||
-                                                            nameNormalized.includes('abonne') ||
-                                                            nameNormalized.includes('subscriber');
-                                                        return isFollowersService
-                                                            ? "Mode obligatoire pour les abonnés - Livraison progressive (250/jour)"
-                                                            : "Livraison progressive sur plusieurs jours";
-                                                    })()}
-                                                </div>
-                                            </div>
-                                            <div className={cn(
-                                                "w-5 h-5 rounded-full border-2",
-                                                orderForm.deliveryMode === 'dripfeed'
-                                                    ? "border-blue-500 bg-blue-500"
-                                                    : "border-white/20"
-                                            )} />
-                                        </div>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Estimated Cost */}
-                            <div className="bg-linear-to-br from-green-500/10 to-primary/10 border border-green-500/20 rounded-2xl p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="text-slate-400 text-sm mb-1">Coût estimé</div>
-                                        <div className="text-3xl font-black text-green-400">
-                                            ${calculateEstimatedCost()}
+                                            {/* Drip Feed */}
+                                            <button type="button"
+                                                onClick={() => setOrderForm({ ...orderForm, deliveryMode: 'dripfeed' })}
+                                                className={cn(
+                                                    'relative flex flex-col items-start gap-1 p-4 rounded-2xl border-2 text-left transition-all',
+                                                    orderForm.deliveryMode === 'dripfeed'
+                                                        ? 'border-blue-500 bg-blue-500/8 shadow-[0_0_16px_rgba(59,130,246,0.08)]'
+                                                        : 'border-white/8 bg-white/3 hover:border-white/15'
+                                                )}>
+                                                <div className="text-[20px] leading-none mb-1">💧</div>
+                                                <div className="text-white font-bold text-[13px]">Drip Feed</div>
+                                                <div className="text-[11px] text-[#A1A1AA] leading-snug">250 unités par jour, progressif</div>
+                                                <div className={cn('absolute top-3 right-3 w-4 h-4 rounded-full border-2 transition-all',
+                                                    orderForm.deliveryMode === 'dripfeed' ? 'border-blue-500 bg-blue-500' : 'border-white/20'
+                                                )} />
+                                            </button>
                                         </div>
                                     </div>
-                                    <Zap size={48} className="text-green-500 opacity-20" />
+                                )}
+
+                                {/* Live cost estimate */}
+                                <div className="flex items-center justify-between bg-[#050505] border border-white/8 rounded-2xl px-5 py-4">
+                                    <div>
+                                        <p className="text-[11px] text-[#A1A1AA] uppercase font-bold tracking-wider mb-1">Coût estimé</p>
+                                        <p className="text-[28px] font-black text-white leading-none">${estimatedCost}</p>
+                                        <p className="text-[10px] text-[#A1A1AA] mt-1">{orderForm.quantity ? Number(orderForm.quantity).toLocaleString('fr-FR') + ' unités · $' + selectedService.rate + '/1k' : '–'}</p>
+                                    </div>
+                                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: platformColor + '18' }}>
+                                        <Zap size={26} style={{ color: platformColor }} />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Modal Footer */}
-                            <div className="sticky bottom-0 bg-surface border-t border-white/10 p-6 flex gap-3">
-                                <button
-                                    onClick={closeOrderModal}
-                                    className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-colors"
-                                >
+                            {/* ── Footer CTA ────────────────────────────────── */}
+                            <div className="px-6 py-5 border-t border-white/5 shrink-0 flex gap-3 bg-[#0A0A0A]">
+                                <button onClick={closeOrderModal}
+                                    className="px-5 py-3 rounded-xl bg-white/5 border border-white/8 text-white text-[13px] font-semibold hover:bg-white/10 transition-colors">
                                     Annuler
                                 </button>
                                 <button
                                     onClick={handleSubmitOrder}
                                     disabled={!orderForm.link || !orderForm.quantity || isSubmitting}
-                                    className="flex-1 px-6 py-3 bg-linear-to-r from-primary to-green-400 hover:from-primary/90 hover:to-green-400/90 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-all shadow-lg shadow-primary/20"
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-[14px] text-black transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
+                                    style={{ background: isSubmitting || !orderForm.link || !orderForm.quantity ? undefined : `linear-gradient(135deg, ${platformColor}, #bef264)` }}
                                 >
                                     {isSubmitting ? (
                                         <>
-                                            <RefreshCw size={20} className="animate-spin mr-2" />
-                                            Commande en cours...
+                                            <RefreshCw size={16} className="animate-spin" />
+                                            Envoi en cours…
                                         </>
-                                    ) : 'Commander'}
+                                    ) : (
+                                        <>
+                                            <Zap size={16} fill="currentColor" />
+                                            Commander · ${estimatedCost}
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     )
 }

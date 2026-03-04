@@ -529,6 +529,14 @@ router.post('/:orderId/retry', authenticateToken, requireAdmin, async (req, res)
 
     console.log(`✅ Order #${orderId} successfully sent to provider. Provider Order ID: ${providerOrderId}`);
 
+    // Mark Shopify order as fulfilled when retried order is dispatched
+    if (order.shopify_order_number) {
+      const { fulfillShopifyOrder } = await import('../lib/shopify.js');
+      fulfillShopifyOrder(order.shopify_order_number).catch(e =>
+        console.error('[Shopify] fulfillment error (order retry):', e.message)
+      );
+    }
+
     // Fetch updated order status from provider
     try {
       const statusResponse = await smmRequest(provider, 'status', {
