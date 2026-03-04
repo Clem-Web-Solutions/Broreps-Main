@@ -1,4 +1,4 @@
-import { Plus, Trash2, Settings, Check, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Settings, Check, Eye, EyeOff, ChevronDown, ChevronUp, Package } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "../libs/api";
 import { cn } from "../libs/utils";
@@ -38,7 +38,21 @@ interface AllowedService {
     provider: string;
     delivery_mode?: 'standard' | 'dripfeed';
     dripfeed_quantity?: number;
+    is_pack?: boolean | number;
     created_at: string;
+}
+
+interface PackItem {
+    id: number;
+    pack_id: number;
+    sub_service_id: number;
+    quantity_override: number | null;
+    sort_order: number;
+    service_id: string;
+    service_name: string;
+    provider: string;
+    delivery_mode?: string;
+    dripfeed_quantity?: number;
 }
 
 export function Config() {
@@ -97,8 +111,16 @@ export function Config() {
         provider: 'BulkMedya',
         delivery_mode: 'standard' as 'standard' | 'dripfeed',
         dripfeed_quantity: 250,
-        dripfeed_custom: ''
+        dripfeed_custom: '',
+        is_pack: false,
     });
+
+    // Pack items state
+    const [packItemsMap, setPackItemsMap] = useState<Record<number, PackItem[]>>({});
+    const [packExpandedId, setPackExpandedId] = useState<number | null>(null);
+    const [packItemLoading, setPackItemLoading] = useState<number | null>(null);
+    const [addPackSubId, setAddPackSubId] = useState<string>('');
+    const [addPackQty, setAddPackQty] = useState<string>('');
 
     // Fetch alerts
     const fetchAlerts = async () => {
@@ -373,7 +395,7 @@ export function Config() {
     // Service handlers
     const handleSaveService = async () => {
         try {
-            const dripfeedQty = serviceFormData.delivery_mode === 'dripfeed' && serviceFormData.dripfeed_quantity === -1
+            const dripfeedQty = !serviceFormData.is_pack && serviceFormData.delivery_mode === 'dripfeed' && serviceFormData.dripfeed_quantity === -1
                 ? parseInt(serviceFormData.dripfeed_custom)
                 : serviceFormData.dripfeed_quantity;
 
@@ -381,15 +403,57 @@ export function Config() {
                 serviceFormData.service_id,
                 serviceFormData.service_name,
                 serviceFormData.provider,
-                serviceFormData.delivery_mode,
-                dripfeedQty
+                serviceFormData.is_pack ? 'standard' : serviceFormData.delivery_mode,
+                serviceFormData.is_pack ? undefined : dripfeedQty,
+                serviceFormData.is_pack,
             );
             setShowServiceModal(false);
-            setServiceFormData({ service_id: '', service_name: '', provider: 'BulkMedya', delivery_mode: 'standard', dripfeed_quantity: 250, dripfeed_custom: '' });
+            setServiceFormData({ service_id: '', service_name: '', provider: 'BulkMedya', delivery_mode: 'standard', dripfeed_quantity: 250, dripfeed_custom: '', is_pack: false });
             fetchAllowedServices();
         } catch (error: any) {
             console.error('Failed to save service:', error);
             window.alert(error.message || 'Failed to save service');
+        }
+    };
+
+    const togglePackExpand = async (serviceId: number) => {
+        if (packExpandedId === serviceId) {
+            setPackExpandedId(null);
+            return;
+        }
+        setPackExpandedId(serviceId);
+        if (!packItemsMap[serviceId]) {
+            try {
+                const data = await api.getPackItems(serviceId);
+                setPackItemsMap(prev => ({ ...prev, [serviceId]: data.items || [] }));
+            } catch (e) {
+                console.error('Failed to fetch pack items:', e);
+            }
+        }
+    };
+
+    const handleAddPackItem = async (packId: number) => {
+        if (!addPackSubId) return;
+        setPackItemLoading(packId);
+        try {
+            await api.addPackItem(packId, parseInt(addPackSubId), addPackQty ? parseInt(addPackQty) : null);
+            const data = await api.getPackItems(packId);
+            setPackItemsMap(prev => ({ ...prev, [packId]: data.items || [] }));
+            setAddPackSubId('');
+            setAddPackQty('');
+        } catch (e: any) {
+            window.alert(e.message || 'Erreur lors de l\'ajout');
+        } finally {
+            setPackItemLoading(null);
+        }
+    };
+
+    const handleRemovePackItem = async (itemId: number, packId: number) => {
+        try {
+            await api.deletePackItem(itemId);
+            setPackItemsMap(prev => ({ ...prev, [packId]: (prev[packId] || []).filter(i => i.id !== itemId) }));
+        } catch (e) {
+            console.error('Failed to remove pack item:', e);
         }
     };
 
@@ -725,40 +789,119 @@ export function Config() {
                     ) : (
                         <div className="space-y-3">
                             {allowedServices.map((service) => (
-                                <div
-                                    key={service.id}
-                                    className="flex items-center justify-between p-4 bg-background rounded-xl border border-white/5 hover:border-primary/30 transition-colors"
-                                >
-                                    <div className="flex-1">
-                                        <div className="flex items-start gap-4">
-                                            <div>
-                                                <h3 className="font-semibold text-white">{service.service_id}</h3>
-                                                <p className="text-sm text-slate-400">{service.service_name}</p>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
-                                                        {service.provider}
-                                                    </span>
-                                                    {service.delivery_mode === 'dripfeed' ? (
-                                                        <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                                                            💧 {service.dripfeed_quantity === -1 ? 'Personnalisé' : `${service.dripfeed_quantity} / jour`}
+                                <div key={service.id} className="rounded-xl border border-white/5 hover:border-primary/30 transition-colors overflow-hidden">
+                                    <div className="flex items-center justify-between p-4 bg-background">
+                                        <div className="flex-1">
+                                            <div className="flex items-start gap-4">
+                                                <div>
+                                                    <h3 className="font-semibold text-white">{service.service_id}</h3>
+                                                    <p className="text-sm text-slate-400">{service.service_name}</p>
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
+                                                            {service.provider}
                                                         </span>
-                                                    ) : (
-                                                        <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
-                                                            Standard
-                                                        </span>
-                                                    )}
+                                                        {service.is_pack ? (
+                                                            <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                                                                📦 Pack
+                                                            </span>
+                                                        ) : service.delivery_mode === 'dripfeed' ? (
+                                                            <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                                                💧 {service.dripfeed_quantity ? `${service.dripfeed_quantity} / jour` : 'Drip Feed'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                                                                Standard
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
+                                        <div className="flex items-center gap-2">
+                                            {service.is_pack && (
+                                                <button
+                                                    onClick={() => togglePackExpand(service.id)}
+                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-orange-400 hover:bg-orange-500/10 rounded-lg transition-colors border border-orange-500/30"
+                                                >
+                                                    <Package size={14} />
+                                                    Sous-services
+                                                    {packExpandedId === service.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleDeleteService(service.id)}
+                                                className="p-2 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={() => handleDeleteService(service.id)}
-                                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
+
+                                    {/* Pack items panel */}
+                                    {service.is_pack && packExpandedId === service.id && (
+                                        <div className="border-t border-white/5 bg-background/50 p-4 space-y-3">
+                                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sous-services du pack</p>
+                                            {(packItemsMap[service.id] || []).length === 0 ? (
+                                                <p className="text-sm text-slate-500 italic">Aucun sous-service — ajoutez-en ci-dessous</p>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {(packItemsMap[service.id] || []).map(item => (
+                                                        <div key={item.id} className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-lg">
+                                                            <div>
+                                                                <span className="text-sm text-white font-medium">{item.service_name}</span>
+                                                                <span className="text-xs text-slate-400 ml-2">#{item.service_id}</span>
+                                                                {item.quantity_override && (
+                                                                    <span className="text-xs text-blue-400 ml-2">{item.quantity_override} unités</span>
+                                                                )}
+                                                                {item.delivery_mode === 'dripfeed' && (
+                                                                    <span className="text-xs text-purple-400 ml-2">💧 {item.dripfeed_quantity}/j</span>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleRemovePackItem(item.id, service.id)}
+                                                                className="p-1 text-slate-400 hover:text-red-400 transition-colors"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Add sub-service */}
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <select
+                                                    value={addPackSubId}
+                                                    onChange={e => setAddPackSubId(e.target.value)}
+                                                    className="flex-1 bg-background border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                                                >
+                                                    <option value="">-- Choisir un service --</option>
+                                                    {allowedServices
+                                                        .filter(s => !s.is_pack && s.id !== service.id)
+                                                        .map(s => (
+                                                            <option key={s.id} value={String(s.id)}>
+                                                                {s.service_id} — {s.service_name}
+                                                            </option>
+                                                        ))
+                                                    }
+                                                </select>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Qté (opt)"
+                                                    value={addPackQty}
+                                                    onChange={e => setAddPackQty(e.target.value)}
+                                                    className="w-28 bg-background border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                                                />
+                                                <button
+                                                    onClick={() => handleAddPackItem(service.id)}
+                                                    disabled={!addPackSubId || packItemLoading === service.id}
+                                                    className="px-3 py-2 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-sm hover:bg-orange-500/30 disabled:opacity-40 transition-colors"
+                                                >
+                                                    {packItemLoading === service.id ? '...' : <Plus size={16} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -1028,9 +1171,9 @@ export function Config() {
                                     {/* Standard */}
                                     <button
                                         type="button"
-                                        onClick={() => setServiceFormData({ ...serviceFormData, delivery_mode: 'standard' })}
+                                        onClick={() => setServiceFormData({ ...serviceFormData, delivery_mode: 'standard', is_pack: false })}
                                         className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                                            serviceFormData.delivery_mode === 'standard'
+                                            !serviceFormData.is_pack && serviceFormData.delivery_mode === 'standard'
                                                 ? "border-primary bg-primary/10"
                                                 : "border-white/10 bg-background hover:border-white/20"
                                         }`}
@@ -1041,7 +1184,7 @@ export function Config() {
                                                 <div className="text-sm text-slate-400">Envois en 1 seule fois</div>
                                             </div>
                                             <div className={`w-5 h-5 rounded-full border-2 ${
-                                                serviceFormData.delivery_mode === 'standard'
+                                                !serviceFormData.is_pack && serviceFormData.delivery_mode === 'standard'
                                                     ? "border-primary bg-primary"
                                                     : "border-white/20"
                                             }`} />
@@ -1051,9 +1194,9 @@ export function Config() {
                                     {/* Drip Feed */}
                                     <button
                                         type="button"
-                                        onClick={() => setServiceFormData({ ...serviceFormData, delivery_mode: 'dripfeed' })}
+                                        onClick={() => setServiceFormData({ ...serviceFormData, delivery_mode: 'dripfeed', is_pack: false })}
                                         className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                                            serviceFormData.delivery_mode === 'dripfeed'
+                                            !serviceFormData.is_pack && serviceFormData.delivery_mode === 'dripfeed'
                                                 ? "border-purple-500 bg-purple-500/10"
                                                 : "border-white/10 bg-background hover:border-white/20"
                                         }`}
@@ -1064,15 +1207,38 @@ export function Config() {
                                                 <div className="text-sm text-slate-400">Livraison progressive</div>
                                             </div>
                                             <div className={`w-5 h-5 rounded-full border-2 ${
-                                                serviceFormData.delivery_mode === 'dripfeed'
+                                                !serviceFormData.is_pack && serviceFormData.delivery_mode === 'dripfeed'
                                                     ? "border-purple-500 bg-purple-500"
                                                     : "border-white/20"
                                             }`} />
                                         </div>
                                     </button>
 
+                                    {/* Pack */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setServiceFormData({ ...serviceFormData, delivery_mode: 'standard', is_pack: true })}
+                                        className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                                            serviceFormData.is_pack
+                                                ? "border-orange-500 bg-orange-500/10"
+                                                : "border-white/10 bg-background hover:border-white/20"
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="font-bold text-white">📦 Pack</div>
+                                                <div className="text-sm text-slate-400">Bundle de plusieurs services</div>
+                                            </div>
+                                            <div className={`w-5 h-5 rounded-full border-2 ${
+                                                serviceFormData.is_pack
+                                                    ? "border-orange-500 bg-orange-500"
+                                                    : "border-white/20"
+                                            }`} />
+                                        </div>
+                                    </button>
+
                                     {/* Drip Feed Options */}
-                                    {serviceFormData.delivery_mode === 'dripfeed' && (
+                                    {!serviceFormData.is_pack && serviceFormData.delivery_mode === 'dripfeed' && (
                                         <div className="mt-4 space-y-3">
                                             <label className="block text-sm font-medium text-slate-400 mb-2">Quantité par jour</label>
                                             <div className="grid grid-cols-2 gap-3">

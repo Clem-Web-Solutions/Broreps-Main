@@ -442,7 +442,7 @@ class ApiClient {
         return this.request('/allowed-services');
     }
 
-    async addAllowedService(serviceId: string, serviceName: string, provider = 'BulkMedya', deliveryMode = 'standard', dripfeedQuantity?: number) {
+    async addAllowedService(serviceId: string, serviceName: string, provider = 'BulkMedya', deliveryMode = 'standard', dripfeedQuantity?: number, isPack = false) {
         return this.request('/allowed-services', {
             method: 'POST',
             body: JSON.stringify({
@@ -450,7 +450,8 @@ class ApiClient {
                 service_name: serviceName,
                 provider,
                 delivery_mode: deliveryMode,
-                dripfeed_quantity: dripfeedQuantity
+                dripfeed_quantity: dripfeedQuantity,
+                is_pack: isPack,
             }),
         });
     }
@@ -459,6 +460,21 @@ class ApiClient {
         return this.request(`/allowed-services/${serviceId}`, {
             method: 'DELETE',
         });
+    }
+
+    async getPackItems(packId: number) {
+        return this.request(`/allowed-services/${packId}/pack-items`);
+    }
+
+    async addPackItem(packId: number, subServiceId: number, quantityOverride?: number | null) {
+        return this.request(`/allowed-services/${packId}/pack-items`, {
+            method: 'POST',
+            body: JSON.stringify({ sub_service_id: subServiceId, quantity_override: quantityOverride || null }),
+        });
+    }
+
+    async deletePackItem(itemId: number) {
+        return this.request(`/allowed-services/pack-items/${itemId}`, { method: 'DELETE' });
     }
 
     // Drip Feed Orders

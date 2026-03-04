@@ -1106,7 +1106,7 @@ async function processSubscriptionResumed(subscription) {
 
 // Create internal order automatically
 async function createInternalOrder(tagadapay_order_id, orderData) {
-  const { serviceId, socialLink, quantity, customerEmail, shopifyOrderNumber } = orderData;
+  const { serviceId, socialLink, quantity, customerEmail, shopifyOrderNumber, _skipPackCheck } = orderData;
 
   // Get TagadaPay default user
   const [users] = await db.query(
@@ -1135,6 +1135,59 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
   const dripfeedQty  = service.dripfeed_quantity && service.dripfeed_quantity > 0
     ? service.dripfeed_quantity
     : 250;
+
+  // ── Pack: launch one order per sub-service in parallel ────────────────────
+  if (service.is_pack && !_skipPackCheck) {
+    const [packItems] = await db.query(
+      `SELECT pi.id, pi.sub_service_id, pi.quantity_override,
+              s.service_id, s.service_name, s.delivery_mode, s.dripfeed_quantity
+       FROM service_pack_items pi
+       JOIN allowed_services s ON pi.sub_service_id = s.id
+       WHERE pi.pack_id = ?
+       ORDER BY pi.sort_order ASC, pi.id ASC`,
+      [serviceId]
+    );
+
+    if (packItems.length === 0) {
+      throw new Error(`Le pack id=${serviceId} ne contient aucun sous-service — configurez-le dans le catalogue`);
+    }
+
+    console.log(`[PACK] Lancement de ${packItems.length} commandes simultanées pour le pack "${service.service_name}"`);
+
+    const subOrderIds = await Promise.all(packItems.map((item, idx) =>
+      createInternalOrder(tagadapay_order_id, {
+        serviceId:          item.sub_service_id,
+        socialLink,
+        quantity:           item.quantity_override || quantity,
+        customerEmail,
+        shopifyOrderNumber,
+        _skipPackCheck:     true, // prevent recursive pack resolution
+      }).catch(err => {
+        console.error(`[PACK] ❌ Sous-commande #${idx + 1} (${item.service_name}) échouée:`, err.message);
+        return null;
+      })
+    ));
+
+    const firstValid = subOrderIds.find(id => id !== null);
+
+    // Link tagadapay order to the first sub-order created
+    if (firstValid) {
+      await db.query(
+        `UPDATE tagadapay_orders SET internal_order_id = ?, is_processed = true WHERE id = ?`,
+        [firstValid, tagadapay_order_id]
+      );
+    } else {
+      await db.query(
+        `UPDATE tagadapay_orders SET is_processed = false WHERE id = ?`,
+        [tagadapay_order_id]
+      );
+      throw new Error('Toutes les sous-commandes du pack ont échoué');
+    }
+
+    console.log(`[PACK] ✅ ${subOrderIds.filter(Boolean).length}/${packItems.length} sous-commandes créées:`, subOrderIds);
+    return firstValid;
+  }
+  // ── /Pack ──────────────────────────────────────────────────────────────────
 
   // Extract username from social link for duplicate detection
   const userInfo = extractUsername(socialLink);
@@ -1189,12 +1242,14 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
     });
   }
 
-  // Link TagadaPay order to internal order
-  await db.query(`
-    UPDATE tagadapay_orders
-    SET internal_order_id = ?, is_processed = true
-    WHERE id = ?
-  `, [internalOrderId, tagadapay_order_id]);
+  // Link TagadaPay order to internal order (skipped for pack sub-orders — the pack handler links)
+  if (!_skipPackCheck) {
+    await db.query(`
+      UPDATE tagadapay_orders
+      SET internal_order_id = ?, is_processed = true
+      WHERE id = ?
+    `, [internalOrderId, tagadapay_order_id]);
+  }
 
   return internalOrderId;
 }

@@ -99,9 +99,39 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
   console.log('  ✅ Table tagadapay_webhook_logs OK');
-  
+
   console.log('');
-  console.log('✅ Migration terminée avec succès!');
+  console.log('📝 Vérification de la colonne is_pack dans allowed_services...');
+  console.log('');
+
+  const isPackExists = await columnExists('allowed_services', 'is_pack');
+  if (isPackExists) {
+    console.log('  ⏭️  Colonne déjà existante: is_pack');
+  } else {
+    await db.query(`ALTER TABLE allowed_services ADD COLUMN \`is_pack\` BOOLEAN DEFAULT FALSE COMMENT 'Pack de services groupés' AFTER \`dripfeed_quantity\``);
+    console.log('  ✅ Colonne ajoutée: is_pack');
+  }
+
+  console.log('');
+  console.log('📝 Vérification de la table service_pack_items...');
+  console.log('');
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS service_pack_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      pack_id INT NOT NULL COMMENT 'ID du service pack dans allowed_services',
+      sub_service_id INT NOT NULL COMMENT 'ID du sous-service dans allowed_services',
+      quantity_override INT DEFAULT NULL COMMENT 'Quantité fixe pour ce sous-service (NULL = utiliser la quantité de la commande)',
+      sort_order INT DEFAULT 0,
+      INDEX idx_pack_id (pack_id),
+      INDEX idx_sub_service_id (sub_service_id),
+      FOREIGN KEY (pack_id) REFERENCES allowed_services(id) ON DELETE CASCADE,
+      FOREIGN KEY (sub_service_id) REFERENCES allowed_services(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  console.log('  ✅ Table service_pack_items OK');
+
+  console.log('');
   console.log('');
   console.log('👉 Vous pouvez maintenant tester le webhook TagadaPay:');
   console.log('   node test-tagadapay-webhook.js');
