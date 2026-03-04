@@ -76,7 +76,19 @@ CREATE TABLE IF NOT EXISTS allowed_services (
   provider VARCHAR(100) DEFAULT 'BulkMedya',
   delivery_mode ENUM('standard', 'dripfeed') DEFAULT 'standard',
   dripfeed_quantity INT DEFAULT NULL,
+  is_pack BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Service pack items
+CREATE TABLE IF NOT EXISTS service_pack_items (
+  pack_id INT NOT NULL,
+  sub_service_id INT NOT NULL,
+  quantity_override INT DEFAULT NULL,
+  sort_order INT DEFAULT 0,
+  PRIMARY KEY (pack_id, sub_service_id),
+  FOREIGN KEY (pack_id) REFERENCES allowed_services(id) ON DELETE CASCADE,
+  FOREIGN KEY (sub_service_id) REFERENCES allowed_services(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert admin user (password: admin123)

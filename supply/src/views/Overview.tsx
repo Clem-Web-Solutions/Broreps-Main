@@ -53,9 +53,20 @@ interface ServiceData {
     value: number;
 }
 
+interface OrderData {
+    id: number;
+    service_name?: string;
+    quantity?: string | number;
+    status: string;
+    created_at: string;
+    link?: string;
+    parent_order_id?: number | null;
+    [key: string]: unknown;
+}
+
 function StatsCard({ label, value, trend, trendUp, icon: Icon }: StatsCardProps) {
     return (
-        <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-4 border border-white/5 hover:border-white/10 transition-all hover:translate-y-0.5 group">
+        <div className="bg-[#0A0A0A] backdrop-blur-sm rounded-3xl p-4 border border-white/10 hover:border-white/20 transition-all hover:translate-y-0.5 group shadow-sm">
             <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-primary/20 transition-colors">
                     <Icon size={20} className="text-white group-hover:text-primary transition-colors" />
@@ -67,7 +78,7 @@ function StatsCard({ label, value, trend, trendUp, icon: Icon }: StatsCardProps)
                 )}
             </div>
             <div>
-                <h3 className="text-slate-400 text-sm font-medium mb-1">{label}</h3>
+                <h3 className="text-[#A1A1AA] text-sm font-medium mb-1">{label}</h3>
                 <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
             </div>
         </div>
@@ -84,9 +95,9 @@ function TrendChart() {
                 const ordersData = await api.getOrders({ status: '', service: '', link: '' }, false, 1, 500);
                 console.log('📊 Trend Chart: Loaded', ordersData.orders?.length || 0, 'orders');
                 console.log('📊 Sample order:', ordersData.orders?.[0]);
-                
+
                 // Filter out sub-orders (only count parent orders and standard orders)
-                const parentOrders = (ordersData.orders || []).filter((order: any) => !order.parent_order_id);
+                const parentOrders = (ordersData.orders || []).filter((order: OrderData) => !order.parent_order_id);
                 console.log('📊 Parent orders only:', parentOrders.length);
 
                 // Get today's date in UTC to avoid timezone issues
@@ -102,7 +113,7 @@ function TrendChart() {
 
                 // Count orders per day for last 30 days
                 const dailyCounts = last30Days.map(dateStr => {
-                    const count = parentOrders.filter((order: any) => {
+                    const count = parentOrders.filter((order: OrderData) => {
                         const orderDateStr = order.created_at.split('T')[0];
                         return orderDateStr === dateStr;
                     }).length;
@@ -118,7 +129,7 @@ function TrendChart() {
                 const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
                 const sundayDate = new Date(today);
                 sundayDate.setDate(today.getDate() - dayOfWeek); // Go back to Sunday of current week
-                
+
                 // Create array of 7 days starting from Sunday
                 const weekDays = Array.from({ length: 7 }, (_, i) => {
                     const date = new Date(sundayDate);
@@ -129,12 +140,12 @@ function TrendChart() {
                 const trendData = weekDays.map(dateStr => {
                     const date = new Date(dateStr + 'T00:00:00Z');
                     const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'Europe/Paris' });
-                    
-                    const count = parentOrders.filter((order: any) => {
+
+                    const count = parentOrders.filter((order: OrderData) => {
                         const orderDateStr = order.created_at.split('T')[0];
                         return orderDateStr === dateStr;
                     }).length;
-                    
+
                     console.log(`📊 ${dayName} (${dateStr}): ${count} orders`);
                     return { name: dayName, value: count };
                 });
@@ -161,13 +172,13 @@ function TrendChart() {
 
     if (loading) {
         return (
-            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-4 border border-white/5 h-full flex items-center justify-center">
+            <div className="bg-[#0A0A0A] backdrop-blur-sm rounded-3xl p-4 border border-white/10 h-full flex items-center justify-center shadow-sm">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             </div>
         );
     }
     return (
-        <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-4 border border-white/5 h-full flex flex-col hover:border-white/10 transition-colors">
+        <div className="bg-[#0A0A0A] backdrop-blur-sm rounded-3xl p-4 border border-white/10 h-full flex flex-col hover:border-white/20 transition-colors shadow-sm">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                     <TrendingUp size={16} className="text-primary" />
@@ -181,18 +192,18 @@ function TrendChart() {
                         <XAxis hide />
                         <YAxis hide />
                         <Tooltip
-                            contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                            contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
                             cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
                             labelFormatter={(index) => data[index as number]?.name || index}
-                            formatter={(value: any) => [`${value}`, 'commande(s)']}
+                            formatter={(value: unknown) => [`${value}`, 'commande(s)']}
                         />
                         <Line
                             type="monotone"
                             dataKey="value"
-                            stroke="#bef264"
+                            stroke="#00A336"
                             strokeWidth={3}
                             dot={false}
-                            activeDot={{ r: 6, fill: '#bef264', stroke: '#000' }}
+                            activeDot={{ r: 6, fill: '#00A336', stroke: '#000' }}
                         />
                     </LineChart>
                 </ResponsiveContainer>
@@ -217,7 +228,7 @@ function StatusDistributionChart({ data: statusData }: StatusDistributionChartPr
     const total = data.reduce((sum, item) => sum + item.value, 0);
     const completedPercentage = total > 0 ? Math.round((data.find(d => d.name === 'Completed')?.value || 0) / total * 100) : 0;
     return (
-        <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-4 border border-white/5 h-full flex flex-col hover:border-white/10 transition-colors">
+        <div className="bg-[#0A0A0A] backdrop-blur-sm rounded-3xl p-4 border border-white/10 h-full flex flex-col hover:border-white/20 transition-colors shadow-sm">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                     <PieChartIcon size={16} className="text-primary" />
@@ -244,14 +255,14 @@ function StatusDistributionChart({ data: statusData }: StatusDistributionChartPr
                                 ))}
                             </Pie>
                             <Tooltip
-                                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }}
+                                contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
                                 itemStyle={{ color: '#fff' }}
                             />
                         </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
                         <span className="text-2xl font-bold text-white">{completedPercentage}%</span>
-                        <p className="text-[10px] text-slate-400">Success</p>
+                        <p className="text-[10px] text-[#A1A1AA]">Success</p>
                     </div>
                 </div>
             </div>
@@ -267,11 +278,11 @@ function RecentOrdersTable() {
         const loadOrders = async () => {
             try {
                 const data = await api.getOrders({ status: '', service: '', link: '' }, false, 1, 10);
-                
+
                 // Filter out sub-orders (only show parent orders and standard orders)
-                const parentOrders = (data.orders || []).filter((order: any) => !order.parent_order_id);
-                
-                const formattedOrders = parentOrders.slice(0, 4).map((order: any) => ({
+                const parentOrders = (data.orders || []).filter((order: OrderData) => !order.parent_order_id);
+
+                const formattedOrders = parentOrders.slice(0, 4).map((order: OrderData) => ({
                     id: order.id,
                     service: order.service_name || 'Service',
                     quantity: order.quantity?.toLocaleString() || '0',
@@ -301,14 +312,14 @@ function RecentOrdersTable() {
         return `${Math.floor(diff / 86400)} days ago`;
     };
 
-    const getPlatform = (serviceName: string) => {
+    const getPlatform = (serviceName?: string) => {
         const name = serviceName?.toLowerCase() || '';
         if (name.includes('instagram')) return 'instagram';
         if (name.includes('tiktok')) return 'tiktok';
         return 'other';
     };
 
-    const getPlatformIcon = (serviceName: string) => {
+    const getPlatformIcon = (serviceName?: string) => {
         const platform = getPlatform(serviceName);
         if (platform === 'instagram') return '/logo_instagram.png';
         if (platform === 'tiktok') return '/logo_tiktok.png';
@@ -317,14 +328,14 @@ function RecentOrdersTable() {
 
     if (loading) {
         return (
-            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-4 border border-white/5 h-full flex items-center justify-center">
+            <div className="bg-[#0A0A0A] backdrop-blur-sm rounded-3xl p-4 border border-white/10 h-full flex items-center justify-center shadow-sm">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             </div>
         );
     }
 
     return (
-        <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/5 h-full flex flex-col hover:border-white/10 transition-colors">
+        <div className="bg-[#0A0A0A] backdrop-blur-sm rounded-3xl p-6 border border-white/10 h-full flex flex-col hover:border-white/20 transition-colors shadow-sm">
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-white">Recent Orders</h2>
                 <button className="text-primary text-sm font-semibold hover:text-lime-400 transition-colors flex items-center gap-1">
@@ -337,7 +348,7 @@ function RecentOrdersTable() {
                 {orders.map((order, i) => (
                     <div
                         key={i}
-                        className="group flex items-center justify-between p-4 rounded-xl bg-white/2 hover:bg-white/6 transition-all cursor-pointer border border-white/5 hover:border-white/10"
+                        className="group flex items-center justify-between p-4 rounded-xl bg-[#050505] hover:bg-[#111] transition-all cursor-pointer border border-white/5 hover:border-white/10"
                     >
                         {/* Left Section: Icon & Name */}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -393,7 +404,7 @@ function RecentOrdersTable() {
                             </span>
                         </div>
 
-                        <div className="text-slate-400 text-xs w-20 text-right hidden sm:block">
+                        <div className="text-[#A1A1AA] text-xs w-20 text-right hidden sm:block">
                             {order.time}
                         </div>
                     </div>
@@ -413,7 +424,7 @@ function TopServicesChart() {
                 const ordersData = await api.getOrders({ status: '', service: '', link: '' }, false, 1, 500);
                 const serviceCounts: Record<string, number> = {};
 
-                (ordersData.orders || []).forEach((order: any) => {
+                (ordersData.orders || []).forEach((order: OrderData) => {
                     const serviceName = order.service_name || 'Other';
                     serviceCounts[serviceName] = (serviceCounts[serviceName] || 0) + 1;
                 });
@@ -442,14 +453,14 @@ function TopServicesChart() {
 
     if (loading) {
         return (
-            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/5 h-full flex items-center justify-center">
+            <div className="bg-[#0A0A0A] backdrop-blur-sm rounded-3xl p-6 border border-white/10 h-full flex items-center justify-center shadow-sm">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             </div>
         );
     }
 
     return (
-        <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/5 h-full flex flex-col hover:border-white/10 transition-colors">
+        <div className="bg-[#0A0A0A] backdrop-blur-sm rounded-3xl p-6 border border-white/10 h-full flex flex-col hover:border-white/20 transition-colors shadow-sm">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <BarChart2 size={20} className="text-primary" />
@@ -476,20 +487,20 @@ function TopServicesChart() {
                         <Tooltip
                             cursor={{ fill: 'rgba(255, 255, 255, 0.05)', radius: 8 }}
                             contentStyle={{
-                                backgroundColor: '#1e293b',
+                                backgroundColor: '#050505',
                                 border: '1px solid rgba(255, 255, 255, 0.1)',
                                 borderRadius: '12px',
                                 padding: '8px 12px',
                                 boxShadow: '0 8px 16px rgba(0, 0, 0, 0.4)'
                             }}
                             labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: '4px' }}
-                            itemStyle={{ color: '#bef264', fontSize: '13px' }}
+                            itemStyle={{ color: '#00A336', fontSize: '13px' }}
                         />
                         <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={60}>
                             {data.map((_, index) => (
                                 <Cell
                                     key={`cell-${index}`}
-                                    fill={index === 0 ? '#bef264' : `rgba(190, 242, 100, ${0.7 - index * 0.15})`}
+                                    fill={index === 0 ? '#00A336' : `rgba(0, 163, 54, ${0.7 - index * 0.15})`}
                                 />
                             ))}
                         </Bar>
@@ -565,7 +576,7 @@ export function Overview() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#7FFF00]"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
             </div>
         );
     }
@@ -574,9 +585,9 @@ export function Overview() {
         <div className="flex flex-col gap-8">
             <div className="mb-2">
                 <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-white to-slate-400">
-                    Welcome back, {(user as any)?.name || 'User'}
+                    Welcome back, {(user as { name?: string })?.name || 'User'}
                 </h1>
-                <p className="text-slate-400 mt-1">Here is what's happening with your store today.</p>
+                <p className="text-[#A1A1AA] mt-1">Here is what's happening with your store today.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

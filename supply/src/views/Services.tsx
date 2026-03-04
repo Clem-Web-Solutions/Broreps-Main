@@ -101,121 +101,157 @@ const PREDEFINED_OFFERS: Preset[] = [
         id: 'pack-tiktok-video', title: 'Pack Visibilité TikTok', platform: 'tiktok', icon: '📹', color: '#00f2ea',
         isPack: true,
         variants: [
-            { label: '10k Vues', price: 15, subOrders: [
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 10000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 2500, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 500, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 400, deliveryMode: 'standard' },
-            ]},
-            { label: '25k Vues', price: 25, subOrders: [
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 25000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 5000, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 1000, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 800, deliveryMode: 'standard' },
-            ]},
-            { label: '50k Vues', price: 45, subOrders: [
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 50000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 10000, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 2500, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 1500, deliveryMode: 'standard' },
-            ]},
-            { label: '100k Vues', price: 80, subOrders: [
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 100000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 25000, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 4500, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 3500, deliveryMode: 'standard' },
-            ]},
-            { label: '250k Vues', price: 140, subOrders: [
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 250000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 50000, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 10000, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 8500, deliveryMode: 'standard' },
-            ]},
-            { label: '500k Vues', price: 180, subOrders: [
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 500000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 100000, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 25000, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 20000, deliveryMode: 'standard' },
-            ]},
+            {
+                label: '10k Vues', price: 15, subOrders: [
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 10000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 2500, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 500, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 400, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '25k Vues', price: 25, subOrders: [
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 25000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 5000, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 1000, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 800, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '50k Vues', price: 45, subOrders: [
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 50000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 10000, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 2500, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 1500, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '100k Vues', price: 80, subOrders: [
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 100000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 25000, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 4500, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 3500, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '250k Vues', price: 140, subOrders: [
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 250000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 50000, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 10000, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 8500, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '500k Vues', price: 180, subOrders: [
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 500000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 100000, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 25000, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 20000, deliveryMode: 'standard' },
+                ]
+            },
         ]
     },
     {
         id: 'pack-instagram-video', title: 'Pack Visibilité Instagram', platform: 'instagram', icon: '🎬', color: '#d62976',
         isPack: true,
         variants: [
-            { label: '10k Vues', price: 15, subOrders: [
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 10000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 2500, deliveryMode: 'standard' },
-            ]},
-            { label: '25k Vues', price: 25, subOrders: [
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 25000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 5000, deliveryMode: 'standard' },
-            ]},
-            { label: '50k Vues', price: 45, subOrders: [
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 50000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 10000, deliveryMode: 'standard' },
-            ]},
-            { label: '100k Vues', price: 80, subOrders: [
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 100000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 25000, deliveryMode: 'standard' },
-            ]},
-            { label: '250k Vues', price: 140, subOrders: [
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 250000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 50000, deliveryMode: 'standard' },
-            ]},
+            {
+                label: '10k Vues', price: 15, subOrders: [
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 10000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 2500, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '25k Vues', price: 25, subOrders: [
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 25000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 5000, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '50k Vues', price: 45, subOrders: [
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 50000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 10000, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '100k Vues', price: 80, subOrders: [
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 100000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 25000, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '250k Vues', price: 140, subOrders: [
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 250000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 50000, deliveryMode: 'standard' },
+                ]
+            },
         ]
     },
     {
         id: 'abonnement-tiktok', title: 'Abonnement TikTok', platform: 'tiktok', icon: '🚀', color: '#00f2ea',
         isPack: true,
         variants: [
-            { label: '1k Pack', price: 19.99, subOrders: [
-                { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 1000, deliveryMode: 'dripfeed' },
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 60000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 15000, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 1500, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 900, deliveryMode: 'standard' },
-            ]},
-            { label: '2.5k Pack', price: 39.99, subOrders: [
-                { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 2500, deliveryMode: 'dripfeed' },
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 150000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 45000, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 3000, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 1500, deliveryMode: 'standard' },
-            ]},
-            { label: '4k Pack', price: 79.99, subOrders: [
-                { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 4000, deliveryMode: 'dripfeed' },
-                { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 240000, deliveryMode: 'standard' },
-                { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 72000, deliveryMode: 'standard' },
-                { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 4800, deliveryMode: 'standard' },
-                { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 2400, deliveryMode: 'standard' },
-            ]},
+            {
+                label: '1k Pack', price: 19.99, subOrders: [
+                    { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 1000, deliveryMode: 'dripfeed' },
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 60000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 15000, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 1500, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 900, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '2.5k Pack', price: 39.99, subOrders: [
+                    { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 2500, deliveryMode: 'dripfeed' },
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 150000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 45000, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 3000, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 1500, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '4k Pack', price: 79.99, subOrders: [
+                    { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 4000, deliveryMode: 'dripfeed' },
+                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 240000, deliveryMode: 'standard' },
+                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 72000, deliveryMode: 'standard' },
+                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 4800, deliveryMode: 'standard' },
+                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 2400, deliveryMode: 'standard' },
+                ]
+            },
         ]
     },
     {
         id: 'abonnement-instagram', title: 'Abonnement Instagram', platform: 'instagram', icon: '🚀', color: '#d62976',
         isPack: true,
         variants: [
-            { label: '1k Pack', price: 19.99, subOrders: [
-                { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 1000, deliveryMode: 'dripfeed' },
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 30000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 3000, deliveryMode: 'standard' },
-            ]},
-            { label: '2.5k Pack', price: 39.99, subOrders: [
-                { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 2500, deliveryMode: 'dripfeed' },
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 120000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 9000, deliveryMode: 'standard' },
-            ]},
-            { label: '5k Pack', price: 70, subOrders: [
-                { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 5000, deliveryMode: 'dripfeed' },
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 300000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 30000, deliveryMode: 'standard' },
-            ]},
-            { label: '10k Pack', price: 120, subOrders: [
-                { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 10000, deliveryMode: 'dripfeed' },
-                { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 600000, deliveryMode: 'standard' },
-                { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 60000, deliveryMode: 'standard' },
-            ]},
+            {
+                label: '1k Pack', price: 19.99, subOrders: [
+                    { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 1000, deliveryMode: 'dripfeed' },
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 30000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 3000, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '2.5k Pack', price: 39.99, subOrders: [
+                    { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 2500, deliveryMode: 'dripfeed' },
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 120000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 9000, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '5k Pack', price: 70, subOrders: [
+                    { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 5000, deliveryMode: 'dripfeed' },
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 300000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 30000, deliveryMode: 'standard' },
+                ]
+            },
+            {
+                label: '10k Pack', price: 120, subOrders: [
+                    { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 10000, deliveryMode: 'dripfeed' },
+                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 600000, deliveryMode: 'standard' },
+                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 60000, deliveryMode: 'standard' },
+                ]
+            },
         ]
     },
 ];
@@ -318,7 +354,7 @@ function ServiceTypeCard({ label, icon: Icon, count, active, onClick }: ServiceT
             </div>
 
             {/* Glow effect for active state */}
-            {active && <div className="absolute inset-0 bg-linear-to-br from-white/20 to-transparent pointer-events-none"></div>}
+            {active && <div className="absolute inset-0 bg-primary/10 pointer-events-none"></div>}
         </button>
     );
 }
@@ -375,10 +411,10 @@ export function Services() {
                     const providerServices = providerData.services || [];
 
                     // Match allowed service IDs with provider services
-                    const allowedIds = new Set(allowedServices.map((s: any) => s.service_id));
+                    const allowedIds = new Set(allowedServices.map((s: { service_id: string }) => s.service_id));
                     const matchedServices = providerServices
-                        .filter((s: any) => allowedIds.has(s.service.toString()))
-                        .map((s: any) => ({
+                        .filter((s: { service: string | number }) => allowedIds.has(s.service.toString()))
+                        .map((s: { service: string | number; name: string; type?: string; category?: string; rate: number | string; min: string | number; max: string | number; refill?: boolean; cancel?: boolean; dripfeed?: boolean; average_time?: string }) => ({
                             service: s.service.toString(),
                             name: s.name,
                             type: s.type,
@@ -468,7 +504,17 @@ export function Services() {
             }
 
             try {
-                const orderData: any = {
+                const orderData: {
+                    provider: string;
+                    service: string;
+                    service_name?: string;
+                    service_rate?: number;
+                    link: string;
+                    quantity: number;
+                    shopify_order_number?: string;
+                    dripfeed_enabled?: boolean;
+                    dripfeed_quantity?: number;
+                } = {
                     provider: selectedProvider,
                     service: svc.service,
                     service_name: svc.name,
@@ -483,8 +529,9 @@ export function Services() {
                 }
                 await api.createDripFeedOrder(orderData);
                 results[i] = { label: sub.label, status: 'ok' };
-            } catch (err: any) {
-                results[i] = { label: sub.label, status: 'error', msg: err.message };
+            } catch (err: unknown) {
+                const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+                results[i] = { label: sub.label, status: 'error', msg: errorMessage };
             }
             setPackProgress([...results]);
         }
@@ -538,8 +585,8 @@ export function Services() {
             // Check if service matches the type (in name, type, or category field)
             const searchText = type.toLowerCase();
             return nameNormalized.includes(searchText) ||
-                   typeNormalized.includes(searchText) ||
-                   categoryNormalized.includes(searchText);
+                typeNormalized.includes(searchText) ||
+                categoryNormalized.includes(searchText);
         }).length;
     };
 
@@ -693,7 +740,17 @@ export function Services() {
             setIsSubmitting(true);
 
             // Build order data
-            const orderData: any = {
+            const orderData: {
+                provider: string;
+                service: string;
+                service_name?: string;
+                service_rate?: number;
+                link: string;
+                quantity: number;
+                shopify_order_number?: string;
+                dripfeed_enabled?: boolean;
+                dripfeed_quantity?: number;
+            } = {
                 provider: selectedProvider,
                 service: selectedService.service,
                 service_name: selectedService.name,
@@ -729,9 +786,10 @@ export function Services() {
 
             // Navigate to orders page to see new order
             navigate('/commandes');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error creating order:', error);
-            alert(`❌ Erreur lors de la création de la commande: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+            alert(`❌ Erreur lors de la création de la commande: ${errorMessage}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -867,10 +925,10 @@ export function Services() {
 
                         {showPresets && (() => {
                             const platforms = [
-                                { key: 'tiktok',    label: 'TikTok',    dot: '#00f2ea' },
+                                { key: 'tiktok', label: 'TikTok', dot: '#00f2ea' },
                                 { key: 'instagram', label: 'Instagram', dot: '#e1306c' },
-                                { key: 'twitch',    label: 'Twitch',    dot: '#9146ff' },
-                                { key: 'discord',   label: 'Discord',   dot: '#5865f2' },
+                                { key: 'twitch', label: 'Twitch', dot: '#9146ff' },
+                                { key: 'discord', label: 'Discord', dot: '#5865f2' },
                             ];
                             return (
                                 <div className="divide-y divide-white/6">
@@ -878,10 +936,10 @@ export function Services() {
                                         const group = PREDEFINED_OFFERS.filter(o => o.platform === plt.key);
                                         if (group.length === 0) return null;
                                         const singles = group.filter(o => !o.isPack) as SinglePreset[];
-                                        const packs   = group.filter(o =>  o.isPack) as PackPreset[];
+                                        const packs = group.filter(o => o.isPack) as PackPreset[];
                                         const allRows: { id: string; icon: string; title: string; isPack: boolean; offer: Preset }[] = [
                                             ...singles.map(o => ({ id: o.id, icon: o.icon, title: o.title, isPack: false, offer: o })),
-                                            ...packs.map(o   => ({ id: o.id, icon: o.icon, title: o.title, isPack: true,  offer: o })),
+                                            ...packs.map(o => ({ id: o.id, icon: o.icon, title: o.title, isPack: true, offer: o })),
                                         ];
                                         return (
                                             <div key={plt.key}>
@@ -963,18 +1021,18 @@ export function Services() {
 
                     {/* Search Bar */}
                     <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors" size={20} />
                         <input
                             type="text"
                             placeholder="Rechercher un service..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-surface/30 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 outline-none focus:border-primary/50 focus:bg-surface/50 transition-all font-medium"
+                            className="w-full bg-[#050505] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-[#A1A1AA] outline-none focus:border-white/20 transition-all font-medium"
                         />
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#A1A1AA] hover:text-white transition-colors"
                             >
                                 <X size={20} />
                             </button>
@@ -999,7 +1057,7 @@ export function Services() {
                                 <div
                                     key={service.service}
                                     onClick={() => openOrderModal(service)}
-                                    className="bg-surface/30 border border-white/5 rounded-2xl p-6 hover:border-primary/30 hover:bg-surface/40 transition-all cursor-pointer group relative overflow-hidden"
+                                    className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 hover:border-white/20 hover:scale-[1.01] transition-all cursor-pointer group relative overflow-hidden shadow-sm"
                                 >
                                     {/* Service Item Layout */}
                                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
@@ -1153,8 +1211,8 @@ export function Services() {
             {/* ─── Pack Confirmation Modal ─────────────────────────────── */}
             {packModal.open && packModal.preset && packModal.variant && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-surface border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
-                        <div className="sticky top-0 bg-surface border-b border-white/10 p-6 flex items-center justify-between">
+                    <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
+                        <div className="sticky top-0 bg-[#0A0A0A] border-b border-white/10 p-6 flex items-center justify-between">
                             <div>
                                 <h2 className="text-xl font-bold text-white">{packModal.preset.icon} {packModal.preset.title}</h2>
                                 <p className="text-slate-400 text-sm mt-0.5">{packModal.variant.label} — <span className="text-primary font-bold">{packModal.variant.price}€</span></p>
@@ -1178,11 +1236,11 @@ export function Services() {
                                             <div className="flex items-center gap-2">
                                                 {prog ? (
                                                     prog.status === 'ok' ? <CheckCircle size={14} className="text-green-400" />
-                                                    : prog.status === 'error' ? <X size={14} className="text-red-400" />
-                                                    : <RefreshCw size={14} className="text-yellow-400 animate-spin" />
+                                                        : prog.status === 'error' ? <X size={14} className="text-red-400" />
+                                                            : <RefreshCw size={14} className="text-yellow-400 animate-spin" />
                                                 ) : (
                                                     found ? <CheckCircle size={14} className="text-green-500/50" />
-                                                    : <X size={14} className="text-red-500/60" />
+                                                        : <X size={14} className="text-red-500/60" />
                                                 )}
                                                 <span className="text-sm text-white">{s.label}</span>
                                                 {prog?.msg && <span className="text-xs text-red-400">({prog.msg})</span>}
@@ -1260,9 +1318,9 @@ export function Services() {
 
             {isModalOpen && selectedService && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-surface border border-white/10 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                    <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
                         {/* Modal Header */}
-                        <div className="sticky top-0 bg-surface border-b border-white/10 p-6 flex items-center justify-between">
+                        <div className="sticky top-0 bg-[#0A0A0A] border-b border-white/10 p-6 flex items-center justify-between">
                             <div>
                                 <h2 className="text-2xl font-bold text-white">Commander un service</h2>
                                 <p className="text-slate-400 text-sm mt-1">{selectedService.name}</p>

@@ -15,6 +15,7 @@ import {
     TrendingUp,
     Zap,
     X,
+    type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../libs/api';
@@ -77,17 +78,17 @@ const formatAmount = (cents: number, currency = 'EUR') => {
 };
 
 const PaymentStatusBadge = ({ status }: { status: string }) => {
-    const map: Record<string, { label: string; icon: any; cls: string }> = {
-        paid:      { label: 'Payé',      icon: CheckCircle2, cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
-        succeeded: { label: 'Payé',      icon: CheckCircle2, cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
-        success:   { label: 'Payé',      icon: CheckCircle2, cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
-        active:    { label: 'Actif',     icon: CheckCircle2, cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
-        pending:   { label: 'En attente', icon: Clock,       cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
-        failed:    { label: 'Échoué',    icon: XCircle,      cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
-        refunded:  { label: 'Remboursé', icon: RotateCcw,    cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-        cancelled: { label: 'Annulé',    icon: XCircle,      cls: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
-        paused:    { label: 'Pausé',     icon: AlertCircle,  cls: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-        past_due:  { label: 'En retard', icon: AlertCircle,  cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
+    const map: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
+        paid: { label: 'Payé', icon: CheckCircle2, cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
+        succeeded: { label: 'Payé', icon: CheckCircle2, cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
+        success: { label: 'Payé', icon: CheckCircle2, cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
+        active: { label: 'Actif', icon: CheckCircle2, cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
+        pending: { label: 'En attente', icon: Clock, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
+        failed: { label: 'Échoué', icon: XCircle, cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
+        refunded: { label: 'Remboursé', icon: RotateCcw, cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+        cancelled: { label: 'Annulé', icon: XCircle, cls: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+        paused: { label: 'Pausé', icon: AlertCircle, cls: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+        past_due: { label: 'En retard', icon: AlertCircle, cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
     };
     const cfg = map[status?.toLowerCase()] ?? { label: status ?? '–', icon: AlertCircle, cls: 'bg-slate-500/10 text-slate-400 border-slate-500/20' };
     const Icon = cfg.icon;
@@ -100,15 +101,16 @@ const PaymentStatusBadge = ({ status }: { status: string }) => {
 };
 
 /* ─── Stat Card ──────────────────────────────────────────────────────────────── */
-function StatCard({ label, value, icon: Icon, color }: { label: string; value: string; icon: any; color: string }) {
+function StatCard({ label, value, icon: Icon, color }: { label: string; value: string; icon: LucideIcon; color: string }) {
     return (
-        <div className="bg-surface border border-white/5 rounded-xl p-5 flex items-center gap-4">
-            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', color)}>
-                <Icon size={20} className="text-white" />
+        <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/5 rounded-2xl p-5 flex items-center gap-4 hover:border-white/10 transition-colors group shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary opacity-5 rounded-full blur-[50px] pointer-events-none group-hover:opacity-10 transition-opacity"></div>
+            <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border border-white/5 backdrop-blur-md relative z-10', color)}>
+                <Icon size={22} className="text-white drop-shadow-sm group-hover:scale-110 transition-transform duration-300" />
             </div>
-            <div>
-                <p className="text-slate-400 text-xs font-medium">{label}</p>
-                <p className="text-white text-xl font-bold mt-0.5">{value}</p>
+            <div className="relative z-10">
+                <p className="text-[#A1A1AA] text-[13px] font-medium tracking-wide">{label}</p>
+                <p className="text-white text-2xl font-bold mt-1 tracking-tight">{value}</p>
             </div>
         </div>
     );
@@ -165,8 +167,8 @@ export function Payments() {
             });
             closeComplete();
             loadPayments(payPage, paySearch);
-        } catch (e: any) {
-            setCompleteError(e.message || 'Erreur inconnue');
+        } catch (e: unknown) {
+            setCompleteError(e instanceof Error ? e.message : 'Erreur inconnue');
         } finally {
             setCompleteLoading(false);
         }
@@ -231,18 +233,22 @@ export function Payments() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Paiements</h1>
-                    <p className="text-slate-400 text-sm mt-0.5">Paiements uniques & abonnements TagadaPay</p>
+                    <h1 className="text-[28px] font-bold text-white tracking-tight flex items-center gap-3">
+                        Paiements
+                    </h1>
+                    <p className="text-[#A1A1AA] text-sm mt-1">Gérez les paiements uniques et abonnements via TagadaPay</p>
                 </div>
-                <button
-                    onClick={() => { loadStats(); tab === 'payments' ? loadPayments(payPage, paySearch) : loadSubscriptions(subPage, subSearch, subFilter); }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-colors text-sm"
-                >
-                    <RefreshCw size={14} />
-                    Actualiser
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => { loadStats(); tab === 'payments' ? loadPayments(payPage, paySearch) : loadSubscriptions(subPage, subSearch, subFilter); }}
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#111111]/80 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all shadow-sm cursor-pointer group"
+                        title="Actualiser les données"
+                    >
+                        <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-500 text-primary" />
+                    </button>
+                </div>
             </div>
 
             {/* Stats */}
@@ -256,52 +262,60 @@ export function Payments() {
             )}
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-white/5 border border-white/10 rounded-xl p-1 w-fit">
+            <div className="flex gap-1.5 bg-[#111111]/80 backdrop-blur-xl border border-white/5 rounded-2xl p-1.5 w-fit shadow-sm relative z-10">
                 {(['payments', 'subscriptions'] as const).map(t => (
                     <button
                         key={t}
                         onClick={() => setTab(t)}
                         className={cn(
-                            'px-5 py-2 rounded-lg text-sm font-semibold transition-all',
-                            tab === t ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'
+                            'px-6 py-2.5 rounded-xl text-[13px] font-semibold transition-all flex items-center gap-2 cursor-pointer',
+                            tab === t
+                                ? 'bg-primary text-black shadow-md'
+                                : 'text-[#A1A1AA] hover:text-white hover:bg-white/5'
                         )}
                     >
-                        {t === 'payments' ? '💳 Paiements' : '🔄 Abonnements'}
+                        {t === 'payments' ? <CreditCard size={16} /> : <Repeat size={16} />}
+                        {t === 'payments' ? 'Paiements uniques' : 'Abonnements'}
                     </button>
                 ))}
             </div>
 
             {/* ── Payments Tab ─────────────────────────────────────────────── */}
             {tab === 'payments' && (
-                <div className="bg-surface border border-white/5 rounded-xl overflow-hidden">
+                <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-xl mb-12">
                     {/* Toolbar */}
-                    <div className="p-4 border-b border-white/5 flex gap-3">
-                        <form onSubmit={handlePaySearch} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 flex-1 max-w-sm">
-                            <Search size={14} className="text-slate-500" />
+                    <div className="p-5 border-b border-white/5 flex gap-3 items-center">
+                        <form onSubmit={handlePaySearch} className="flex items-center gap-3 bg-[#050505] border border-white/10 rounded-xl px-4 py-2.5 flex-1 max-w-sm focus-within:border-primary/50 transition-colors shadow-inner">
+                            <Search size={16} className="text-[#A1A1AA]" />
                             <input
                                 type="text"
-                                placeholder="Email, produit, lien..."
+                                placeholder="Email, produit, ID..."
                                 value={paySearch}
                                 onChange={e => setPaySearch(e.target.value)}
-                                className="bg-transparent border-none outline-none text-sm text-white placeholder-slate-500 w-full"
+                                className="bg-transparent border-none outline-none text-[13px] text-white placeholder-[#A1A1AA] w-full font-medium"
                             />
-                            <button type="submit" className="text-primary text-xs font-bold">OK</button>
+                            {paySearch && (
+                                <button type="button" onClick={() => { setPaySearch(''); loadPayments(1, ''); }} className="text-[#A1A1AA] hover:text-white p-1">
+                                    <X size={14} />
+                                </button>
+                            )}
+                            <button type="submit" className="hidden">OK</button>
                         </form>
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                    <div className="overflow-x-auto min-h-[400px]">
+                        <table className="w-full text-[13px]">
                             <thead>
-                                <tr className="border-b border-white/5 text-slate-500 text-xs uppercase tracking-wider">
-                                    <th className="px-4 py-3 text-left">Date</th>
-                                    <th className="px-4 py-3 text-left">Client</th>
-                                    <th className="px-4 py-3 text-left">Produit</th>
-                                    <th className="px-4 py-3 text-left">Lien social</th>
-                                    <th className="px-4 py-3 text-right">Montant</th>
-                                    <th className="px-4 py-3 text-center">Statut</th>
-                                    <th className="px-4 py-3 text-center">IDs</th>
-                                    <th className="px-4 py-3 text-center">Action</th>
+                                <tr className="border-b border-white/5 bg-white/[0.02]">
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Date</th>
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Client</th>
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Produit</th>
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Lien social</th>
+                                    <th className="px-5 py-4 text-right font-semibold text-[#A1A1AA]">Montant</th>
+                                    <th className="px-5 py-4 text-center font-semibold text-[#A1A1AA]">Statut</th>
+                                    <th className="px-5 py-4 text-center font-semibold text-[#A1A1AA]">Détails</th>
+                                    <th className="px-5 py-4 text-center font-semibold text-[#A1A1AA]">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -310,43 +324,42 @@ export function Payments() {
                                 ) : payments.length === 0 ? (
                                     <tr><td colSpan={8} className="text-center py-12 text-slate-500">Aucun paiement trouvé</td></tr>
                                 ) : payments.map(p => (
-                                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
-                                        <td className="px-4 py-3 text-slate-400 whitespace-nowrap text-xs">{formatDate(p.payment_created_at || p.created_at)}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-white text-xs font-medium">{p.customer_name || '–'}</div>
-                                            <div className="text-slate-500 text-[11px]">{p.customer_email}</div>
+                                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.03] transition-colors group">
+                                        <td className="px-5 py-4 text-[#A1A1AA] whitespace-nowrap text-[13px]">{formatDate(p.payment_created_at || p.created_at)}</td>
+                                        <td className="px-5 py-4">
+                                            <div className="text-white text-[13px] font-semibold">{p.customer_name || '–'}</div>
+                                            <div className="text-[#A1A1AA] text-xs">{p.customer_email}</div>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-white text-xs max-w-50 truncate">{p.product_title}</div>
-                                            {p.quantity > 1 && <div className="text-slate-500 text-[11px]">x{p.quantity}</div>}
+                                        <td className="px-5 py-4">
+                                            <div className="text-white text-[13px] font-medium max-w-50 truncate">{p.product_title}</div>
+                                            {p.quantity > 1 && <div className="text-[#00A336] font-bold text-xs mt-0.5">x{p.quantity}</div>}
                                         </td>
-                                        <td className="px-4 py-3 text-slate-400 text-[11px] max-w-40 truncate">
+                                        <td className="px-5 py-4 text-[#A1A1AA] text-xs max-w-40 truncate">
                                             {p.social_link ? (
                                                 <a href={p.social_link} target="_blank" rel="noreferrer"
-                                                    className="flex items-center gap-1 hover:text-primary transition-colors truncate">
-                                                    <ArrowUpRight size={10} />
+                                                    className="inline-flex items-center gap-1.5 hover:text-primary transition-colors truncate px-2 py-1 bg-white/5 rounded-md">
+                                                    <ArrowUpRight size={12} />
                                                     {p.social_link.replace(/https?:\/\/(www\.)?/, '')}
                                                 </a>
                                             ) : '–'}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-white font-semibold text-xs whitespace-nowrap">
+                                        <td className="px-5 py-4 text-right text-white font-bold text-[13px] whitespace-nowrap">
                                             {formatAmount(p.amount, p.currency)}
                                         </td>
-                                        <td className="px-4 py-3 text-center">
+                                        <td className="px-5 py-4 text-center">
                                             <PaymentStatusBadge status={p.payment_status} />
                                         </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <div className="flex flex-col gap-0.5 items-center">
-                                                <span className="text-slate-400 text-[10px] font-mono font-semibold">#{p.id}</span>
-                                                {p.shopify_order_number && <span className="text-blue-400 text-[10px] font-mono">Shopify #{p.shopify_order_number}</span>}
-                                                <span className="text-slate-600 text-[10px] font-mono">{p.payment_id?.slice(0, 8)}…</span>
+                                        <td className="px-5 py-4 text-center">
+                                            <div className="flex flex-col gap-1 items-center">
+                                                <span className="text-[#A1A1AA] text-[11px] font-mono font-medium px-1.5 py-0.5 bg-white/5 rounded">#{p.id}</span>
+                                                {p.shopify_order_number && <span className="text-blue-400 text-[10px] font-mono px-1.5 py-0.5 bg-blue-500/10 rounded">S_#{p.shopify_order_number}</span>}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-center">
+                                        <td className="px-5 py-4 text-center">
                                             {['paid', 'succeeded', 'success'].includes(p.payment_status) && !p.social_link && (
                                                 <button
                                                     onClick={() => openComplete(p)}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 transition-colors text-[11px] font-semibold"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 transition-all font-semibold hover:scale-105"
                                                 >
                                                     <Zap size={10} />
                                                     Compléter
@@ -378,47 +391,57 @@ export function Payments() {
 
             {/* ── Subscriptions Tab ────────────────────────────────────────── */}
             {tab === 'subscriptions' && (
-                <div className="bg-surface border border-white/5 rounded-xl overflow-hidden">
+                <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-xl mb-12">
                     {/* Toolbar */}
-                    <div className="p-4 border-b border-white/5 flex flex-wrap gap-3">
-                        <form onSubmit={handleSubSearch} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 flex-1 max-w-sm">
-                            <Search size={14} className="text-slate-500" />
+                    <div className="p-5 border-b border-white/5 flex flex-wrap gap-4 items-center">
+                        <form onSubmit={handleSubSearch} className="flex items-center gap-3 bg-[#050505] border border-white/10 rounded-xl px-4 py-2.5 flex-1 max-w-sm focus-within:border-primary/50 transition-colors shadow-inner">
+                            <Search size={16} className="text-[#A1A1AA]" />
                             <input
                                 type="text"
-                                placeholder="Email, produit..."
+                                placeholder="Rechercher un abonnement..."
                                 value={subSearch}
                                 onChange={e => setSubSearch(e.target.value)}
-                                className="bg-transparent border-none outline-none text-sm text-white placeholder-slate-500 w-full"
+                                className="bg-transparent border-none outline-none text-[13px] text-white placeholder-[#A1A1AA] w-full font-medium"
                             />
-                            <button type="submit" className="text-primary text-xs font-bold">OK</button>
+                            {subSearch && (
+                                <button type="button" onClick={() => { setSubSearch(''); loadSubscriptions(1, '', subFilter); }} className="text-[#A1A1AA] hover:text-white p-1">
+                                    <X size={14} />
+                                </button>
+                            )}
+                            <button type="submit" className="hidden">OK</button>
                         </form>
-                        <select
-                            value={subFilter}
-                            onChange={e => { setSubFilter(e.target.value); setSubPage(1); }}
-                            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-300 outline-none"
-                        >
-                            <option value="">Tous les statuts</option>
-                            <option value="active">Actif</option>
-                            <option value="paused">Pausé</option>
-                            <option value="cancelled">Annulé</option>
-                            <option value="past_due">En retard</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={subFilter}
+                                onChange={e => { setSubFilter(e.target.value); setSubPage(1); }}
+                                className="bg-[#050505] border border-white/10 rounded-xl pl-4 pr-10 py-2.5 text-[13px] font-medium text-white outline-none focus:border-primary/50 appearance-none shadow-inner cursor-pointer"
+                            >
+                                <option value="">Tous les abonnements</option>
+                                <option value="active">Actifs uniquement</option>
+                                <option value="paused">En pause</option>
+                                <option value="cancelled">Annulés</option>
+                                <option value="past_due">En retard de paiement</option>
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#A1A1AA]">
+                                <ChevronRight size={14} className="rotate-90" />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                    <div className="overflow-x-auto min-h-[400px]">
+                        <table className="w-full text-[13px]">
                             <thead>
-                                <tr className="border-b border-white/5 text-slate-500 text-xs uppercase tracking-wider">
-                                    <th className="px-4 py-3 text-left">Début</th>
-                                    <th className="px-4 py-3 text-left">Client</th>
-                                    <th className="px-4 py-3 text-left">Produit</th>
-                                    <th className="px-4 py-3 text-left">Lien social</th>
-                                    <th className="px-4 py-3 text-center">Intervalle</th>
-                                    <th className="px-4 py-3 text-left">Prochain renouvellement</th>
-                                    <th className="px-4 py-3 text-right">Montant</th>
-                                    <th className="px-4 py-3 text-right">Total encaissé</th>
-                                    <th className="px-4 py-3 text-center">Statut</th>
+                                <tr className="border-b border-white/5 bg-white/[0.02]">
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Débuté le</th>
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Abonné</th>
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Formule</th>
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Cible</th>
+                                    <th className="px-5 py-4 text-center font-semibold text-[#A1A1AA]">Cycle</th>
+                                    <th className="px-5 py-4 text-left font-semibold text-[#A1A1AA]">Prochain prélèvement</th>
+                                    <th className="px-5 py-4 text-right font-semibold text-[#A1A1AA]">Mensualité</th>
+                                    <th className="px-5 py-4 text-right font-semibold text-[#A1A1AA]">LTV (Encaissé)</th>
+                                    <th className="px-5 py-4 text-center font-semibold text-[#A1A1AA]">Statut</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -427,47 +450,47 @@ export function Payments() {
                                 ) : subs.length === 0 ? (
                                     <tr><td colSpan={9} className="text-center py-12 text-slate-500">Aucun abonnement trouvé</td></tr>
                                 ) : subs.map(s => (
-                                    <tr key={s.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
-                                        <td className="px-4 py-3 text-slate-400 whitespace-nowrap text-xs">{formatDate(s.subscription_started_at || s.created_at)}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-white text-xs font-medium">{s.customer_name || '–'}</div>
-                                            <div className="text-slate-500 text-[11px]">{s.customer_email}</div>
+                                    <tr key={s.id} className="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+                                        <td className="px-5 py-4 text-[#A1A1AA] whitespace-nowrap text-[13px]">{formatDate(s.subscription_started_at || s.created_at)}</td>
+                                        <td className="px-5 py-4">
+                                            <div className="text-white text-[13px] font-semibold">{s.customer_name || '–'}</div>
+                                            <div className="text-[#A1A1AA] text-xs">{s.customer_email}</div>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-white text-xs max-w-50 truncate">{s.product_title}</div>
+                                        <td className="px-5 py-4">
+                                            <div className="text-white text-[13px] font-medium max-w-50 truncate">{s.product_title}</div>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-400 text-[11px] max-w-40 truncate">
+                                        <td className="px-5 py-4 text-[#A1A1AA] text-xs max-w-40 truncate">
                                             {s.social_link ? (
                                                 <a href={s.social_link} target="_blank" rel="noreferrer"
-                                                    className="flex items-center gap-1 hover:text-primary transition-colors truncate">
-                                                    <ArrowUpRight size={10} />
+                                                    className="inline-flex items-center gap-1.5 hover:text-primary transition-colors truncate px-2 py-1 bg-white/5 rounded-md">
+                                                    <ArrowUpRight size={12} />
                                                     {s.social_link.replace(/https?:\/\/(www\.)?/, '')}
                                                 </a>
                                             ) : '–'}
                                         </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className="text-slate-400 text-[11px] capitalize">{s.subscription_interval || '–'}</span>
+                                        <td className="px-5 py-4 text-center">
+                                            <span className="text-[#A1A1AA] text-xs capitalize bg-white/5 px-2 py-1 rounded-md">{s.subscription_interval || '–'}</span>
                                         </td>
-                                        <td className="px-4 py-3 text-xs whitespace-nowrap">
+                                        <td className="px-5 py-4 text-[13px] whitespace-nowrap">
                                             {s.subscription_next_billing_date ? (
                                                 <span className={cn(
                                                     new Date(s.subscription_next_billing_date) < new Date()
-                                                        ? 'text-red-400' : 'text-slate-300'
+                                                        ? 'text-red-400 font-medium bg-red-500/10 px-2 py-1 rounded-md' : 'text-[#A1A1AA]'
                                                 )}>
                                                     {formatDate(s.subscription_next_billing_date)}
                                                 </span>
                                             ) : '–'}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-white font-semibold text-xs whitespace-nowrap">
+                                        <td className="px-5 py-4 text-right text-white font-bold text-[13px] whitespace-nowrap">
                                             {formatAmount(s.amount, s.currency)}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-green-400 font-semibold text-xs whitespace-nowrap">
+                                        <td className="px-5 py-4 text-right text-primary font-bold text-[13px] whitespace-nowrap">
                                             {s.total_paid ? formatAmount(Number(s.total_paid), s.currency) : '–'}
                                             {s.payment_count > 0 && (
-                                                <div className="text-slate-500 text-[10px]">{s.payment_count} paiement{s.payment_count > 1 ? 's' : ''}</div>
+                                                <div className="text-[#A1A1AA] font-normal text-xs mt-0.5">{s.payment_count} prélèvement{s.payment_count > 1 ? 's' : ''}</div>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-center">
+                                        <td className="px-5 py-4 text-center">
                                             <PaymentStatusBadge status={s.subscription_status} />
                                         </td>
                                     </tr>
@@ -495,90 +518,116 @@ export function Payments() {
 
             {/* ── Complete Order Modal ─────────────────────────────────────── */}
             {completeModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                        <div className="flex items-center justify-between mb-5">
-                            <div>
-                                <h2 className="text-white font-bold text-base">Compléter la commande</h2>
-                                <p className="text-slate-500 text-xs mt-0.5 truncate max-w-[320px]">{completeModal.product_title}</p>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+                    <div
+                        className="absolute inset-0 bg-[#050505]/80 backdrop-blur-xl"
+                        onClick={closeComplete}
+                    />
+
+                    <div className="relative w-full max-w-[480px] bg-[#0A0A0A] border border-white/10 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col max-h-[90vh]">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-[#111111]/50">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
+                                    <Zap size={20} className="text-yellow-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-white font-bold text-lg tracking-tight">Compléter la commande</h2>
+                                    <p className="text-[#A1A1AA] text-xs font-medium truncate max-w-[200px] mt-0.5">{completeModal.product_title}</p>
+                                </div>
                             </div>
-                            <button onClick={closeComplete} className="text-slate-500 hover:text-white transition-colors">
-                                <X size={18} />
+                            <button
+                                onClick={closeComplete}
+                                className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#A1A1AA] hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                            >
+                                <X size={16} />
                             </button>
                         </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-slate-400 text-xs font-medium mb-1.5 block">
-                                    Lien / pseudo du compte <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={completeSocialLink}
-                                    onChange={e => setCompleteSocialLink(e.target.value)}
-                                    placeholder="https://www.tiktok.com/@pseudo  ou  @pseudo"
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary"
-                                    autoFocus
-                                    onKeyDown={e => e.key === 'Enter' && submitComplete()}
-                                />
-                            </div>
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto">
+                            <div className="space-y-5">
+                                <div className="bg-[#111111] border border-white/5 rounded-2xl p-4 text-[13px] text-[#A1A1AA] space-y-2.5">
+                                    <div className="flex justify-between items-center group">
+                                        <span className="font-medium">Produit commandé</span>
+                                        <span className="text-white font-semibold truncate max-w-[200px]">{completeModal.product_title}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-medium">Quantité</span>
+                                        <span className="text-white bg-white/5 px-2 py-0.5 rounded-md font-mono">{completeModal.quantity?.toLocaleString('fr-FR')}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-medium">Montant encaissé</span>
+                                        <span className="text-[#00A336] font-bold">{formatAmount(completeModal.amount, completeModal.currency)}</span>
+                                    </div>
+                                    <div className="pt-2 mt-2 border-t border-white/5 flex justify-between items-center">
+                                        <span className="font-medium">Réf. TagadaPay</span>
+                                        <span className="text-[#A1A1AA] font-mono text-[11px] bg-black px-2 py-1 rounded-md">{completeModal.payment_id?.slice(0, 16)}…</span>
+                                    </div>
+                                </div>
 
-                            <div>
-                                <label className="text-slate-400 text-xs font-medium mb-1.5 block">Email client (optionnel)</label>
-                                <input
-                                    type="email"
-                                    value={completeEmail}
-                                    onChange={e => setCompleteEmail(e.target.value)}
-                                    placeholder="client@email.com"
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-primary"
-                                />
-                            </div>
+                                <div className="space-y-4 pt-2">
+                                    <div className="space-y-2">
+                                        <label className="text-white text-[13px] font-semibold flex items-center gap-1.5 focus-within:text-primary transition-colors">
+                                            Lien de destination (URL ou @pseudo) <span className="text-[#00A336]">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={completeSocialLink}
+                                                onChange={e => setCompleteSocialLink(e.target.value)}
+                                                placeholder="ex: https://instagram.com/p/..."
+                                                className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-[14px] text-white placeholder-[#A1A1AA]/50 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                                                autoFocus
+                                                onKeyDown={e => e.key === 'Enter' && submitComplete()}
+                                            />
+                                        </div>
+                                        <p className="text-[#A1A1AA] text-[11px]">Le lien vers lequel les services seront envoyés via l'API.</p>
+                                    </div>
 
-                            <div className="bg-white/3 border border-white/5 rounded-lg p-3 text-xs text-slate-400 space-y-1.5">
-                                <div className="flex justify-between">
-                                    <span>Produit</span>
-                                    <span className="text-white truncate max-w-[200px] text-right">{completeModal.product_title}</span>
+                                    <div className="space-y-2">
+                                        <label className="text-white text-[13px] font-semibold flex items-center gap-1.5 focus-within:text-primary transition-colors">
+                                            Email de notification <span className="text-[#A1A1AA] font-normal text-xs">(Optionnel)</span>
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={completeEmail}
+                                            onChange={e => setCompleteEmail(e.target.value)}
+                                            placeholder="client@mail.com"
+                                            className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-[14px] text-white placeholder-[#A1A1AA]/50 outline-none focus:border-white/30 transition-all"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>Montant</span>
-                                    <span className="text-green-400 font-semibold">{formatAmount(completeModal.amount, completeModal.currency)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Quantité</span>
-                                    <span className="text-white">{completeModal.quantity?.toLocaleString('fr-FR')}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Payment ID</span>
-                                    <span className="text-slate-500 font-mono">{completeModal.payment_id?.slice(0, 20)}…</span>
-                                </div>
-                            </div>
 
-                            {completeError && (
-                                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-red-400 text-xs">
-                                    {completeError}
-                                </div>
-                            )}
-
-                            <div className="flex gap-3 pt-1">
-                                <button
-                                    onClick={closeComplete}
-                                    className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-colors text-sm"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={submitComplete}
-                                    disabled={!completeSocialLink.trim() || completeLoading}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/80 transition-colors disabled:opacity-40"
-                                >
-                                    {completeLoading ? (
-                                        <RefreshCw size={14} className="animate-spin" />
-                                    ) : (
-                                        <Zap size={14} />
-                                    )}
-                                    Lancer la commande
-                                </button>
+                                {completeError && (
+                                    <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-xs font-medium">
+                                        <AlertCircle size={16} className="shrink-0" />
+                                        <p>{completeError}</p>
+                                    </div>
+                                )}
                             </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-5 border-t border-white/5 bg-[#111111]/80 flex gap-3">
+                            <button
+                                onClick={closeComplete}
+                                className="flex-1 px-4 py-3 rounded-xl bg-transparent border border-white/10 text-white font-medium hover:bg-white/5 transition-colors text-[13px] cursor-pointer"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={submitComplete}
+                                disabled={!completeSocialLink.trim() || completeLoading}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-black font-bold text-[13px] hover:bg-[#00BF3F] hover:shadow-[0_0_20px_rgba(0,163,54,0.3)] transition-all disabled:opacity-50 disabled:hover:shadow-none cursor-pointer group"
+                            >
+                                {completeLoading ? (
+                                    <RefreshCw size={16} className="animate-spin" />
+                                ) : (
+                                    <Zap size={16} className="group-hover:scale-110 transition-transform" />
+                                )}
+                                {completeLoading ? 'Envoi en cours...' : 'Envoyer en production'}
+                            </button>
                         </div>
                     </div>
                 </div>

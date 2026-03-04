@@ -61,10 +61,16 @@ interface TrackResult extends OrderDetails {
     runs?: number;
     executedRuns?: number;
     raw?: {
-        order: any;
+        order: {
+            service_name?: string;
+            provider?: string;
+            service_id?: string;
+            created_by?: { name?: string };
+            [key: string]: unknown;
+        };
         is_drip_feed: boolean;
         drip_feed_info?: DripFeedInfo;
-        account?: any;
+        account?: Record<string, unknown>;
     };
 }
 
@@ -86,13 +92,13 @@ export function Track() {
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', { 
-            day: '2-digit', 
-            month: 'short', 
+        return date.toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: 'short',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            timeZone: 'Europe/Paris' 
+            timeZone: 'Europe/Paris'
         });
     };
 
@@ -112,7 +118,7 @@ export function Track() {
     // Calculate real-time progress for drip feed orders
     const calculateDripProgress = () => {
         const dripInfo = result?.raw?.drip_feed_info;
-        
+
         if (!result?.isDripFeed || !dripInfo) {
             return {
                 delivered: result?.delivered || 0,
@@ -132,7 +138,7 @@ export function Track() {
 
     const handleSearch = async () => {
         console.log('🔍 Track handleSearch called with:', orderNumber);
-        
+
         if (!orderNumber.trim()) {
             console.log('⚠️ Empty order number');
             setError('Veuillez entrer un numéro de commande');
@@ -148,9 +154,8 @@ export function Track() {
             setResult(data);
             setLastRefreshTime(new Date());
             setNextRefresh(30); // Reset countdown when loading new order
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('❌ Track: Error fetching order:', err);
-            console.error('Error details:', err.message, err.status, err.code);
             setError('Commande introuvable');
             setResult(null);
             setLastRefreshTime(null);
@@ -192,13 +197,14 @@ export function Track() {
         }, 1000);
 
         return () => clearInterval(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [result, orderNumber]);
 
     // WebSocket listeners for real-time order tracking updates
     useEffect(() => {
         if (!isConnected || !result) return;
 
-        const handleOrderUpdated = (data: any) => {
+        const handleOrderUpdated = (data: { order_id?: string; id?: string | number }) => {
             // Only refresh if the updated order matches the currently tracked order
             if (data.order_id === orderNumber || data.id === result?.id) {
                 console.log('🔄 Track: Order updated, refreshing...');
@@ -220,6 +226,7 @@ export function Track() {
             off('order:updated', handleOrderUpdated);
             off('drip:executed', handleDripExecuted);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isConnected, on, off, result, orderNumber]);
 
 
@@ -230,7 +237,7 @@ export function Track() {
                 <p className="text-slate-400 text-lg">Suivez l'exécution complète de vos ordres</p>
             </div>
 
-            <div className="w-full max-w-8xl bg-surface/30 border border-primary/30 rounded-2xl p-4 shadow-[0_0_30px_rgba(190,242,100,0.05)]">
+            <div className="w-full max-w-8xl bg-[#0A0A0A] border border-white/10 rounded-2xl p-4 sm:p-6 shadow-xl">
                 <div className="flex gap-4">
                     <input
                         type="text"
@@ -238,12 +245,12 @@ export function Track() {
                         value={orderNumber}
                         onChange={(e) => setOrderNumber(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                        className="flex-1 bg-background border border-white/10 rounded-xl px-6 py-4 text-white placeholder-slate-500 outline-none focus:border-primary/50 transition-colors text-lg"
+                        className="flex-1 bg-[#050505] border border-white/10 rounded-xl px-6 py-4 text-white placeholder-[#A1A1AA] outline-none focus:border-white/20 transition-colors text-lg"
                     />
                     <button
                         onClick={handleSearch}
                         disabled={loading}
-                        className="bg-primary hover:bg-secondary text-black font-bold text-lg px-8 py-4 rounded-xl transition-colors flex items-center gap-3 shadow-[0_0_20px_rgba(190,242,100,0.3)] disabled:opacity-50"
+                        className="bg-primary hover:bg-primary/90 text-black font-bold text-lg px-8 py-4 rounded-xl transition-all flex items-center gap-3 shadow-[0_0_20px_rgba(0,163,54,0.3)] disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98]"
                     >
                         {loading ? <RefreshCw size={24} className="animate-spin" /> : <Search size={24} strokeWidth={3} />}
                         Rechercher
@@ -259,7 +266,8 @@ export function Track() {
             {result && (
                 <div className="w-full max-w-8xl space-y-6">
                     {/* Main Order Card */}
-                    <div className="bg-linear-to-br from-surface/40 to-surface/20 border border-primary/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(190,242,100,0.1)]">
+                    <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10" />
                         <div className="flex items-start justify-between mb-6">
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
@@ -321,9 +329,9 @@ export function Track() {
                                 </div>
                                 <span className="text-2xl font-black text-primary">{calculateDripProgress().progress}%</span>
                             </div>
-                            <div className="w-full h-4 bg-black/40 rounded-full overflow-hidden border border-white/10">
-                                <div 
-                                    className="h-full bg-linear-to-r from-primary to-secondary transition-all duration-1000 rounded-full"
+                            <div className="w-full h-4 bg-[#050505] rounded-full overflow-hidden border border-white/10">
+                                <div
+                                    className="h-full bg-primary transition-all duration-1000 rounded-full"
                                     style={{ width: `${calculateDripProgress().progress}%` }}
                                 />
                             </div>
@@ -336,31 +344,31 @@ export function Track() {
 
                         {/* Details Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+                            <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
                                 <div className="flex items-center gap-2 mb-2">
                                     <TrendingUp size={16} className="text-primary" />
-                                    <span className="text-xs text-slate-500 font-bold uppercase">Provider</span>
+                                    <span className="text-xs text-[#A1A1AA] font-bold uppercase">Provider</span>
                                 </div>
                                 <div className="text-white font-bold">{result.provider || result.raw?.order?.provider || 'N/A'}</div>
                             </div>
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+                            <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Zap size={16} className="text-blue-400" />
-                                    <span className="text-xs text-slate-500 font-bold uppercase">Service ID</span>
+                                    <span className="text-xs text-[#A1A1AA] font-bold uppercase">Service ID</span>
                                 </div>
                                 <div className="text-white font-mono text-sm">{result.service_id || result.raw?.order?.service_id || 'N/A'}</div>
                             </div>
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+                            <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Calendar size={16} className="text-green-400" />
-                                    <span className="text-xs text-slate-500 font-bold uppercase">Créé le</span>
+                                    <span className="text-xs text-[#A1A1AA] font-bold uppercase">Créé le</span>
                                 </div>
                                 <div className="text-white font-bold text-sm">{formatDate(result.created_at)}</div>
                             </div>
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+                            <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
                                 <div className="flex items-center gap-2 mb-2">
                                     <User size={16} className="text-purple-400" />
-                                    <span className="text-xs text-slate-500 font-bold uppercase">Créé par</span>
+                                    <span className="text-xs text-[#A1A1AA] font-bold uppercase">Créé par</span>
                                 </div>
                                 <div className="text-white font-bold text-sm">{result.created_by?.name || result.raw?.order?.created_by?.name || 'N/A'}</div>
                             </div>
@@ -368,22 +376,22 @@ export function Track() {
 
                         {/* Link and Provider Order ID */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <div className="text-xs text-slate-500 font-bold uppercase mb-2">LIEN CIBLE</div>
+                            <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
+                                <div className="text-xs text-[#A1A1AA] font-bold uppercase mb-2">LIEN CIBLE</div>
                                 <a href={result.link} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 flex items-center gap-2 font-mono text-sm break-all">
                                     {result.link}
                                     <ExternalLink size={14} className="shrink-0" />
                                 </a>
                             </div>
                             {result.provider_order_id && (
-                                <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                    <div className="text-xs text-slate-500 font-bold uppercase mb-2">PROVIDER ORDER ID</div>
+                                <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
+                                    <div className="text-xs text-[#A1A1AA] font-bold uppercase mb-2">PROVIDER ORDER ID</div>
                                     <div className="text-primary font-mono font-bold">{result.provider_order_id}</div>
                                 </div>
                             )}
                             {result.shopify_order_number && (
-                                <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                    <div className="text-xs text-slate-500 font-bold uppercase mb-2">SHOPIFY ORDER</div>
+                                <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
+                                    <div className="text-xs text-[#A1A1AA] font-bold uppercase mb-2">SHOPIFY ORDER</div>
                                     <div className="text-orange-400 font-mono font-bold">#{result.shopify_order_number}</div>
                                 </div>
                             )}
@@ -402,7 +410,7 @@ export function Track() {
 
                     {/* Drip Feed Details */}
                     {result.isDripFeed && result.raw?.drip_feed_info && (
-                        <div className="bg-surface/20 border border-primary/20 rounded-2xl p-6 space-y-6">
+                        <div className="bg-[#0A0A0A] border border-primary/20 rounded-2xl p-6 space-y-6">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-2xl font-bold text-primary">📊 Détails Drip Feed</h3>
                                 <div className="text-right">
@@ -415,7 +423,7 @@ export function Track() {
 
                             {result.raw.drip_feed_info.parent_order && (
                                 <>
-                                    <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+                                    <div className="bg-[#050505] rounded-xl p-4 border border-white/5">
                                         <div className="text-xs text-slate-500 font-bold uppercase mb-3">CONFIGURATION</div>
                                         <div className="grid grid-cols-3 gap-4">
                                             <div>
@@ -446,9 +454,9 @@ export function Track() {
                                                     {(() => {
                                                         const createdDate = new Date(result.raw.drip_feed_info.parent_order.created_at);
                                                         const nextDripDate = new Date(createdDate.getTime() + (result.raw.drip_feed_info.executed_runs * result.raw.drip_feed_info.parent_order.run_interval * 60 * 1000));
-                                                        return nextDripDate.toLocaleDateString('fr-FR', { 
-                                                            day: '2-digit', 
-                                                            month: 'short', 
+                                                        return nextDripDate.toLocaleDateString('fr-FR', {
+                                                            day: '2-digit',
+                                                            month: 'short',
                                                             year: 'numeric',
                                                             hour: '2-digit',
                                                             minute: '2-digit',
@@ -472,9 +480,9 @@ export function Track() {
                                                 {(() => {
                                                     const createdDate = new Date(result.raw.drip_feed_info.parent_order.created_at);
                                                     const endDate = new Date(createdDate.getTime() + ((result.raw.drip_feed_info.total_runs - 1) * result.raw.drip_feed_info.parent_order.run_interval * 60 * 1000));
-                                                    return endDate.toLocaleDateString('fr-FR', { 
-                                                        day: '2-digit', 
-                                                        month: 'short', 
+                                                    return endDate.toLocaleDateString('fr-FR', {
+                                                        day: '2-digit',
+                                                        month: 'short',
                                                         year: 'numeric',
                                                         hour: '2-digit',
                                                         minute: '2-digit',
@@ -507,16 +515,16 @@ export function Track() {
                                             return (
                                                 <div key={index} className={cn(
                                                     "flex items-center justify-between p-4 rounded-xl border transition-all",
-                                                    subOrder.is_executed 
-                                                        ? "bg-black/30 border-white/10" 
+                                                    subOrder.is_executed
+                                                        ? "bg-black/30 border-white/10"
                                                         : "bg-black/10 border-white/5 opacity-50"
                                                 )}>
                                                     <div className="flex items-center gap-4">
                                                         <div className={cn(
                                                             "w-10 h-10 rounded-full flex items-center justify-center font-bold",
                                                             subOrder.status === 'Completed' ? "bg-green-500/20 text-green-400" :
-                                                            subOrder.is_executed ? "bg-blue-500/20 text-blue-400" :
-                                                            "bg-slate-500/20 text-slate-400"
+                                                                subOrder.is_executed ? "bg-blue-500/20 text-blue-400" :
+                                                                    "bg-slate-500/20 text-slate-400"
                                                         )}>
                                                             {subOrder.order_number}
                                                         </div>
@@ -541,8 +549,8 @@ export function Track() {
                                                                 </div>
                                                                 <div className="text-slate-400 text-sm">{subOrder.quantity.toLocaleString()} unités</div>
                                                                 <div className="text-yellow-400 text-xs">
-                                                                    {subOrder.status === 'In progress' || subOrder.status === 'Processing' 
-                                                                        ? 'Traitement par le provider...' 
+                                                                    {subOrder.status === 'In progress' || subOrder.status === 'Processing'
+                                                                        ? 'Traitement par le provider...'
                                                                         : 'En attente de sync...'}
                                                                 </div>
                                                             </>

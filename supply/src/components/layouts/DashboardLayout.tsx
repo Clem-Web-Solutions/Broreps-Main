@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../libs/utils';
 import { NotificationBell } from '../notifications/NotificationBell';
+import ParticlesBackground from './ParticlesBackground';
 
 const mainNav = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
@@ -94,11 +95,21 @@ export function DashboardLayout() {
     const filteredBottomNav = bottomNav.filter(item => !item.adminOnly || isAdmin);
 
     return (
-        <div className="min-h-screen bg-background text-white selection:bg-primary selection:text-black font-sans h-screen flex flex-col">
-            <header className="flex items-center justify-between px-8 py-5">
+        <div className="min-h-screen bg-[#0a0a0a] flex flex-col relative overflow-hidden text-white font-['Inter','Geist',sans-serif] h-screen">
+            {/* Massive Halos (Glows Verts / Nuages) */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-black">
+                {/* Ambient glow, very subtle */}
+                <div className="absolute top-[0%] left-[20%] w-[50%] h-[50%] bg-[#00A336] opacity-[0.06] blur-[150px] rounded-full mix-blend-screen pointer-events-none"></div>
+                <div className="absolute bottom-[0%] right-[10%] w-[40%] h-[50%] bg-[#00A336] opacity-[0.04] blur-[150px] rounded-full mix-blend-screen pointer-events-none"></div>
+
+                {/* Stars/Particles ON TOP of the background clouds so they shine clearly */}
+                <ParticlesBackground />
+            </div>
+
+            <header className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-[#111111]/80 backdrop-blur-xl relative z-10 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
                 <div className="flex items-center gap-12">
                     <div className="flex items-center gap-2">
-                        <img src="/logo.png" alt="BroReps Supply" className="h-10 w-auto object-contain" />
+                        <img src="/logo.png" alt="BroReps Supply" className="h-10 w-auto object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105" />
                     </div>
 
                     {/* Search Bar - hidden on mobile */}
@@ -118,37 +129,43 @@ export function DashboardLayout() {
                     <div className="relative">
                         <button
                             onClick={() => setShowDropdown(!showDropdown)}
-                            className="h-8 w-8 bg-surface rounded-full border border-white/10 flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:border-primary/50 transition-colors"
+                            className="flex items-center gap-3 pl-1 pr-4 py-1 rounded-full bg-[#050505] hover:bg-[#1a1a1a] text-white transition-all border border-white/5 shadow-sm cursor-pointer group"
                         >
-                            {getInitials(user?.name)}
+                            <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-black cursor-pointer group-hover:scale-105 transition-transform duration-300">
+                                {getInitials(user?.name)}
+                            </div>
+                            <span className="text-[13px] font-medium hidden sm:block">Profil</span>
                         </button>
 
                         {showDropdown && (
-                            <div className="absolute right-0 mt-2 w-48 bg-[#0f1f35] border border-[#7FFF00]/20 rounded-lg shadow-xl z-50">
-                                <div className="p-3 border-b border-white/10">
-                                    <p className="text-sm font-medium text-white">{user?.name}</p>
-                                    <p className="text-xs text-slate-400">{user?.email}</p>
-                                    {user?.role === 'admin' && (
-                                        <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-[#7FFF00]/10 text-[#7FFF00] rounded">
-                                            Admin
-                                        </span>
-                                    )}
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+                                <div className="absolute right-0 mt-2 w-[240px] bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden py-1.5 z-50 p-1">
+                                    <div className="px-3 py-2.5 mb-1 border-b border-white/5 mx-1">
+                                        <p className="text-[13px] font-medium text-white truncate">{user?.name}</p>
+                                        <p className="text-[11px] text-[#A1A1AA] font-medium mt-0.5 truncate">{user?.email}</p>
+                                        {user?.role === 'admin' && (
+                                            <span className="inline-block mt-1 px-2 py-0.5 text-[10px] bg-primary/10 text-primary border border-primary/20 uppercase font-bold rounded">
+                                                Admin
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full text-left px-3 py-2 text-[13px] font-medium text-red-500 hover:bg-red-500/10 hover:text-red-400 rounded-xl flex items-center gap-3 cursor-pointer transition-colors"
+                                    >
+                                        <LogOut size={16} />
+                                        Sign out
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                                >
-                                    <LogOut size={16} />
-                                    Sign out
-                                </button>
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden">
-                <nav className="w-64 hidden lg:flex flex-col border-r border-white/5 p-6 h-[calc(100vh-80px)] overflow-y-auto">
+            <div className="flex flex-1 overflow-hidden relative z-10">
+                <nav className="w-64 hidden lg:flex flex-col border-r border-white/5 p-6 h-[calc(100vh-80px)] overflow-y-auto bg-[#0a0a0a]/50 backdrop-blur-md">
                     <div className="space-y-2">
                         <h4 className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">M E N U</h4>
                         {filteredMainNav.map((item) => <NavItem key={item.path} item={item} />)}
@@ -170,7 +187,7 @@ export function DashboardLayout() {
                         <Outlet />
                     </div>
 
-                    <footer className="mt-auto text-center text-slate-500 text-[10px] py-4 border-t border-white/5">
+                    <footer className="mt-auto text-center text-slate-500 text-[10px] py-4 border-t border-white/5 bg-[#0a0a0a]/30 backdrop-blur-sm rounded-t-xl mx-4">
                         <div className="flex justify-between px-4">
                             <span>© 2026 BroReps Supply. All rights reserved.</span>
                             <span className="text-orange-500/80">⚠️ Propriété privée</span>

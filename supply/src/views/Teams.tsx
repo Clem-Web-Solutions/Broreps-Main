@@ -34,14 +34,14 @@ export function Teams() {
     const loadUsers = async () => {
         try {
             setLoading(true);
-            
+
             // Load all three lists in parallel
             const [pending, approved, rejected] = await Promise.all([
                 api.getUsersByStatus('pending'),
                 api.getUsersByStatus('approved'),
                 api.getUsersByStatus('rejected')
             ]);
-            
+
             setPendingUsers(pending.users || []);
             setApprovedUsers(approved.users || []);
             setRejectedUsers(rejected.users || []);
@@ -56,10 +56,10 @@ export function Teams() {
         try {
             setProcessingId(userId);
             await api.approveUser(userId);
-            
+
             // Reload users
             await loadUsers();
-            
+
             console.log('✅ Utilisateur approuvé:', userId);
         } catch (error) {
             console.error('Erreur lors de l\'approbation:', error);
@@ -77,10 +77,10 @@ export function Teams() {
         try {
             setProcessingId(userId);
             await api.rejectUser(userId);
-            
+
             // Reload users
             await loadUsers();
-            
+
             console.log('❌ Utilisateur refusé:', userId);
         } catch (error) {
             console.error('Erreur lors du refus:', error);
@@ -92,13 +92,13 @@ export function Teams() {
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', { 
-            day: '2-digit', 
-            month: 'short', 
+        return date.toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: 'short',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            timeZone: 'Europe/Paris' 
+            timeZone: 'Europe/Paris'
         });
     };
 
@@ -110,19 +110,19 @@ export function Teams() {
     useEffect(() => {
         if (!isConnected) return;
 
-        const handleUserRegistered = (data: any) => {
+        const handleUserRegistered = (data: unknown) => {
             console.log('👤 WebSocket: New user registered', data);
             // Reload users to reflect the new registration
             loadUsers();
         };
 
-        const handleUserApproved = (data: any) => {
+        const handleUserApproved = (data: unknown) => {
             console.log('✅ WebSocket: User approved', data);
             // Reload users to reflect the approval
             loadUsers();
         };
 
-        const handleUserRejected = (data: any) => {
+        const handleUserRejected = (data: unknown) => {
             console.log('❌ WebSocket: User rejected', data);
             // Reload users to reflect the rejection
             loadUsers();
@@ -158,12 +158,12 @@ export function Teams() {
             className={cn(
                 "flex items-center justify-between p-6 rounded-2xl border transition-all duration-200 w-full group text-left relative overflow-hidden",
                 activeTab === id
-                    ? cn("bg-surface/40", activeClass)
-                    : "bg-surface/20 border-white/5 hover:bg-surface/30"
+                    ? cn("bg-[#050505]", activeClass)
+                    : "bg-[#0A0A0A] border-white/10 hover:bg-[#111]"
             )}
         >
             <div className="relative z-10">
-                <div className="text-slate-400 text-sm font-medium mb-1">{label}</div>
+                <div className="text-[#A1A1AA] text-sm font-medium mb-1">{label}</div>
                 <div className="text-3xl font-black text-white">{count}</div>
             </div>
             <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center relative z-10 transition-transform group-hover:scale-110", colorClass)}>
@@ -189,7 +189,7 @@ export function Teams() {
                             </span>
                         )}
                     </div>
-                    <p className="text-slate-400">Gérez les demandes d'accès au panel</p>
+                    <p className="text-[#A1A1AA]">Gérez les demandes d'accès au panel</p>
                 </div>
             </div>
 
@@ -221,7 +221,7 @@ export function Teams() {
             </div>
 
             {/* Users List */}
-            <div className="bg-surface/20 border border-white/5 rounded-3xl overflow-hidden">
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-xl">
                 <div className="p-6 border-b border-white/5 flex items-center justify-between">
                     <h2 className="text-xl font-bold text-white">
                         {activeTab === 'pending' && '⏳ Demandes en attente'}
@@ -240,18 +240,18 @@ export function Teams() {
 
                 <div className="divide-y divide-white/5">
                     {loading ? (
-                        <div className="p-12 text-center text-slate-400">
+                        <div className="p-12 text-center text-[#A1A1AA]">
                             <RefreshCw className="animate-spin mx-auto mb-3" size={32} />
                             Chargement...
                         </div>
                     ) : currentUsers.length === 0 ? (
-                        <div className="p-12 text-center text-slate-400">
+                        <div className="p-12 text-center text-[#A1A1AA]">
                             <div className="text-4xl mb-3">📭</div>
                             Aucun utilisateur à afficher
                         </div>
                     ) : (
                         currentUsers.map((user) => (
-                            <div key={user.id} className="p-6 hover:bg-white/2 transition-colors flex items-center justify-between">
+                            <div key={user.id} className="p-6 hover:bg-[#111] transition-colors flex items-center justify-between">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
                                         <h3 className="text-lg font-bold text-white">{user.name}</h3>
@@ -262,8 +262,8 @@ export function Teams() {
                                             {user.role === 'admin' ? 'Admin' : 'Utilisateur'}
                                         </span>
                                     </div>
-                                    <div className="text-slate-400 text-sm">{user.email}</div>
-                                    <div className="text-slate-500 text-xs mt-1">
+                                    <div className="text-[#A1A1AA] text-sm">{user.email}</div>
+                                    <div className="text-[#A1A1AA] opacity-80 text-xs mt-1">
                                         Demande créée le {formatDate(user.created_at)}
                                     </div>
                                 </div>

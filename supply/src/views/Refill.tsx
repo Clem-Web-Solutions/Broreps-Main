@@ -82,7 +82,7 @@ export function Refill() {
             setCheckResults(newResults);
 
             const result = await api.checkServiceAvailability(service.id.toString());
-            
+
             // Update with result
             newResults.set(service.id, {
                 service_id: result.service_id,
@@ -97,7 +97,7 @@ export function Refill() {
             if (!result.available) {
                 loadHistory();
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to check service:', error);
             const newResults = new Map(checkResults);
             newResults.set(service.id, {
@@ -132,10 +132,10 @@ export function Refill() {
             setCheckResults(newResults);
 
             const result = await api.checkAllServicesAvailability();
-            
+
             // Update results
             if (result.results && Array.isArray(result.results)) {
-                result.results.forEach((r: any) => {
+                result.results.forEach((r: { service_id: string; service_name: string; provider: string; available: boolean; }) => {
                     const service = services.find(s => s.service_id === r.service_id);
                     if (service) {
                         newResults.set(service.id, {
@@ -151,10 +151,10 @@ export function Refill() {
             }
 
             alert(`✅ Vérification terminée:\n- Vérifiés: ${result.checked}\n- Indisponibles: ${result.unavailable}\n- Erreurs: ${result.errors}`);
-            
+
             // Reload history
             loadHistory();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to check all services:', error);
             alert('Erreur lors de la vérification des services');
         } finally {
@@ -189,12 +189,12 @@ export function Refill() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-white tracking-tight">Vérification des Services</h1>
-                    <p className="text-slate-400 text-sm">Contrôle quotidien de disponibilité (00:00)</p>
+                    <p className="text-[#A1A1AA] text-sm">Contrôle quotidien de disponibilité (00:00)</p>
                 </div>
                 <button
                     onClick={checkAllServices}
                     disabled={checkingAll || loading}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-secondary text-black font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all disabled:opacity-50 hover:scale-[1.02] shadow-[0_0_20px_rgba(0,163,54,0.15)]"
                 >
                     <RefreshCw size={18} className={checkingAll ? "animate-spin" : ""} />
                     {checkingAll ? 'Vérification...' : 'Vérifier Tout'}
@@ -233,30 +233,30 @@ export function Refill() {
             {activeTab === 'services' && (
                 <div className="space-y-4">
                     {/* Search */}
-                    <div className="bg-surface rounded-2xl p-4 border border-white/5">
+                    <div className="bg-[#0A0A0A] rounded-2xl p-4 border border-white/10">
                         <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A1A1AA]" size={20} />
                             <input
                                 type="text"
                                 placeholder="Rechercher par ID, nom ou provider..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 bg-background border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                className="w-full pl-12 pr-4 py-3 bg-[#050505] border border-white/10 rounded-xl text-white placeholder:[#A1A1AA] focus:outline-none focus:border-white/20 transition-colors"
                             />
                         </div>
                     </div>
 
                     {/* Services List */}
-                    <div className="bg-surface rounded-2xl p-6 border border-white/5">
+                    <div className="bg-[#0A0A0A] rounded-2xl p-6 border border-white/10">
                         {loading ? (
                             <div className="text-center py-12">
                                 <RefreshCw className="animate-spin mx-auto mb-4 text-primary" size={32} />
-                                <p className="text-slate-400">Chargement des services...</p>
+                                <p className="text-[#A1A1AA]">Chargement des services...</p>
                             </div>
                         ) : filteredServices.length === 0 ? (
                             <div className="text-center py-12">
-                                <Server className="mx-auto mb-4 text-slate-600" size={48} />
-                                <p className="text-slate-400">Aucun service trouvé</p>
+                                <Server className="mx-auto mb-4 text-[#A1A1AA]" size={48} />
+                                <p className="text-[#A1A1AA]">Aucun service trouvé</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -270,7 +270,7 @@ export function Refill() {
                                         <div
                                             key={service.id}
                                             className={cn(
-                                                "flex items-center justify-between p-4 bg-background rounded-xl border transition-all",
+                                                "flex items-center justify-between p-4 bg-[#050505] rounded-xl border transition-all",
                                                 wasChecked && !isChecking
                                                     ? isAvailable
                                                         ? "border-green-500/30 bg-green-500/5"
@@ -280,7 +280,7 @@ export function Refill() {
                                         >
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-3 mb-2">
-                                                    <span className="font-mono text-sm text-slate-400">#{service.service_id}</span>
+                                                    <span className="font-mono text-sm text-[#A1A1AA]">#{service.service_id}</span>
                                                     <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-500/20 text-blue-400">
                                                         {service.provider}
                                                     </span>
@@ -337,27 +337,27 @@ export function Refill() {
 
             {/* History Tab */}
             {activeTab === 'history' && (
-                <div className="bg-surface rounded-2xl p-6 border border-white/5">
+                <div className="bg-[#0A0A0A] rounded-2xl p-6 border border-white/10">
                     <h2 className="text-xl font-bold text-white mb-4">Historique des alertes</h2>
                     {history.length === 0 ? (
                         <div className="text-center py-12">
                             <Clock className="mx-auto mb-4 text-slate-600" size={48} />
-                            <p className="text-slate-400">Aucune alerte enregistrée</p>
+                            <p className="text-[#A1A1AA]">Aucune alerte enregistrée</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {history.map((item) => (
                                 <div
                                     key={item.id}
-                                    className="flex items-start gap-4 p-4 bg-background rounded-xl border border-red-500/20"
+                                    className="flex items-start gap-4 p-4 bg-[#050505] rounded-xl border border-red-500/20"
                                 >
                                     <AlertTriangle className="text-red-400 shrink-0 mt-1" size={20} />
                                     <div className="flex-1">
                                         <div className="flex items-center justify-between mb-1">
                                             <h3 className="font-bold text-white">{item.title}</h3>
-                                            <span className="text-xs text-slate-500">{formatDate(item.created_at)}</span>
+                                            <span className="text-xs text-[#A1A1AA]">{formatDate(item.created_at)}</span>
                                         </div>
-                                        <p className="text-sm text-slate-400">{item.message}</p>
+                                        <p className="text-sm text-[#A1A1AA]">{item.message}</p>
                                     </div>
                                 </div>
                             ))}
