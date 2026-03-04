@@ -204,7 +204,7 @@ export function Orders() {
             
             // Service filter (search in service name)
             if (filters.service) {
-                const serviceLower = order.service_name.toLowerCase();
+                const serviceLower = (order.service_name || '').toLowerCase();
                 const filterLower = filters.service.toLowerCase();
                 if (!serviceLower.includes(filterLower)) {
                     return false;
@@ -213,7 +213,7 @@ export function Orders() {
             
             // Link filter
             if (filters.link) {
-                const linkLower = order.link.toLowerCase();
+                const linkLower = (order.link || '').toLowerCase();
                 const filterLower = filters.link.toLowerCase();
                 if (!linkLower.includes(filterLower)) {
                     return false;
@@ -239,7 +239,8 @@ export function Orders() {
         return statusMap[status?.toLowerCase()] || { label: status, color: 'text-slate-400', icon: Clock };
     };
 
-    const getPlatformFromService = (serviceName: string) => {
+    const getPlatformFromService = (serviceName: string | null | undefined) => {
+        if (!serviceName) return 'default';
         if (serviceName.toLowerCase().includes('instagram')) return 'instagram';
         if (serviceName.toLowerCase().includes('tiktok')) return 'tiktok';
         return 'default';
@@ -250,7 +251,7 @@ export function Orders() {
 
         // For grouped drip feed orders, extract progress from service name
         if (order.runs && order.runs > 1) {
-            const match = order.service_name.match(/(\d+)\/(\d+) exécutés/);
+            const match = order.service_name?.match(/(\d+)\/(\d+) exécutés/);
             if (match) {
                 const executed = parseInt(match[1]);
                 const total = parseInt(match[2]);

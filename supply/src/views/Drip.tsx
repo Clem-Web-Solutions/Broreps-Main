@@ -568,7 +568,7 @@ export function Drip() {
 
         // For grouped drip feed orders, extract progress from service name (FALLBACK)
         if (order.runs && order.runs > 1) {
-            const match = order.service_name.match(/(\d+)\/(\d+) exécutés/);
+            const match = order.service_name?.match(/(\d+)\/(\d+) exécutés/);
             if (match) {
                 const executed = parseInt(match[1]);
                 const total = parseInt(match[2]);
@@ -912,10 +912,10 @@ export function Drip() {
                                     if (!searchQuery) return true;
                                     const query = searchQuery.toLowerCase();
                                     return (
-                                        order.order_id.toLowerCase().includes(query) ||
-                                        order.service_name.toLowerCase().includes(query) ||
-                                        order.link.toLowerCase().includes(query) ||
-                                        order.status.toLowerCase().includes(query)
+                                        (order.order_id || '').toLowerCase().includes(query) ||
+                                        (order.service_name || '').toLowerCase().includes(query) ||
+                                        (order.link || '').toLowerCase().includes(query) ||
+                                        (order.status || '').toLowerCase().includes(query)
                                     );
                                 });
 
@@ -1086,11 +1086,11 @@ export function Drip() {
                                     if (!searchQuery) return true;
                                     const query = searchQuery.toLowerCase();
                                     return (
-                                        order.order_id.toLowerCase().includes(query) ||
-                                        order.service_name.toLowerCase().includes(query) ||
-                                        order.link.toLowerCase().includes(query) ||
-                                        order.status.toLowerCase().includes(query) ||
-                                        order.provider.toLowerCase().includes(query)
+                                        (order.order_id || '').toLowerCase().includes(query) ||
+                                        (order.service_name || '').toLowerCase().includes(query) ||
+                                        (order.link || '').toLowerCase().includes(query) ||
+                                        (order.status || '').toLowerCase().includes(query) ||
+                                        (order.provider || '').toLowerCase().includes(query)
                                     );
                                 });
 
@@ -1595,10 +1595,10 @@ export function Drip() {
                             if (!searchQuery) return true;
                             const query = searchQuery.toLowerCase();
                             return (
-                                order.order_id.toLowerCase().includes(query) ||
-                                order.service_name.toLowerCase().includes(query) ||
-                                order.link.toLowerCase().includes(query) ||
-                                order.status.toLowerCase().includes(query)
+                                (order.order_id || '').toLowerCase().includes(query) ||
+                                (order.service_name || '').toLowerCase().includes(query) ||
+                                (order.link || '').toLowerCase().includes(query) ||
+                                (order.status || '').toLowerCase().includes(query)
                             );
                         });
                     } else if (activeTab === 'flux') {
@@ -1607,11 +1607,11 @@ export function Drip() {
                             if (!searchQuery) return true;
                             const query = searchQuery.toLowerCase();
                             return (
-                                order.order_id.toLowerCase().includes(query) ||
-                                order.service_name.toLowerCase().includes(query) ||
-                                order.link.toLowerCase().includes(query) ||
-                                order.status.toLowerCase().includes(query) ||
-                                order.provider.toLowerCase().includes(query)
+                                (order.order_id || '').toLowerCase().includes(query) ||
+                                (order.service_name || '').toLowerCase().includes(query) ||
+                                (order.link || '').toLowerCase().includes(query) ||
+                                (order.status || '').toLowerCase().includes(query) ||
+                                (order.provider || '').toLowerCase().includes(query)
                             );
                         });
                     } else if (activeTab === 'pending') {
@@ -1621,10 +1621,10 @@ export function Drip() {
                             if (!searchQuery) return true;
                             const query = searchQuery.toLowerCase();
                             return (
-                                order.order_id.toLowerCase().includes(query) ||
-                                order.service_name.toLowerCase().includes(query) ||
-                                order.link.toLowerCase().includes(query) ||
-                                order.provider.toLowerCase().includes(query)
+                                (order.order_id || '').toLowerCase().includes(query) ||
+                                (order.service_name || '').toLowerCase().includes(query) ||
+                                (order.link || '').toLowerCase().includes(query) ||
+                                (order.provider || '').toLowerCase().includes(query)
                             );
                         });
                     } else if (activeTab === 'history') {
@@ -1632,10 +1632,10 @@ export function Drip() {
                             if (!searchQuery) return true;
                             const query = searchQuery.toLowerCase();
                             return (
-                                order.order_id.toLowerCase().includes(query) ||
-                                order.service_name.toLowerCase().includes(query) ||
-                                order.link.toLowerCase().includes(query) ||
-                                order.provider.toLowerCase().includes(query)
+                                (order.order_id || '').toLowerCase().includes(query) ||
+                                (order.service_name || '').toLowerCase().includes(query) ||
+                                (order.link || '').toLowerCase().includes(query) ||
+                                (order.provider || '').toLowerCase().includes(query)
                             );
                         });
                     }

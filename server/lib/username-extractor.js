@@ -74,6 +74,23 @@ function detectPlatform(url) {
 }
 
 /**
+ * Returns true for TikTok short/redirect/video URLs that don't contain a username.
+ * e.g. vm.tiktok.com/ZNRmAtjWq/, vt.tiktok.com/..., tiktok.com/v/..., tiktok.com/t/...
+ */
+function isTikTokVideoOrShortUrl(url) {
+    try {
+        const u = new URL(url);
+        // Short-link domains
+        if (u.hostname === 'vm.tiktok.com' || u.hostname === 'vt.tiktok.com') return true;
+        // Video paths: /video/1234, /v/1234, /@user/video/1234 (we still have @user there)
+        if (/^\/(video|v|t)\//.test(u.pathname)) return true;
+        return false;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Main function - extract username from any supported social media URL
  * @param {string} url - Social media profile URL
  * @returns {{username: string, platform: string}|null} Object with username and platform
@@ -92,6 +109,8 @@ export function extractUsername(url) {
 
     switch (platform) {
         case 'tiktok':
+            // Short/redirect/video URLs (vm.tiktok.com, vt.tiktok.com, /video/...) don't contain a username
+            if (isTikTokVideoOrShortUrl(url)) return null;
             username = extractTikTokUsername(url);
             break;
         case 'instagram':

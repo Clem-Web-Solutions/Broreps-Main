@@ -282,6 +282,24 @@ async function findServiceByProductName(productName, variantName = '') {
     }
   }
   
+  // Bonus points: if the product is a named pack AND the service in the DB is also a pack
+  if (fullText.includes('pack')) {
+    for (const service of services) {
+      if (service.is_pack) {
+        const serviceName = service.service_name.toLowerCase();
+        let score = 0;
+        // Platform match
+        for (const [platform, terms] of Object.entries(keywords)) {
+          if (!['instagram','tiktok','youtube','facebook','twitter'].includes(platform)) continue;
+          if (terms.some(t => fullText.includes(t)) && terms.some(t => serviceName.includes(t))) score += 10;
+        }
+        // "pack" word in both
+        if (serviceName.includes('pack')) score += 10;
+        if (score > bestScore) { bestScore = score; bestMatch = service; }
+      }
+    }
+  }
+
   // Score >= 20 requires BOTH platform AND service type to match — prevents false positives
   if (bestMatch && bestScore >= 20) {
     console.log('[SMART MATCH] ✅ Service trouvé:', {
@@ -297,9 +315,88 @@ async function findServiceByProductName(productName, variantName = '') {
   return null;
 }
 
+// ── Inline pack helpers ────────────────────────────────────────────────────
+// Detect platform from arbitrary text
+function detectPlatformFromText(text) {
+  const t = text.toLowerCase();
+  if (t.includes('tiktok') || t.includes('tik tok')) return 'tiktok';
+  if (t.includes('instagram') || t.includes('insta')) return 'instagram';
+  if (t.includes('youtube') || t.includes(' yt ')) return 'youtube';
+  if (t.includes('facebook') || t.includes(' fb ')) return 'facebook';
+  if (t.includes('twitch')) return 'twitch';
+  return null;
+}
+
+// Detect service type from a short segment like "25k Vues" or "5000 Likes"
+function detectServiceTypeFromText(text) {
+  const t = text.toLowerCase();
+  if (/vue|view|visibi/.test(t))            return 'views';
+  if (/abonn|follower|subscriber/.test(t))  return 'followers';
+  if (/like|j'aime|jaime/.test(t))          return 'likes';
+  if (/partage|share/.test(t))              return 'shares';
+  if (/favori|save|enregistr/.test(t))      return 'saves';
+  if (/commentaire|comment/.test(t))        return 'comments';
+  return null;
+}
+
+// Parse "25k Vues | 5000 Likes | 1000 Partages" into [{qty, serviceType, rawSegment}]
+function parseInlinePackSegments(variantName, productName = '') {
+  if (!variantName || !variantName.includes('|')) return null;
+  const platform = detectPlatformFromText(`${productName} ${variantName}`);
+  const segments = variantName.split('|').map(s => s.trim()).filter(Boolean);
+  const parsed = [];
+  for (const seg of segments) {
+    // Normalise thousands
+    const norm = seg
+      .replace(/(\d)\.(\d{3})(?!\d)/g, '$1$2')
+      .replace(/(\d) (\d{3})(?!\d)/g, '$1$2');
+    const kMatch = norm.match(/(\d+)k/i);
+    const nMatch = norm.match(/(\d+)/);
+    if (!kMatch && !nMatch) continue;
+    const qty = kMatch ? parseInt(kMatch[1]) * 1000 : parseInt(nMatch[1]);
+    const serviceType = detectServiceTypeFromText(seg);
+    if (!serviceType || !qty) continue;
+    parsed.push({ qty, serviceType, platform, rawSegment: seg });
+  }
+  return parsed.length > 0 ? { platform, segments: parsed } : null;
+}
+
+// Find the best non-pack service matching a platform + service type
+async function findServiceForTypeAndPlatform(serviceType, platform) {
+  const [services] = await db.query('SELECT * FROM allowed_services WHERE is_pack = 0 OR is_pack IS NULL');
+  const typeKw = {
+    views:     ['vue', 'vues', 'view', 'views', 'visib'],
+    likes:     ['like', 'likes', "j'aime", 'jaime'],
+    followers: ['abonn', 'follower', 'subscriber'],
+    shares:    ['partage', 'partages', 'share', 'shares'],
+    saves:     ['favori', 'favoris', 'save', 'saves', 'enregistr'],
+    comments:  ['commentaire', 'comment'],
+  };
+  const platKw = {
+    tiktok:    ['tiktok', 'tik tok'],
+    instagram: ['instagram', 'insta'],
+    youtube:   ['youtube'],
+    twitch:    ['twitch'],
+    facebook:  ['facebook', 'fb'],
+  };
+  let best = null, bestScore = 0;
+  for (const svc of services) {
+    const name = svc.service_name.toLowerCase();
+    let score = 0;
+    if (platform && platKw[platform]?.some(k => name.includes(k))) score += 10;
+    if (serviceType && typeKw[serviceType]?.some(k => name.includes(k))) score += 10;
+    if (score > bestScore) { bestScore = score; best = svc; }
+  }
+  return bestScore >= 20 ? best : null;
+}
+// ── /Inline pack helpers ─────────────────────────────────────────────────────
+
 // Extract quantity from variant name
 function extractQuantityFromVariant(variantName, fallbackQuantity = 1) {
   if (!variantName) return fallbackQuantity;
+  // Inline pack variant ("25k Vues | 5000 Likes | ...") — each segment has its own qty
+  // Return 1 here; quantities will be parsed per-segment in the pack fan-out logic
+  if (variantName.includes('|')) return fallbackQuantity;
 
   // Normalize French thousand separators: "2.500" → "2500", "10 000" → "10000", "10.000" → "10000"
   const normalized = variantName
@@ -525,7 +622,7 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
   const shopifyOrderNumber = enriched.metadata?.shopify_order_number || enriched.metadata?.shopify_number || null;
 
   // Social link — TagadaPay stocke le lien dans metadata.cartCustomAttributes: [{name: "Nom D'utilisateur", value: "..."}]
-  const isSocialFieldKey = (str) => ['link','url','instagram','tiktok','twitch','social','profil','compte','utilisateur','username'].some(k => str.toLowerCase().includes(k));
+  const isSocialFieldKey = (str) => ['link','url','lien','video','vidéo','instagram','tiktok','twitch','social','profil','compte','utilisateur','username'].some(k => str.toLowerCase().includes(k));
   const cartCustomAttrs = enriched.metadata?.cartCustomAttributes || [];
   const socialFromCart = Array.isArray(cartCustomAttrs)
     ? (cartCustomAttrs.find(a => isSocialFieldKey(a.name || ''))?.value || '')
@@ -673,7 +770,42 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
   });
 
   // Create internal order automatically
-  if (serviceId && normalizedSocialLink && quantity) {
+  // ── Inline pack: variant contains "25k Vues | 5000 Likes | ..." ─────────────
+  const inlinePack = parseInlinePackSegments(variantName, productName);
+  if (inlinePack && normalizedSocialLink) {
+    console.log(`[INLINE-PACK] Détection d'un pack inline — ${inlinePack.segments.length} segment(s), plateforme: ${inlinePack.platform}`);
+    let successCount = 0;
+    let firstOrderId = null;
+    for (const seg of inlinePack.segments) {
+      try {
+        const svc = await findServiceForTypeAndPlatform(seg.serviceType, seg.platform);
+        if (!svc) {
+          console.warn(`[INLINE-PACK] ⚠️  Aucun service trouvé pour ${seg.rawSegment} (type: ${seg.serviceType}, platform: ${seg.platform})`);
+          continue;
+        }
+        const orderId = await createInternalOrder(result.insertId, {
+          serviceId:          svc.id,
+          socialLink:         normalizedSocialLink,
+          quantity:           seg.qty,
+          customerEmail,
+          shopifyOrderNumber: shopifyOrderNumber || null,
+          _skipPackCheck:     true,
+        });
+        console.log(`[INLINE-PACK] ✅ ${seg.rawSegment} → ${svc.service_name} (qty: ${seg.qty}, order: ${orderId})`);
+        if (!firstOrderId && orderId) firstOrderId = orderId;
+        successCount++;
+      } catch (err) {
+        console.error(`[INLINE-PACK] ❌ ${seg.rawSegment}:`, err.message);
+      }
+    }
+    if (firstOrderId) {
+      await db.query(
+        `UPDATE tagadapay_orders SET internal_order_id = ?, is_processed = true WHERE id = ?`,
+        [firstOrderId, result.insertId]
+      );
+    }
+    console.log(`[INLINE-PACK] ✅ ${successCount}/${inlinePack.segments.length} commandes créées`);
+  } else if (serviceId && normalizedSocialLink && quantity) {
     try {
       await createInternalOrder(result.insertId, {
         serviceId,
