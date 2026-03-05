@@ -47,7 +47,7 @@ router.post('/verify', async (req, res) => {
         attempts.timestamp = attempts.timestamp || Date.now();
         verificationAttempts.set(attemptKey, attempts);
 
-        // Search in Shopify orders first
+        // ── 1. Search in Shopify orders ──────────────────────────────────────
         const [shopifyOrders] = await db.query(`
             SELECT 
                 so.id,
@@ -85,16 +85,146 @@ router.post('/verify', async (req, res) => {
             LIMIT 1
         `, [orderNumber, email.trim()]);
 
+        // ── 2. Fallback: search in TagadaPay orders ──────────────────────────
+        let tagadapayRow = null;
+        if (shopifyOrders.length === 0) {
+            const [tpRows] = await db.query(`
+                SELECT
+                    tp.id            AS tp_id,
+                    tp.order_id      AS tagadapay_order_id,
+                    tp.customer_email,
+                    tp.customer_name,
+                    tp.product_title,
+                    tp.social_link,
+                    tp.payment_status,
+                    tp.amount,
+                    tp.currency,
+                    tp.internal_order_id,
+                    tp.payment_created_at,
+                    tp.shopify_order_number,
+                    o.id             AS order_id,
+                    o.service_id,
+                    o.link,
+                    o.username,
+                    o.quantity,
+                    o.remains,
+                    o.charge,
+                    o.status,
+                    o.created_at,
+                    o.updated_at,
+                    o.parent_order_id,
+                    o.dripfeed_runs       AS runs,
+                    o.dripfeed_interval   AS run_interval,
+                    o.dripfeed_current_run,
+                    s.service_name,
+                    s.provider
+                FROM tagadapay_orders tp
+                LEFT JOIN orders o ON tp.internal_order_id = o.id
+                LEFT JOIN allowed_services s ON o.service_id = s.service_id
+                WHERE (tp.order_id = ? OR tp.shopify_order_number = ?)
+                  AND LOWER(tp.customer_email) = LOWER(?)
+                LIMIT 1
+            `, [orderNumber, orderNumber, email.trim()]);
+            if (tpRows.length > 0) tagadapayRow = tpRows[0];
+        }
+
+        const found = shopifyOrders.length > 0 || tagadapayRow !== null;
+
         // Log verification attempt
         await db.query(`
             INSERT INTO verification_logs (order_number, email_attempted, ip_address, user_agent, success)
             VALUES (?, ?, ?, ?, ?)
-        `, [orderNumber, email.toLowerCase(), clientIp, userAgent, shopifyOrders.length > 0]);
+        `, [orderNumber, email.toLowerCase(), clientIp, userAgent, found]);
 
-        if (shopifyOrders.length === 0) {
+        if (!found) {
             return res.status(404).json({ 
                 error: 'Commande introuvable ou email incorrect' 
             });
+        }
+
+        // ── 3. Build response from TagadaPay row ─────────────────────────────
+        if (tagadapayRow) {
+            const tp = tagadapayRow;
+            const isPaid = ['paid', 'succeeded', 'success'].includes((tp.payment_status || '').toLowerCase());
+
+            verificationAttempts.delete(attemptKey);
+
+            // No internal order yet — payment received but SMM not dispatched
+            if (!tp.internal_order_id) {
+                return res.json({
+                    id: tp.tagadapay_order_id,
+                    status: isPaid ? 'pending' : 'awaiting_payment',
+                    progress: isPaid ? 0 : -1,
+                    product: tp.product_title || 'En cours de traitement',
+                    quantity: 0,
+                    delivered: 0,
+                    remains: 0,
+                    link: tp.social_link || '',
+                    created_at: tp.payment_created_at || new Date().toISOString(),
+                    estimated: isPaid ? 'Commande en attente de traitement' : 'En attente du paiement',
+                    isDripFeed: false,
+                    runs: 0,
+                    executedRuns: 0,
+                    tagadapay: {
+                        order_id: tp.tagadapay_order_id,
+                        social_link: tp.social_link || 'Non fourni',
+                        customer_name: tp.customer_name || '',
+                        payment_validated: isPaid,
+                        total_price: tp.amount ? tp.amount.toString() : null
+                    },
+                    raw: { tagadapay: true }
+                });
+            }
+
+            // Has internal order — full tracking
+            const isDripFeed = tp.parent_order_id === null && (tp.runs || 0) > 0;
+
+            let tpResponse = {
+                id: tp.tagadapay_order_id,
+                status: tp.status || 'pending',
+                progress: getProgressStep(tp.status),
+                product: tp.service_name || tp.product_title || 'Service inconnu',
+                quantity: tp.quantity || 0,
+                delivered: (tp.quantity || 0) - (tp.remains || 0),
+                remains: tp.remains || 0,
+                link: tp.link || tp.username || tp.social_link || '',
+                created_at: tp.created_at || tp.payment_created_at,
+                estimated: calculateEstimatedCompletion(tp),
+                isDripFeed,
+                runs: tp.runs || 0,
+                executedRuns: tp.dripfeed_current_run || 0,
+                tagadapay: {
+                    order_id: tp.tagadapay_order_id,
+                    social_link: tp.social_link || tp.link || 'Non fourni',
+                    customer_name: tp.customer_name || '',
+                    payment_validated: isPaid,
+                    total_price: tp.amount ? tp.amount.toString() : null
+                },
+                raw: { order: tp, is_drip_feed: isDripFeed }
+            };
+
+            if (isDripFeed) {
+                const [tpSubs] = await db.query(`
+                    SELECT id, quantity, remains, status, created_at, provider_order_id
+                    FROM orders WHERE parent_order_id = ? ORDER BY created_at ASC
+                `, [tp.order_id]);
+                tpResponse.raw.drip_feed_info = {
+                    runs: tp.runs,
+                    interval: tp.run_interval,
+                    current_run: tp.dripfeed_current_run || 0,
+                    sub_orders: tpSubs.map(sub => ({
+                        id: sub.id,
+                        quantity: sub.quantity,
+                        delivered: sub.quantity - sub.remains,
+                        remains: sub.remains,
+                        status: sub.status,
+                        created_at: sub.created_at,
+                        provider_order_id: sub.provider_order_id
+                    }))
+                };
+            }
+
+            return res.json(tpResponse);
         }
 
         const order = shopifyOrders[0];

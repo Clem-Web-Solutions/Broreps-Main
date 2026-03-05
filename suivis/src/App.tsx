@@ -382,7 +382,7 @@ function App() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Numéro de commande TagadaPay (ex: #1234)"
+                  placeholder="N° TagadaPay ou N° commande Shopify (ex: #1234)"
                   className="w-full bg-transparent text-white px-4 py-4 text-lg focus:outline-none placeholder-gray-600 font-medium"
                 />
                 <button
@@ -412,7 +412,7 @@ function App() {
                   Pour accéder aux détails de la commande <span className="text-white font-bold">#{orderNumber}</span>,
                 </p>
                 <p className="text-gray-400 text-sm">
-                  veuillez confirmer l'email utilisé lors de la commande TagadaPay.
+                  veuillez confirmer l'email utilisé lors de la commande TagadaPay ou Shopify.
                 </p>
               </div>
 
