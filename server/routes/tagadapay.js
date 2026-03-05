@@ -4,6 +4,8 @@ import nodemailer from 'nodemailer';
 import db from '../config/database.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { normalizeSocialLink, extractUsername } from '../lib/username-extractor.js';
+import { smmRequest } from './smm.js';
+import { fulfillShopifyOrder } from '../lib/shopify.js';
 
 const router = express.Router();
 
@@ -1313,11 +1315,9 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
     'SELECT id FROM users WHERE email = ? LIMIT 1',
     ['tagadapay@broreps.com']
   );
-
   if (users.length === 0) {
-    throw new Error('TagadaPay default user not found. Run: node setup-tagadapay-user.js');
+    throw new Error('TagadaPay default user not found. Run: node scripts/setup-tagadapay-user.js');
   }
-
   const userId = users[0].id;
 
   // Get service details — includes delivery_mode and dripfeed_quantity
@@ -1325,7 +1325,6 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
     'SELECT * FROM allowed_services WHERE id = ? LIMIT 1',
     [serviceId]
   );
-
   if (services.length === 0) {
     throw new Error(`Service id=${serviceId} introuvable dans le catalogue — vérifiez la configuration`);
   }
@@ -1336,7 +1335,7 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
     ? service.dripfeed_quantity
     : 250;
 
-  // ── Pack: launch one order per sub-service in parallel ────────────────────
+  // ── Pack: launch one order per sub-service ────────────────────────────────
   if (service.is_pack && !_skipPackCheck) {
     const [packItems] = await db.query(
       `SELECT pi.id, pi.sub_service_id, pi.quantity_override,
@@ -1352,16 +1351,16 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
       throw new Error(`Le pack id=${serviceId} ne contient aucun sous-service — configurez-le dans le catalogue`);
     }
 
-    console.log(`[PACK] Lancement de ${packItems.length} commandes simultanées pour le pack "${service.service_name}"`);
+    console.log(`[PACK] Lancement de ${packItems.length} commandes pour le pack "${service.service_name}"`);
 
     const subOrderIds = await Promise.all(packItems.map((item, idx) =>
       createInternalOrder(tagadapay_order_id, {
-        serviceId:          item.sub_service_id,
+        serviceId:      item.sub_service_id,
         socialLink,
-        quantity:           item.quantity_override || quantity,
+        quantity:       item.quantity_override || quantity,
         customerEmail,
         shopifyOrderNumber,
-        _skipPackCheck:     true, // prevent recursive pack resolution
+        _skipPackCheck: true,
       }).catch(err => {
         console.error(`[PACK] ❌ Sous-commande #${idx + 1} (${item.service_name}) échouée:`, err.message);
         return null;
@@ -1369,31 +1368,42 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
     ));
 
     const firstValid = subOrderIds.find(id => id !== null);
-
-    // Link tagadapay order to the first sub-order created
     if (firstValid) {
       await db.query(
         `UPDATE tagadapay_orders SET internal_order_id = ?, is_processed = true WHERE id = ?`,
         [firstValid, tagadapay_order_id]
       );
     } else {
-      await db.query(
-        `UPDATE tagadapay_orders SET is_processed = false WHERE id = ?`,
-        [tagadapay_order_id]
-      );
+      await db.query(`UPDATE tagadapay_orders SET is_processed = false WHERE id = ?`, [tagadapay_order_id]);
       throw new Error('Toutes les sous-commandes du pack ont échoué');
     }
-
     console.log(`[PACK] ✅ ${subOrderIds.filter(Boolean).length}/${packItems.length} sous-commandes créées:`, subOrderIds);
     return firstValid;
   }
   // ── /Pack ──────────────────────────────────────────────────────────────────
 
+  // Resolve provider for this service
+  const providerName = service.provider || 'default';
+  let [providerRows] = await db.query(
+    'SELECT * FROM providers WHERE name = ? AND active = 1 LIMIT 1',
+    [providerName]
+  );
+  if (providerRows.length === 0 && providerName !== 'default') {
+    console.log(`[WARN] Provider '${providerName}' not found, falling back to 'default'`);
+    [providerRows] = await db.query(
+      'SELECT * FROM providers WHERE name = ? AND active = 1 LIMIT 1',
+      ['default']
+    );
+  }
+  const provider = providerRows[0] || null;
+
+  if (!provider) {
+    console.warn(`[WARN] Aucun fournisseur actif trouvé (${providerName}) — commande créée sans dispatch SMM`);
+  }
+
   // Extract username from social link for duplicate detection
   const userInfo = extractUsername(socialLink);
   const username = userInfo ? userInfo.username : null;
-
-  // Calculate charge
   const charge = (quantity / 1000) * (service.rate || 0);
 
   let internalOrderId;
@@ -1415,15 +1425,65 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
       shopifyOrderNumber || null,
       dripfeedRuns, dripfeedInterval,
     ]);
-
     internalOrderId = orderResult.insertId;
+
     console.log('[OK] Drip-feed parent order created:', {
       tagadapay_order_id, internal_order_id: internalOrderId,
       service: service.service_name, quantity,
       dripfeed_qty: dripfeedQty, runs: dripfeedRuns,
     });
+
+    // ── Dispatch first batch immediately (don't wait for cron) ────────────
+    if (provider) {
+      try {
+        const firstQty    = Math.min(dripfeedQty, quantity);
+        const firstCharge = (firstQty / 1000) * (service.rate || 0);
+
+        const smmResponse = await smmRequest(provider, 'add', {
+          service:  service.service_id,
+          link:     socialLink,
+          quantity: firstQty,
+        });
+        const providerOrderId = smmResponse.order;
+
+        // Create sub-order #1
+        await db.query(`
+          INSERT INTO orders (
+            user_id, service_id, quantity, remains, charge, link, username,
+            shopify_order_number, provider_order_id, status,
+            parent_order_id, dripfeed_runs, dripfeed_interval, dripfeed_current_run
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'processing', ?, 1, ?, 1)
+        `, [
+          userId, service.service_id, firstQty, firstQty, firstCharge,
+          socialLink, username, shopifyOrderNumber || null, providerOrderId,
+          internalOrderId, dripfeedInterval,
+        ]);
+
+        // Update parent run counter
+        const isComplete = 1 >= dripfeedRuns;
+        await db.query(
+          'UPDATE orders SET dripfeed_current_run = ?, status = ? WHERE id = ?',
+          [1, isComplete ? 'completed' : 'processing', internalOrderId]
+        );
+
+        // Fulfill Shopify on first batch
+        if (shopifyOrderNumber) {
+          fulfillShopifyOrder(shopifyOrderNumber).catch(e =>
+            console.error('[Shopify] fulfillment error (tagadapay drip first batch):', e.message)
+          );
+        }
+
+        console.log('[OK] Drip-feed first batch dispatched to SMM:', {
+          internal_order_id: internalOrderId, providerOrderId, firstQty,
+        });
+      } catch (smmErr) {
+        // First batch failed — cron will retry on next tick
+        console.error('[WARN] Drip-feed first batch SMM dispatch failed (cron will retry):', smmErr.message);
+      }
+    }
+
   } else {
-    // ── Standard order ─────────────────────────────────────────────────────
+    // ── Standard order: insert + dispatch immediately ──────────────────────
     const [orderResult] = await db.query(`
       INSERT INTO orders (
         user_id, service_id, link, username, quantity, remains, charge,
@@ -1434,12 +1494,43 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
       quantity, quantity, charge,
       shopifyOrderNumber || null,
     ]);
-
     internalOrderId = orderResult.insertId;
-    console.log('[OK] Standard order created (pending):', {
-      tagadapay_order_id, internal_order_id: internalOrderId,
-      service: service.service_name, quantity,
-    });
+
+    if (provider) {
+      try {
+        const smmResponse = await smmRequest(provider, 'add', {
+          service:  service.service_id,
+          link:     socialLink,
+          quantity,
+        });
+        const providerOrderId = smmResponse.order;
+
+        await db.query(
+          'UPDATE orders SET provider_order_id = ?, status = ? WHERE id = ?',
+          [providerOrderId, 'processing', internalOrderId]
+        );
+
+        if (shopifyOrderNumber) {
+          fulfillShopifyOrder(shopifyOrderNumber).catch(e =>
+            console.error('[Shopify] fulfillment error (tagadapay standard):', e.message)
+          );
+        }
+
+        console.log('[OK] Standard order dispatched to SMM:', {
+          tagadapay_order_id, internal_order_id: internalOrderId,
+          service: service.service_name, quantity, providerOrderId,
+        });
+      } catch (smmErr) {
+        await db.query(
+          'UPDATE orders SET status = ? WHERE id = ?',
+          ['failed', internalOrderId]
+        );
+        console.error('[ERR] SMM dispatch failed for standard order', internalOrderId, ':', smmErr.message);
+        throw smmErr;
+      }
+    } else {
+      console.warn('[WARN] No provider — standard order created in DB but NOT dispatched to SMM');
+    }
   }
 
   // Link TagadaPay order to internal order (skipped for pack sub-orders — the pack handler links)
