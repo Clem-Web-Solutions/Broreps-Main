@@ -23,7 +23,6 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
   timezone: '+00:00',
   connectTimeout: 10000,
-  acquireTimeout: 10000,
   multipleStatements: true
 });
 
@@ -74,12 +73,19 @@ async function executeSQLDirectory() {
       const filePath = join(sqlDir, file);
       const sql = readFileSync(filePath, 'utf-8');
 
+      // Remove SQL comments safely before splitting statements
+      const sanitizedSql = sql
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n')
+        .map(line => line.trim().startsWith('--') ? '' : line)
+        .join('\n');
+
       // Split by semicolon and execute each statement separately
       // This handles ALTER TABLE statements better than multipleStatements
-      const statements = sql
+      const statements = sanitizedSql
         .split(';')
         .map(s => s.trim())
-        .filter(s => s.length > 0 && !s.startsWith('--'));
+        .filter(s => s.length > 0);
 
       for (const statement of statements) {
         await executeSQL(statement, `Executing ${file}`);

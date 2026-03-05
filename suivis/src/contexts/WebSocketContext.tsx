@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3005';
+
 interface WebSocketContextType {
   socket: Socket | null;
   isConnected: boolean;
@@ -54,7 +56,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     setConnectionStatus('connecting');
     console.log('🔌 WebSocket (Suivis): Connecting...');
 
-    const socketInstance = io('http://localhost:3005', {
+    const socketInstance = io(WS_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,

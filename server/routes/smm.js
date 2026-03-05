@@ -24,15 +24,18 @@ export async function smmRequest(provider, action, params = {}) {
     throw new Error('Provider not configured properly');
   }
 
+  const apiUrl = String(provider.api_url).trim();
+  const apiKey = String(provider.api_key).trim();
+
   const formData = new URLSearchParams();
-  formData.append('key', provider.api_key);
+  formData.append('key', apiKey);
   formData.append('action', action);
 
   for (const [key, value] of Object.entries(params)) {
     formData.append(key, String(value));
   }
 
-  const response = await fetch(provider.api_url, {
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',

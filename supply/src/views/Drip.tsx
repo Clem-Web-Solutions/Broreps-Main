@@ -919,7 +919,6 @@ export function Drip() {
                                     );
                                 });
 
-                                const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
                                 const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
                                 const endIndex = startIndex + ITEMS_PER_PAGE;
                                 const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
@@ -1088,7 +1087,6 @@ export function Drip() {
                                     );
                                 });
 
-                                const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
                                 const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
                                 const endIndex = startIndex + ITEMS_PER_PAGE;
                                 const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
@@ -1335,7 +1333,6 @@ export function Drip() {
                                     );
                                 });
 
-                                const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
                                 const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
                                 const endIndex = startIndex + ITEMS_PER_PAGE;
                                 const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
@@ -1464,7 +1461,6 @@ export function Drip() {
                                     );
                                 });
 
-                                const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
                                 const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
                                 const endIndex = startIndex + ITEMS_PER_PAGE;
                                 const paginatedOrders = filteredOrders.slice(startIndex, endIndex);

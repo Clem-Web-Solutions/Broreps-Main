@@ -50,15 +50,18 @@ router.post('/:id/test', authenticateToken, requireAdmin, async (req, res) => {
 
     const provider = providers[0];
 
+    const apiUrl = provider.api_url?.trim();
+    const apiKey = provider.api_key?.trim();
+
     // Validate that we have the necessary credentials
-    if (!provider.api_url) {
+    if (!apiUrl) {
       return res.status(400).json({
         success: false,
         message: 'API URL is not configured'
       });
     }
 
-    if (!provider.api_key) {
+    if (!apiKey) {
       return res.status(400).json({
         success: false,
         message: 'API key is not configured'
@@ -68,7 +71,7 @@ router.post('/:id/test', authenticateToken, requireAdmin, async (req, res) => {
     // Simple validation - check if URL is valid format
     let urlValid = false;
     try {
-      new URL(provider.api_url);
+      new URL(apiUrl);
       urlValid = true;
     } catch {
       // Invalid URL
@@ -81,12 +84,38 @@ router.post('/:id/test', authenticateToken, requireAdmin, async (req, res) => {
       });
     }
 
-    // All validations passed
+    // Real API verification
+    const formData = new URLSearchParams();
+    formData.append('key', apiKey);
+    formData.append('action', 'services');
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (data?.error) {
+      return res.status(400).json({
+        success: false,
+        message: `Provider API error: ${data.error}`,
+        url: apiUrl,
+        hasKey: true
+      });
+    }
+
+    const servicesCount = Array.isArray(data) ? data.length : 0;
+
     res.json({
       success: true,
-      message: 'Provider configuration is valid',
-      url: provider.api_url,
-      hasKey: true
+      message: 'Provider API connection successful',
+      url: apiUrl,
+      hasKey: true,
+      servicesCount
     });
   } catch (err) {
     console.error('Test provider error:', err);
@@ -98,14 +127,17 @@ router.post('/:id/test', authenticateToken, requireAdmin, async (req, res) => {
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, api_key, api_url, active = true } = req.body;
+    const normalizedName = name?.trim();
+    const normalizedApiKey = api_key?.trim();
+    const normalizedApiUrl = api_url?.trim();
 
-    if (!name || !api_key) {
+    if (!normalizedName || !normalizedApiKey) {
       return res.status(400).json({ error: 'Name and API key are required' });
     }
 
     const [result] = await db.query(
       'INSERT INTO providers (name, api_key, api_url, active) VALUES (?, ?, ?, ?)',
-      [name, api_key, api_url || null, active]
+      [normalizedName, normalizedApiKey, normalizedApiUrl || null, active]
     );
 
     const [providers] = await db.query(
@@ -127,10 +159,13 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, api_key, api_url, active } = req.body;
+    const normalizedName = name?.trim();
+    const normalizedApiKey = api_key?.trim();
+    const normalizedApiUrl = api_url?.trim();
 
     await db.query(
       'UPDATE providers SET name = ?, api_key = ?, api_url = ?, active = ? WHERE id = ?',
-      [name, api_key, api_url || null, active, req.params.id]
+      [normalizedName, normalizedApiKey, normalizedApiUrl || null, active, req.params.id]
     );
 
     const [providers] = await db.query(

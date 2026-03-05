@@ -290,8 +290,15 @@ router.post('/sync-status', async (req, res) => {
       `);
       
       if (fallbackProviders.length === 0) {
-        console.log('❌ No providers found in database!');
-        return res.status(500).json({ error: 'No providers configured' });
+        console.log('⚠️  No providers found in database, skipping sync');
+        return res.json({
+          success: true,
+          synced: 0,
+          errors: 0,
+          total: 0,
+          skipped: true,
+          reason: 'No providers configured'
+        });
       }
       
       providers.push(fallbackProviders[0]);

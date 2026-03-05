@@ -46,7 +46,12 @@ export function initCron() {
                 console.log(`✅ Synced ${response.data.synced} orders`);
             }
         } catch (error) {
-            console.error('❌ Order status sync failed:', error.message);
+            const status = error.response?.status;
+            const details = error.response?.data;
+            console.error('❌ Order status sync failed:', status ? `${status} - ${error.message}` : error.message);
+            if (details) {
+                console.error('❌ Order status sync response:', details);
+            }
         }
     });
 

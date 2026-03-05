@@ -110,7 +110,7 @@ console.log(`👤 samy@broreps.com      → mot de passe : Employe1234!  (id: ${
 section('Fournisseurs API');
 
 const providers = [
-  { name: 'BulkMedya',  api_url: 'https://bulkmedya.com/api/v2',        api_key: 'BULKMEDYA_KEY_HERE',  active: 1 },
+  { name: 'BulkMedya',  api_url: 'https://bulkmedya.org/api/v2',        api_key: 'BULKMEDYA_KEY_HERE',  active: 1 },
   { name: 'SMMHeaven', api_url: 'https://smmheaven.com/api/v2',         api_key: 'SMMHEAVEN_KEY_HERE',  active: 1 },
   { name: 'PerfectSMM', api_url: 'https://perfectsmm.com/api/v2',       api_key: 'PERFECTSMM_KEY_HERE', active: 0 },
 ];
