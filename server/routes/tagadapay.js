@@ -7,6 +7,16 @@ import { normalizeSocialLink, extractUsername } from '../lib/username-extractor.
 
 const router = express.Router();
 
+function toMySQLDateTime(value) {
+  if (!value) return null;
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const pad = (num) => String(num).padStart(2, '0');
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+}
+
 // Middleware to verify TagadaPay webhook signature
 const verifyTagadaPayWebhook = (req, res, next) => {
   const signature = req.headers['x-tagadapay-signature'];
@@ -716,49 +726,100 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
 
   // Combine product name and variant for title
   const fullProductTitle = variantName ? `${productName} - ${variantName}` : productName;
+  const paymentCreatedAt = toMySQLDateTime(timestamp || new Date());
 
   // Insert into tagadapay_orders table
-  const [result] = await db.query(`
-    INSERT INTO tagadapay_orders (
+  let result;
+  try {
+    const [insertResult] = await db.query(`
+      INSERT INTO tagadapay_orders (
+        payment_id,
+        checkout_session_id,
+        order_id,
+        order_type,
+        customer_email,
+        customer_name,
+        customer_phone,
+        product_title,
+        quantity,
+        amount,
+        currency,
+        social_link,
+        service_id,
+        payment_status,
+        metadata,
+        payment_created_at,
+        shopify_order_number,
+        is_processed
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
       payment_id,
-      checkout_session_id,
+      null,
       order_id,
-      order_type,
-      customer_email,
-      customer_name,
-      customer_phone,
-      product_title,
+      orderType,
+      customerEmail?.toLowerCase() || null,
+      customerName || null,
+      null,
+      fullProductTitle,
       quantity,
       amount,
-      currency,
-      social_link,
-      service_id,
-      payment_status,
-      metadata,
-      payment_created_at,
-      shopify_order_number,
-      is_processed
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    payment_id,
-    null, // checkoutSessionId
-    order_id,
-    orderType,
-    customerEmail?.toLowerCase() || null,
-    customerName || null,
-    null, // customer phone
-    fullProductTitle,
-    quantity,
-    amount, // Amount in cents
-    currency.toUpperCase(),
-    normalizedSocialLink,
-    serviceId,
-    status,
-    JSON.stringify(metadata),
-    timestamp || new Date().toISOString(),
-    shopifyOrderNumber || null,
-    false
-  ]);
+      currency.toUpperCase(),
+      normalizedSocialLink,
+      serviceId,
+      status,
+      JSON.stringify(metadata),
+      paymentCreatedAt,
+      shopifyOrderNumber || null,
+      false
+    ]);
+    result = insertResult;
+  } catch (error) {
+    if (error?.code === 'ER_BAD_FIELD_ERROR' && String(error?.sqlMessage || '').includes('shopify_order_number')) {
+      const [insertResult] = await db.query(`
+        INSERT INTO tagadapay_orders (
+          payment_id,
+          checkout_session_id,
+          order_id,
+          order_type,
+          customer_email,
+          customer_name,
+          customer_phone,
+          product_title,
+          quantity,
+          amount,
+          currency,
+          social_link,
+          service_id,
+          payment_status,
+          metadata,
+          payment_created_at,
+          is_processed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        payment_id,
+        null,
+        order_id,
+        orderType,
+        customerEmail?.toLowerCase() || null,
+        customerName || null,
+        null,
+        fullProductTitle,
+        quantity,
+        amount,
+        currency.toUpperCase(),
+        normalizedSocialLink,
+        serviceId,
+        status,
+        JSON.stringify(metadata),
+        paymentCreatedAt,
+        false
+      ]);
+      result = insertResult;
+      console.warn('[WARN] tagadapay_orders.shopify_order_number missing, insert done without this column');
+    } else {
+      throw error;
+    }
+  }
 
   console.log('[OK] TagadaPay order saved:', {
     id: result.insertId,
@@ -965,6 +1026,9 @@ async function processSubscriptionCreated(subscription) {
     return existing[0].id;
   }
 
+  const nextBillingAt = toMySQLDateTime(nextBillingDate);
+  const startedAt = toMySQLDateTime(startDate || new Date());
+
   // Insert subscription into tagadapay_orders
   const [result] = await db.query(`
     INSERT INTO tagadapay_orders (
@@ -995,8 +1059,8 @@ async function processSubscriptionCreated(subscription) {
     subscription_id,
     status,
     interval,
-    nextBillingDate || null,
-    startDate || new Date().toISOString(),
+    nextBillingAt,
+    startedAt,
     customer?.email?.toLowerCase() || null,
     customer?.fullName || `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim() || null,
     customer?.phone || null,
@@ -1008,7 +1072,7 @@ async function processSubscriptionCreated(subscription) {
     serviceId,
     'active', // Subscription created = active
     JSON.stringify(metadata || {}),
-    startDate || new Date().toISOString(),
+    startedAt,
     false
   ]);
 
@@ -1055,6 +1119,8 @@ async function processSubscriptionPaymentSuccess(payment) {
   const quantity = subscription?.quantity || parseInt(metadata?.quantity || '1');
   const serviceId = subscription?.service_id || metadata?.service_id || null;
 
+  const recurringPaymentCreatedAt = toMySQLDateTime(createdAt || new Date());
+
   // Save this specific payment (OBLIGATOIRE)
   const [result] = await db.query(`
     INSERT INTO tagadapay_orders (
@@ -1095,7 +1161,7 @@ async function processSubscriptionPaymentSuccess(payment) {
     serviceId,
     'succeeded',
     JSON.stringify(metadata || {}),
-    createdAt || new Date().toISOString(),
+    recurringPaymentCreatedAt,
     false
   ]);
 
