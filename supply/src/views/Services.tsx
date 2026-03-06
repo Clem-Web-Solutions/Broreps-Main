@@ -540,8 +540,9 @@ export function Services() {
                 };
                 if (sub.deliveryMode === 'dripfeed') {
                     orderData.dripfeed_enabled = true;
-                    // Use dripfeed_quantity from the matched service's DB config
-                    orderData.dripfeed_quantity = svc.dripfeed_quantity || 250;
+                    // Send dripfeed_quantity only if the service has it configured;
+                    // the backend will resolve from its own service config otherwise.
+                    if (svc.dripfeed_quantity) orderData.dripfeed_quantity = svc.dripfeed_quantity;
                 }
                 await api.createDripFeedOrder(orderData);
                 results[i] = { label: sub.label, status: 'ok' };
@@ -775,8 +776,9 @@ export function Services() {
             // Add drip feed parameters if delivery mode is dripfeed
             if (orderForm.deliveryMode === 'dripfeed') {
                 orderData.dripfeed_enabled = true;
-                // Use dripfeed_quantity from the service's DB config (set in Config → Catalogue)
-                orderData.dripfeed_quantity = selectedService.dripfeed_quantity || 250;
+                // Send dripfeed_quantity only if the service has it configured;
+                // the backend will resolve from its own service config otherwise.
+                if (selectedService.dripfeed_quantity) orderData.dripfeed_quantity = selectedService.dripfeed_quantity;
             }
 
             // Submit order
@@ -786,7 +788,8 @@ export function Services() {
             if (result.queued) {
                 alert(`⏳ Commande mise en file d'attente\n\n${result.message}\n\nElle sera automatiquement traitée lorsque les commandes en cours seront complétées.`);
             } else if (result.scheduled) {
-                alert(`📅 Commande Drip Feed programmée!\n\nOrder ID: ${result.order}\n${result.message}\n\n✅ Première commande envoyée: 250 unités\n⏳ ${result.pending_runs} autres runs programmées (250/jour)`);
+                const qtyPerRun = selectedService.dripfeed_quantity || result.dripfeed_quantity || '?';
+                alert(`📅 Commande Drip Feed programmée!\n\nOrder ID: ${result.order}\n${result.message}\n\n✅ Première commande envoyée: ${qtyPerRun} unités\n⏳ ${result.pending_runs} autres runs programmées (${qtyPerRun}/jour)`);
             } else {
                 alert(`✅ Commande créée avec succès!\n\nOrder ID: ${result.order}\n\nVous allez être redirigé vers l'historique des commandes.`);
             }
@@ -1543,7 +1546,7 @@ export function Services() {
                                                 )}>
                                                 <div className="text-[20px] leading-none mb-1">💧</div>
                                                 <div className="text-white font-bold text-[13px]">Drip Feed</div>
-                                                <div className="text-[11px] text-[#A1A1AA] leading-snug">250 unités par jour, progressif</div>
+                                                <div className="text-[11px] text-[#A1A1AA] leading-snug">{selectedService.dripfeed_quantity ? `${selectedService.dripfeed_quantity} unités par jour, progressif` : 'Livraison progressive par jour'}</div>
                                                 <div className={cn('absolute top-3 right-3 w-4 h-4 rounded-full border-2 transition-all',
                                                     orderForm.deliveryMode === 'dripfeed' ? 'border-blue-500 bg-blue-500' : 'border-white/20'
                                                 )} />

@@ -86,14 +86,16 @@ router.post('/create-order', authenticateToken, async (req, res) => {
         }
 
         // Determine if drip feed is enabled
-        const isDripFeed = dripfeed_enabled && dripfeed_quantity;
+        // dripfeed_quantity can come from the request body OR from the service's DB config
+        const resolvedDripfeedQty = parseInt(dripfeed_quantity || serviceData.dripfeed_quantity || 0);
+        const isDripFeed = dripfeed_enabled && resolvedDripfeedQty > 0;
 
         if (isDripFeed) {
             // === DRIP FEED ORDER ===
             console.log('📦 Creating DRIP FEED order...');
 
             const totalQuantity = parseInt(quantity);
-            const dailyQuantity = parseInt(dripfeed_quantity);
+            const dailyQuantity = resolvedDripfeedQty;
             const dripfeedRuns = Math.ceil(totalQuantity / dailyQuantity);
             const dripfeedInterval = 1440; // 24 hours in minutes
 
