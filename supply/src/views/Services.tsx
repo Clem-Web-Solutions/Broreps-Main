@@ -1,18 +1,10 @@
-import { Bookmark, CheckCircle, ChevronLeft, ChevronRight, Eye, Heart, Link2, Package, RefreshCw, Search, Share2, ShoppingCart, Users, X, Zap, type LucideIcon } from "lucide-react";
+﻿import { Bookmark, CheckCircle, ChevronLeft, ChevronRight, Eye, Heart, Link2, Package, RefreshCw, Search, Share2, ShoppingCart, Users, X, Zap, type LucideIcon } from "lucide-react";
 import { cn } from "../libs/utils";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import api from "../libs/api";
 
-// ─── Predefined Offers (catalogue Shopify) ─────────────────────────────────
-
-interface PresetVariant {
-    label: string;
-    quantity: number;
-    price: number;
-    badge?: string;
-}
-
+// ─── Pack types ──────────────────────────────────────────────────────────────
 interface PackSubOrder {
     label: string;
     keywords: string[];
@@ -26,18 +18,6 @@ interface PackVariant {
     subOrders: PackSubOrder[];
 }
 
-interface SinglePreset {
-    id: string;
-    title: string;
-    platform: string;
-    icon: string;
-    color: string;
-    isPack: false;
-    serviceKeywords: string[];
-    deliveryMode: 'standard' | 'dripfeed';
-    variants: PresetVariant[];
-}
-
 interface PackPreset {
     id: string;
     title: string;
@@ -47,214 +27,6 @@ interface PackPreset {
     isPack: true;
     variants: PackVariant[];
 }
-
-type Preset = SinglePreset | PackPreset;
-
-const PREDEFINED_OFFERS: Preset[] = [
-    {
-        id: 'abonnes-tiktok', title: 'Abonnés TikTok', platform: 'tiktok', icon: '🎵', color: '#00f2ea',
-        isPack: false, serviceKeywords: ['tiktok', 'follower'], deliveryMode: 'dripfeed',
-        variants: [
-            { label: '1 000', quantity: 1000, price: 19.99 },
-            { label: '2 500', quantity: 2500, price: 25 },
-            { label: '5 000', quantity: 5000, price: 35 },
-            { label: '8 500', quantity: 8500, price: 44 },
-            { label: '10 000', quantity: 10000, price: 49.99, badge: '⭐ Monétisable' },
-            { label: '25 000', quantity: 25000, price: 129.99 },
-        ]
-    },
-    {
-        id: 'abonnes-twitch', title: 'Abonnés Twitch', platform: 'twitch', icon: '🎮', color: '#9146ff',
-        isPack: false, serviceKeywords: ['twitch', 'follower'], deliveryMode: 'dripfeed',
-        variants: [
-            { label: '1 000', quantity: 1000, price: 15 },
-            { label: '2 500', quantity: 2500, price: 25 },
-            { label: '5 000', quantity: 5000, price: 45 },
-            { label: '8 500', quantity: 8500, price: 65 },
-            { label: '10 000', quantity: 10000, price: 80 },
-            { label: '25 000', quantity: 25000, price: 110 },
-        ]
-    },
-    {
-        id: 'abonnes-instagram', title: 'Abonnés Instagram', platform: 'instagram', icon: '📸', color: '#d62976',
-        isPack: false, serviceKeywords: ['instagram', 'follower'], deliveryMode: 'dripfeed',
-        variants: [
-            { label: '500', quantity: 500, price: 19.99 },
-            { label: '1 000', quantity: 1000, price: 25 },
-            { label: '2 500', quantity: 2500, price: 45 },
-            { label: '5 000', quantity: 5000, price: 55 },
-            { label: '10 000', quantity: 10000, price: 69.99 },
-            { label: '25 000', quantity: 25000, price: 129.99 },
-        ]
-    },
-    {
-        id: 'membres-discord', title: 'Membres Discord', platform: 'discord', icon: '💬', color: '#5865f2',
-        isPack: false, serviceKeywords: ['discord', 'member'], deliveryMode: 'standard',
-        variants: [
-            { label: '50', quantity: 50, price: 20 },
-            { label: '100', quantity: 100, price: 25 },
-            { label: '200', quantity: 200, price: 30 },
-            { label: '300', quantity: 300, price: 40 },
-        ]
-    },
-    {
-        id: 'pack-tiktok-video', title: 'Pack Visibilité TikTok', platform: 'tiktok', icon: '📹', color: '#00f2ea',
-        isPack: true,
-        variants: [
-            {
-                label: '10k Vues', price: 15, subOrders: [
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 10000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 2500, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 500, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 400, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '25k Vues', price: 25, subOrders: [
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 25000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 5000, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 1000, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 800, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '50k Vues', price: 45, subOrders: [
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 50000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 10000, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 2500, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 1500, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '100k Vues', price: 80, subOrders: [
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 100000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 25000, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 4500, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 3500, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '250k Vues', price: 140, subOrders: [
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 250000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 50000, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 10000, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 8500, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '500k Vues', price: 180, subOrders: [
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 500000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 100000, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 25000, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 20000, deliveryMode: 'standard' },
-                ]
-            },
-        ]
-    },
-    {
-        id: 'pack-instagram-video', title: 'Pack Visibilité Instagram', platform: 'instagram', icon: '🎬', color: '#d62976',
-        isPack: true,
-        variants: [
-            {
-                label: '10k Vues', price: 15, subOrders: [
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 10000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 2500, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '25k Vues', price: 25, subOrders: [
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 25000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 5000, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '50k Vues', price: 45, subOrders: [
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 50000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 10000, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '100k Vues', price: 80, subOrders: [
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 100000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 25000, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '250k Vues', price: 140, subOrders: [
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 250000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 50000, deliveryMode: 'standard' },
-                ]
-            },
-        ]
-    },
-    {
-        id: 'abonnement-tiktok', title: 'Abonnement TikTok', platform: 'tiktok', icon: '🚀', color: '#00f2ea',
-        isPack: true,
-        variants: [
-            {
-                label: '1k Pack', price: 19.99, subOrders: [
-                    { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 1000, deliveryMode: 'dripfeed' },
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 60000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 15000, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 1500, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 900, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '2.5k Pack', price: 39.99, subOrders: [
-                    { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 2500, deliveryMode: 'dripfeed' },
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 150000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 45000, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 3000, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 1500, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '4k Pack', price: 79.99, subOrders: [
-                    { label: 'Abonnés TikTok', keywords: ['tiktok', 'follower'], quantity: 4000, deliveryMode: 'dripfeed' },
-                    { label: 'Vues TikTok', keywords: ['tiktok', 'vue'], quantity: 240000, deliveryMode: 'standard' },
-                    { label: 'Likes TikTok', keywords: ['tiktok', 'like'], quantity: 72000, deliveryMode: 'standard' },
-                    { label: 'Partages TikTok', keywords: ['tiktok', 'share'], quantity: 4800, deliveryMode: 'standard' },
-                    { label: 'Favoris TikTok', keywords: ['tiktok', 'save'], quantity: 2400, deliveryMode: 'standard' },
-                ]
-            },
-        ]
-    },
-    {
-        id: 'abonnement-instagram', title: 'Abonnement Instagram', platform: 'instagram', icon: '🚀', color: '#d62976',
-        isPack: true,
-        variants: [
-            {
-                label: '1k Pack', price: 19.99, subOrders: [
-                    { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 1000, deliveryMode: 'dripfeed' },
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 30000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 3000, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '2.5k Pack', price: 39.99, subOrders: [
-                    { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 2500, deliveryMode: 'dripfeed' },
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 120000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 9000, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '5k Pack', price: 70, subOrders: [
-                    { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 5000, deliveryMode: 'dripfeed' },
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 300000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 30000, deliveryMode: 'standard' },
-                ]
-            },
-            {
-                label: '10k Pack', price: 120, subOrders: [
-                    { label: 'Abonnés Instagram', keywords: ['instagram', 'follower'], quantity: 10000, deliveryMode: 'dripfeed' },
-                    { label: 'Vues Instagram (Reels)', keywords: ['instagram', 'vue'], quantity: 600000, deliveryMode: 'standard' },
-                    { label: 'Likes Instagram', keywords: ['instagram', 'like'], quantity: 60000, deliveryMode: 'standard' },
-                ]
-            },
-        ]
-    },
-];
 
 interface PlatformCardProps {
     name: string;
@@ -372,7 +144,7 @@ export function Services() {
     const [activePlatform, setActivePlatform] = useState<string | null>(null);
     const [activeServiceType, setActiveServiceType] = useState<string>('');
     const [services, setServices] = useState<Service[]>([]);
-    const [selectedProvider, setSelectedProvider] = useState<string>('default'); // Sera mis à jour au chargement
+    const [selectedProvider, setSelectedProvider] = useState<string>('default'); // Sera mis Ã  jour au chargement
     const [searchQuery, setSearchQuery] = useState<string>('');
 
     // Fetch allowed services from database
@@ -413,7 +185,7 @@ export function Services() {
                     const providerData = await api.getServices(providerName);
                     const providerServices = providerData.services || [];
 
-                    // Build a map of service_id → DB config (delivery_mode, dripfeed_quantity)
+                    // Build a map of service_id â†’ DB config (delivery_mode, dripfeed_quantity)
                     const allowedMap = new Map<string, { delivery_mode: string; dripfeed_quantity: number | null }>(
                         allowedServices.map((s: { service_id: string; delivery_mode: string; dripfeed_quantity: number | null }) =>
                             [s.service_id, { delivery_mode: s.delivery_mode, dripfeed_quantity: s.dripfeed_quantity }]
@@ -460,7 +232,7 @@ export function Services() {
         fetchAllowedServices();
     }, []);
 
-    // ─── Preset state ─────────────────────────────────────────────────────────
+    // â”€â”€â”€ Preset state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const [showPresets, setShowPresets] = useState(true);
     const [packModal, setPackModal] = useState<{ open: boolean; preset: PackPreset | null; variant: PackVariant | null }>({
         open: false, preset: null, variant: null
@@ -476,28 +248,7 @@ export function Services() {
         return services.find(s => keywords.every(k => norm(s.name).includes(norm(k)))) ?? null;
     };
 
-    const handlePresetSelect = (preset: SinglePreset, variant: PresetVariant) => {
-        const svc = findServiceByKeywords(preset.serviceKeywords);
-        if (!svc) {
-            alert(`⚠️ Service introuvable pour "${preset.title}". Vérifie que le service est bien activé dans la liste.`);
-            return;
-        }
-        setSelectedService(svc);
-        setOrderForm({
-            link: '',
-            quantity: variant.quantity.toString(),
-            shopifyOrderNumber: '',
-            deliveryMode: preset.deliveryMode,
-        });
-        setIsModalOpen(true);
-    };
 
-    const handlePackSelect = (preset: PackPreset, variant: PackVariant) => {
-        setPackForm({ link: '', shopifyOrderNumber: '' });
-        setPackProgress([]);
-        setPackDone(false);
-        setPackModal({ open: true, preset, variant });
-    };
 
     const handleSubmitPack = async () => {
         if (!packModal.variant || !packModal.preset) return;
@@ -628,7 +379,7 @@ export function Services() {
                 // "Autre" = tous sauf TikTok et Instagram
                 if (nameNormalized.includes('tiktok') || nameNormalized.includes('instagram')) return false;
             } else {
-                // Plateforme spécifique (tiktok ou instagram)
+                // Plateforme spÃ©cifique (tiktok ou instagram)
                 if (!nameNormalized.includes(activePlatform.toLowerCase())) return false;
             }
         }
@@ -638,7 +389,7 @@ export function Services() {
             let matches = false;
             switch (activeServiceType.toLowerCase()) {
                 case 'abonnes':
-                    // Chercher: followers, abonnes, abonnés, subscriber, follower
+                    // Chercher: followers, abonnes, abonnÃ©s, subscriber, follower
                     matches = nameNormalized.includes('follower') ||
                         nameNormalized.includes('abonne') ||
                         nameNormalized.includes('subscriber') ||
@@ -786,12 +537,12 @@ export function Services() {
 
             // Check if order was queued or scheduled
             if (result.queued) {
-                alert(`⏳ Commande mise en file d'attente\n\n${result.message}\n\nElle sera automatiquement traitée lorsque les commandes en cours seront complétées.`);
+                alert(`â³ Commande mise en file d'attente\n\n${result.message}\n\nElle sera automatiquement traitÃ©e lorsque les commandes en cours seront complÃ©tÃ©es.`);
             } else if (result.scheduled) {
                 const qtyPerRun = selectedService.dripfeed_quantity || result.dripfeed_quantity || '?';
-                alert(`📅 Commande Drip Feed programmée!\n\nOrder ID: ${result.order}\n${result.message}\n\n✅ Première commande envoyée: ${qtyPerRun} unités\n⏳ ${result.pending_runs} autres runs programmées (${qtyPerRun}/jour)`);
+                alert(`ðŸ“… Commande Drip Feed programmÃ©e!\n\nOrder ID: ${result.order}\n${result.message}\n\nâœ… PremiÃ¨re commande envoyÃ©e: ${qtyPerRun} unitÃ©s\nâ³ ${result.pending_runs} autres runs programmÃ©es (${qtyPerRun}/jour)`);
             } else {
-                alert(`✅ Commande créée avec succès!\n\nOrder ID: ${result.order}\n\nVous allez être redirigé vers l'historique des commandes.`);
+                alert(`âœ… Commande crÃ©Ã©e avec succÃ¨s!\n\nOrder ID: ${result.order}\n\nVous allez Ãªtre redirigÃ© vers l'historique des commandes.`);
             }
 
             // Close modal
@@ -802,7 +553,7 @@ export function Services() {
         } catch (error: unknown) {
             console.error('Error creating order:', error);
             const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-            alert(`❌ Erreur lors de la création de la commande: ${errorMessage}`);
+            alert(`âŒ Erreur lors de la crÃ©ation de la commande: ${errorMessage}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -870,7 +621,7 @@ export function Services() {
                                     }}
                                     className="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold rounded-full hover:bg-red-500/20 transition-colors"
                                 >
-                                    Réinitialiser les filtres
+                                    RÃ©initialiser les filtres
                                 </button>
                             )}
                             <div className="px-3 py-1 bg-primary text-black text-xs font-bold rounded-full">
@@ -881,7 +632,7 @@ export function Services() {
 
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <ServiceTypeCard
-                            label="Abonnés"
+                            label="AbonnÃ©s"
                             icon={Users}
                             count={getServiceCountForType('followers') + getServiceCountForType('abonnes')}
                             active={activeServiceType === 'abonnes'}
@@ -917,24 +668,52 @@ export function Services() {
                         />
                     </div>
 
-                    {/* ─── Commandes Rapides ────────────────────────────── */}
+                    {/* â”€â”€â”€ Commandes Rapides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                     {(() => {
-                        const platforms = [
+                        const detectPlt = (name: string) => {
+                            const n = normalizeText(name);
+                            if (n.includes('tiktok')) return 'tiktok';
+                            if (n.includes('instagram')) return 'instagram';
+                            if (n.includes('twitch')) return 'twitch';
+                            if (n.includes('discord')) return 'discord';
+                            return 'other';
+                        };
+
+                        const detectType = (name: string): { icon: string; label: string; order: number } => {
+                            const n = normalizeText(name);
+                            if (n.includes('follower') || n.includes('abonne') || n.includes('subscriber') || n.includes('member'))
+                                return { icon: 'ðŸ‘¥', label: 'AbonnÃ©s', order: 1 };
+                            if (n.includes('like') || n.includes('jaime'))
+                                return { icon: 'â¤ï¸', label: 'Likes', order: 2 };
+                            if (n.includes('view') || n.includes('vue'))
+                                return { icon: 'ðŸ‘', label: 'Vues', order: 3 };
+                            if (n.includes('share') || n.includes('partage'))
+                                return { icon: 'â†—ï¸', label: 'Partages', order: 4 };
+                            if (n.includes('save') || n.includes('favorite') || n.includes('favori') || n.includes('bookmark'))
+                                return { icon: 'ðŸ”–', label: 'Favoris', order: 5 };
+                            return { icon: 'âš¡', label: 'Service', order: 6 };
+                        };
+
+                        const quickChips = (min: number, max: number) =>
+                            [100, 200, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000]
+                                .filter(v => v >= min && v <= max).slice(0, 6);
+
+                        const platformDefs = [
                             { key: 'tiktok',    label: 'TikTok',    color: '#00f2ea' },
                             { key: 'instagram', label: 'Instagram', color: '#e1306c' },
                             { key: 'twitch',    label: 'Twitch',    color: '#9146ff' },
                             { key: 'discord',   label: 'Discord',   color: '#5865f2' },
+                            { key: 'other',     label: 'Autres',    color: '#8b5cf6' },
                         ];
 
-                        // Use first platform with offers as default — derive from showPresets string trick:
-                        // showPresets is boolean so we use a separate module-level trick: store active tab in a data attr
-                        // Actually simplest: just render all platforms always, filtered by a tab state.
-                        // Since we can't add useState here, we'll render all tabs with CSS show/hide using showPresets as toggle.
-
-                        const allPlatformOffers = platforms.map(plt => ({
-                            ...plt,
-                            offers: PREDEFINED_OFFERS.filter(o => o.platform === plt.key),
-                        })).filter(p => p.offers.length > 0);
+                        const platformGroups = platformDefs
+                            .map(plt => ({
+                                ...plt,
+                                services: services
+                                    .filter(s => detectPlt(s.name) === plt.key)
+                                    .sort((a, b) => detectType(a.name).order - detectType(b.name).order),
+                            }))
+                            .filter(g => g.services.length > 0);
 
                         return (
                             <div className="space-y-3">
@@ -946,7 +725,7 @@ export function Services() {
                                         </div>
                                         <div>
                                             <span className="text-white font-bold text-[15px] leading-none">Commandes Rapides</span>
-                                            <p className="text-[#A1A1AA] text-[11px] mt-0.5">Sélectionne un pack pour commander en un clic</p>
+                                            <p className="text-[#A1A1AA] text-[11px] mt-0.5">SÃ©lectionne un service pour commander en un clic</p>
                                         </div>
                                     </div>
                                     <button
@@ -964,12 +743,13 @@ export function Services() {
                                 </div>
 
                                 {showPresets && (
-                                    <div className="space-y-6 pt-1">
-                                        {allPlatformOffers.map(plt => {
-                                            const singles = plt.offers.filter(o => !o.isPack) as SinglePreset[];
-                                            const packs   = plt.offers.filter(o =>  o.isPack) as PackPreset[];
-
-                                            return (
+                                    platformGroups.length === 0 ? (
+                                        <div className="text-center py-8 text-[#A1A1AA] text-[13px]">
+                                            Aucun service enregistrÃ© â€” activez des services dans Config â†’ Catalogue.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-6 pt-1">
+                                            {platformGroups.map(plt => (
                                                 <div key={plt.key} className="space-y-3">
                                                     {/* Platform label */}
                                                     <div className="flex items-center gap-2">
@@ -978,110 +758,79 @@ export function Services() {
                                                         <div className="flex-1 h-px bg-white/5" />
                                                     </div>
 
-                                                    {/* Cards grid */}
+                                                    {/* Service cards */}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                                                        {/* Single-service offers */}
-                                                        {singles.map(preset => (
-                                                            <div
-                                                                key={preset.id}
-                                                                className="bg-[#0A0A0A] border border-white/8 rounded-2xl overflow-hidden hover:border-white/15 transition-all group"
-                                                            >
-                                                                {/* Card header */}
-                                                                <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-white/5">
-                                                                    <div
-                                                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-                                                                        style={{ background: plt.color + '18' }}
-                                                                    >
-                                                                        {preset.icon}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <div className="text-white font-bold text-[13px] leading-tight truncate">{preset.title}</div>
-                                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                                            <span className="text-[10px] font-semibold px-1.5 py-px rounded-md bg-white/5 text-[#A1A1AA]">Drip Feed</span>
-                                                                            <span className="text-[10px] text-[#A1A1AA]">{preset.variants.length} offres</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Variant chips */}
-                                                                <div className="p-3 flex flex-wrap gap-2">
-                                                                    {preset.variants.map(v => (
-                                                                        <button
-                                                                            key={v.label}
-                                                                            onClick={() => handlePresetSelect(preset, v)}
-                                                                            disabled={loading}
-                                                                            className="relative flex flex-col items-center px-3 py-2 rounded-xl border border-white/8 bg-white/3 hover:bg-white/8 hover:border-white/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 group/chip"
+                                                        {plt.services.map(svc => {
+                                                            const typeInfo = detectType(svc.name);
+                                                            const chips = quickChips(Number(svc.min), Number(svc.max));
+                                                            return (
+                                                                <div
+                                                                    key={svc.service}
+                                                                    className="bg-[#0A0A0A] border border-white/8 rounded-2xl overflow-hidden hover:border-white/15 transition-all group"
+                                                                >
+                                                                    {/* Card header */}
+                                                                    <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-white/5">
+                                                                        <div
+                                                                            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                                                                            style={{ background: plt.color + '18' }}
                                                                         >
-                                                                            <span className="text-white font-black text-[12px] leading-none whitespace-nowrap">{v.label}</span>
-                                                                            <span className="text-[11px] font-bold mt-1 whitespace-nowrap" style={{ color: plt.color }}>{v.price}€</span>
-                                                                            {v.badge && (
-                                                                                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[8px] font-black px-1.5 py-0.5 rounded-full whitespace-nowrap leading-none shadow-lg">
-                                                                                    ⭐
-                                                                                </span>
-                                                                            )}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-
-                                                        {/* Pack offers */}
-                                                        {packs.map(preset => (
-                                                            <div
-                                                                key={preset.id}
-                                                                className="bg-[#0A0A0A] border border-white/8 rounded-2xl overflow-hidden hover:border-white/15 transition-all group md:col-span-2 xl:col-span-1"
-                                                            >
-                                                                {/* Card header */}
-                                                                <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-white/5">
-                                                                    <div
-                                                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-                                                                        style={{ background: plt.color + '18' }}
-                                                                    >
-                                                                        {preset.icon}
-                                                                    </div>
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <div className="text-white font-bold text-[13px] leading-tight truncate">{preset.title}</div>
-                                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                                            <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/20">PACK</span>
-                                                                            <span className="text-[10px] text-[#A1A1AA]">{preset.variants.length} offres · {preset.variants[0]?.subOrders.length} services</span>
+                                                                            {typeInfo.icon}
                                                                         </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Pack variant chips with sub-order preview */}
-                                                                <div className="p-3 flex flex-wrap gap-2">
-                                                                    {preset.variants.map(v => (
-                                                                        <button
-                                                                            key={v.label}
-                                                                            onClick={() => handlePackSelect(preset, v)}
-                                                                            disabled={loading}
-                                                                            className="group/chip flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-xl border border-white/8 bg-white/3 hover:bg-blue-500/8 hover:border-blue-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 w-full sm:w-auto"
-                                                                        >
-                                                                            <div className="flex flex-col items-start">
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <span className="text-white font-black text-[12px] leading-none">{v.label}</span>
-                                                                                    <span className="text-blue-400 font-bold text-[12px]">{v.price}€</span>
-                                                                                </div>
-                                                                                <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1.5">
-                                                                                    {v.subOrders.map(s => (
-                                                                                        <span key={s.label} className="text-[10px] text-[#A1A1AA] whitespace-nowrap flex items-center gap-0.5">
-                                                                                            <span className="text-white/50">·</span>
-                                                                                            {s.quantity >= 1000 ? (s.quantity >= 1000000 ? (s.quantity / 1000000) + 'M' : (s.quantity / 1000) + 'k') : s.quantity}
-                                                                                            {' '}<span className="capitalize">{s.label.replace(/tiktok|instagram|twitch|discord/gi, '').trim().split(' ')[0].toLowerCase()}</span>
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <div className="text-white font-bold text-[13px] leading-tight truncate" title={svc.name}>{svc.name}</div>
+                                                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                                                <span className="text-[10px] font-semibold px-1.5 py-px rounded-md bg-white/5 text-[#A1A1AA]">{typeInfo.label}</span>
+                                                                                {svc.delivery_mode === 'dripfeed' && (
+                                                                                    <span className="text-[10px] font-semibold px-1.5 py-px rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/15">ðŸ’§ Drip</span>
+                                                                                )}
+                                                                                <span className="text-[10px] text-[#A1A1AA] font-mono">${svc.rate}/1k</span>
                                                                             </div>
-                                                                        </button>
-                                                                    ))}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Quantity chips */}
+                                                                    <div className="p-3 flex flex-wrap gap-2">
+                                                                        {chips.length > 0 ? chips.map(qty => (
+                                                                            <button
+                                                                                key={qty}
+                                                                                onClick={() => {
+                                                                                    setSelectedService(svc);
+                                                                                    setOrderForm({
+                                                                                        link: '',
+                                                                                        quantity: String(qty),
+                                                                                        shopifyOrderNumber: '',
+                                                                                        deliveryMode: svc.delivery_mode || 'standard',
+                                                                                    });
+                                                                                    setIsModalOpen(true);
+                                                                                }}
+                                                                                disabled={loading}
+                                                                                className="relative flex flex-col items-center px-3 py-2 rounded-xl border border-white/8 bg-white/3 hover:bg-white/8 hover:border-white/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                                                                            >
+                                                                                <span className="text-white font-black text-[12px] leading-none whitespace-nowrap">
+                                                                                    {qty >= 1000000 ? (qty / 1000000) + 'M' : qty >= 1000 ? (qty / 1000) + 'k' : qty}
+                                                                                </span>
+                                                                                <span className="text-[10px] text-[#A1A1AA] mt-0.5 whitespace-nowrap">
+                                                                                    ${((qty / 1000) * parseFloat(svc.rate)).toFixed(2)}
+                                                                                </span>
+                                                                            </button>
+                                                                        )) : (
+                                                                            <button
+                                                                                onClick={() => openOrderModal(svc)}
+                                                                                disabled={loading}
+                                                                                className="px-3 py-2 rounded-xl border border-white/8 bg-white/3 hover:bg-white/8 hover:border-white/20 transition-all text-white text-[12px] font-bold"
+                                                                            >
+                                                                                Commander
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    )
                                 )}
                             </div>
                         );
@@ -1117,7 +866,7 @@ export function Services() {
                     ) : currentServices.length === 0 ? (
                         <div className="text-center py-12 text-slate-500">
                             <Package size={48} className="mx-auto mb-4 opacity-50" />
-                            <p>Aucun service disponible pour cette catégorie</p>
+                            <p>Aucun service disponible pour cette catÃ©gorie</p>
                         </div>
                     ) : (
                         <>
@@ -1153,26 +902,26 @@ export function Services() {
                                             <h3 className="text-white font-bold mb-2 text-sm md:text-base leading-relaxed">
                                                 {service.name} [ Max {typeof service.max === 'number' ? service.max >= 1000000 ? (service.max / 1000000).toFixed(0) + 'M' : service.max >= 1000 ? (service.max / 1000).toFixed(0) + 'K' : service.max : parseInt(service.max) >= 1000000 ? (parseInt(service.max) / 1000000).toFixed(0) + 'M' : parseInt(service.max) >= 1000 ? (parseInt(service.max) / 1000).toFixed(0) + 'K' : parseInt(service.max)} ]
                                                 {service.category && ` | ${service.category}`}
-                                                {service.cancel && ` | Annulation Activée`}
+                                                {service.cancel && ` | Annulation ActivÃ©e`}
                                                 {service.average_time && ` | ${service.average_time}`}
-                                                {service.dripfeed && ` | Démarrage Instantané`}
+                                                {service.dripfeed && ` | DÃ©marrage InstantanÃ©`}
                                             </h3>
 
                                             {/* Badges */}
                                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                                                 {service.refill && (
                                                     <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase border bg-blue-500/10 text-blue-400 border-blue-500/20">
-                                                        ♻️ Refill
+                                                        â™»ï¸ Refill
                                                     </span>
                                                 )}
                                                 {service.cancel && (
                                                     <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase border bg-red-500/10 text-red-400 border-red-500/20">
-                                                        ❌ Annulation
+                                                        âŒ Annulation
                                                     </span>
                                                 )}
                                                 {service.dripfeed && (
                                                     <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase border bg-purple-500/10 text-purple-400 border-purple-500/20">
-                                                        💧 Drip Feed
+                                                        ðŸ’§ Drip Feed
                                                     </span>
                                                 )}
                                                 {service.type && (
@@ -1206,7 +955,7 @@ export function Services() {
                                             {/* Additional Features */}
                                             {service.dripfeed && (
                                                 <span className="px-2 py-0.5 text-xs bg-blue-500/20 border border-blue-500/50 text-blue-400 rounded">
-                                                    💧 Drip-feed
+                                                    ðŸ’§ Drip-feed
                                                 </span>
                                             )}
                                         </div>
@@ -1276,14 +1025,14 @@ export function Services() {
                 </div>
             </div>
 
-            {/* ─── Pack Confirmation Modal ─────────────────────────────── */}
+            {/* â”€â”€â”€ Pack Confirmation Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {packModal.open && packModal.preset && packModal.variant && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
                         <div className="sticky top-0 bg-[#0A0A0A] border-b border-white/10 p-6 flex items-center justify-between">
                             <div>
                                 <h2 className="text-xl font-bold text-white">{packModal.preset.icon} {packModal.preset.title}</h2>
-                                <p className="text-slate-400 text-sm mt-0.5">{packModal.variant.label} — <span className="text-primary font-bold">{packModal.variant.price}€</span></p>
+                                <p className="text-slate-400 text-sm mt-0.5">{packModal.variant.label} â€” <span className="text-primary font-bold">{packModal.variant.price}â‚¬</span></p>
                             </div>
                             {!packSubmitting && (
                                 <button onClick={closePackModal} className="p-2 hover:bg-white/5 rounded-xl transition-colors">
@@ -1323,7 +1072,7 @@ export function Services() {
                                 <>
                                     <div>
                                         <label className="block text-sm font-bold text-white mb-2">
-                                            <Link2 size={14} className="inline mr-2" />Lien du réseau social *
+                                            <Link2 size={14} className="inline mr-2" />Lien du rÃ©seau social *
                                         </label>
                                         <input
                                             type="text"
@@ -1336,7 +1085,7 @@ export function Services() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-white mb-2">
-                                            <ShoppingCart size={14} className="inline mr-2" />N° commande Shopify
+                                            <ShoppingCart size={14} className="inline mr-2" />NÂ° commande Shopify
                                         </label>
                                         <input
                                             type="text"
@@ -1355,7 +1104,7 @@ export function Services() {
                                     'rounded-xl p-4 text-sm font-bold text-center',
                                     packProgress.every(p => p.status === 'ok') ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
                                 )}>
-                                    {packProgress.filter(p => p.status === 'ok').length}/{packProgress.length} commandes créées avec succès.
+                                    {packProgress.filter(p => p.status === 'ok').length}/{packProgress.length} commandes crÃ©Ã©es avec succÃ¨s.
                                 </div>
                             )}
 
@@ -1370,12 +1119,12 @@ export function Services() {
                                             disabled={!packForm.link || packSubmitting}
                                             className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
                                         >
-                                            {packSubmitting ? <><RefreshCw size={16} className="animate-spin" /> Création...</> : 'Commander le pack'}
+                                            {packSubmitting ? <><RefreshCw size={16} className="animate-spin" /> CrÃ©ation...</> : 'Commander le pack'}
                                         </button>
                                     </>
                                 ) : (
                                     <button onClick={() => { closePackModal(); navigate('/commandes'); }} className="flex-1 px-4 py-3 bg-primary text-black font-bold rounded-xl transition-colors">
-                                        Voir les commandes →
+                                        Voir les commandes â†’
                                     </button>
                                 )}
                             </div>
@@ -1392,14 +1141,14 @@ export function Services() {
                 const isTwitch    = nameNorm.includes('twitch');
                 const isDiscord   = nameNorm.includes('discord');
                 const platformColor = isTikTok ? '#00f2ea' : isInstagram ? '#e1306c' : isTwitch ? '#9146ff' : isDiscord ? '#5865f2' : '#bef264';
-                const platformIcon  = isTikTok ? '🎵' : isInstagram ? '📸' : isTwitch ? '🎮' : isDiscord ? '💬' : '⚡';
+                const platformIcon  = isTikTok ? 'ðŸŽµ' : isInstagram ? 'ðŸ“¸' : isTwitch ? 'ðŸŽ®' : isDiscord ? 'ðŸ’¬' : 'âš¡';
                 const estimatedCost = calculateEstimatedCost();
 
                 return (
                     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-md">
                         <div className="bg-[#0A0A0A] border border-white/10 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-160 shadow-[0_24px_80px_rgba(0,0,0,0.7)] flex flex-col max-h-[96vh] overflow-hidden">
 
-                            {/* ── Header ─────────────────────────────────── */}
+                            {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                             <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-white/5 shrink-0">
                                 <div className="flex items-center gap-3 min-w-0">
                                     <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 border border-white/8"
@@ -1416,7 +1165,7 @@ export function Services() {
                                 </button>
                             </div>
 
-                            {/* ── Service meta pills ──────────────────────── */}
+                            {/* â”€â”€ Service meta pills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                             <div className="flex items-center gap-2 px-6 py-3 border-b border-white/5 shrink-0 flex-wrap">
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/8 text-[11px] font-mono font-bold text-[#A1A1AA]">
                                     #{selectedService.service}
@@ -1425,16 +1174,16 @@ export function Services() {
                                     ${selectedService.rate} / 1 000
                                 </span>
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/8 text-[11px] font-medium text-[#A1A1AA]">
-                                    Min {Number(selectedService.min).toLocaleString('fr-FR')} · Max {Number(selectedService.max).toLocaleString('fr-FR')}
+                                    Min {Number(selectedService.min).toLocaleString('fr-FR')} Â· Max {Number(selectedService.max).toLocaleString('fr-FR')}
                                 </span>
                                 {isFollowers && (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] font-bold text-blue-400">
-                                        💧 Drip Feed uniquement
+                                        ðŸ’§ Drip Feed uniquement
                                     </span>
                                 )}
                             </div>
 
-                            {/* ── Scrollable body ──────────────────────────── */}
+                            {/* â”€â”€ Scrollable body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
                                 {/* Link */}
@@ -1458,9 +1207,9 @@ export function Services() {
                                 {/* Quantity */}
                                 <div className="space-y-2">
                                     <label className="flex items-center justify-between text-[13px] font-bold text-white">
-                                        <span>Quantité <span className="text-primary">*</span></span>
+                                        <span>QuantitÃ© <span className="text-primary">*</span></span>
                                         <span className="text-[11px] font-normal text-[#A1A1AA]">
-                                            Min {Number(selectedService.min).toLocaleString('fr-FR')} · Max {Number(selectedService.max).toLocaleString('fr-FR')}
+                                            Min {Number(selectedService.min).toLocaleString('fr-FR')} Â· Max {Number(selectedService.max).toLocaleString('fr-FR')}
                                         </span>
                                     </label>
                                     <input
@@ -1502,7 +1251,7 @@ export function Services() {
                                 <div className="space-y-2">
                                     <label className="flex items-center gap-2 text-[13px] font-bold text-white">
                                         <ShoppingCart size={13} className="text-[#A1A1AA]" />
-                                        N° commande Shopify <span className="text-[11px] font-normal text-[#A1A1AA]">(optionnel)</span>
+                                        NÂ° commande Shopify <span className="text-[11px] font-normal text-[#A1A1AA]">(optionnel)</span>
                                     </label>
                                     <input
                                         type="text"
@@ -1527,9 +1276,9 @@ export function Services() {
                                                         ? 'border-primary bg-primary/8 shadow-[0_0_16px_rgba(190,242,100,0.08)]'
                                                         : 'border-white/8 bg-white/3 hover:border-white/15'
                                                 )}>
-                                                <div className="text-[20px] leading-none mb-1">⚡</div>
+                                                <div className="text-[20px] leading-none mb-1">âš¡</div>
                                                 <div className="text-white font-bold text-[13px]">Standard</div>
-                                                <div className="text-[11px] text-[#A1A1AA] leading-snug">Envoi immédiat en une seule fois</div>
+                                                <div className="text-[11px] text-[#A1A1AA] leading-snug">Envoi immÃ©diat en une seule fois</div>
                                                 <div className={cn('absolute top-3 right-3 w-4 h-4 rounded-full border-2 transition-all',
                                                     orderForm.deliveryMode === 'standard' ? 'border-primary bg-primary' : 'border-white/20'
                                                 )} />
@@ -1544,9 +1293,9 @@ export function Services() {
                                                         ? 'border-blue-500 bg-blue-500/8 shadow-[0_0_16px_rgba(59,130,246,0.08)]'
                                                         : 'border-white/8 bg-white/3 hover:border-white/15'
                                                 )}>
-                                                <div className="text-[20px] leading-none mb-1">💧</div>
+                                                <div className="text-[20px] leading-none mb-1">ðŸ’§</div>
                                                 <div className="text-white font-bold text-[13px]">Drip Feed</div>
-                                                <div className="text-[11px] text-[#A1A1AA] leading-snug">{selectedService.dripfeed_quantity ? `${selectedService.dripfeed_quantity} unités par jour, progressif` : 'Livraison progressive par jour'}</div>
+                                                <div className="text-[11px] text-[#A1A1AA] leading-snug">{selectedService.dripfeed_quantity ? `${selectedService.dripfeed_quantity} unitÃ©s par jour, progressif` : 'Livraison progressive par jour'}</div>
                                                 <div className={cn('absolute top-3 right-3 w-4 h-4 rounded-full border-2 transition-all',
                                                     orderForm.deliveryMode === 'dripfeed' ? 'border-blue-500 bg-blue-500' : 'border-white/20'
                                                 )} />
@@ -1558,9 +1307,9 @@ export function Services() {
                                 {/* Live cost estimate */}
                                 <div className="flex items-center justify-between bg-[#050505] border border-white/8 rounded-2xl px-5 py-4">
                                     <div>
-                                        <p className="text-[11px] text-[#A1A1AA] uppercase font-bold tracking-wider mb-1">Coût estimé</p>
+                                        <p className="text-[11px] text-[#A1A1AA] uppercase font-bold tracking-wider mb-1">CoÃ»t estimÃ©</p>
                                         <p className="text-[28px] font-black text-white leading-none">${estimatedCost}</p>
-                                        <p className="text-[10px] text-[#A1A1AA] mt-1">{orderForm.quantity ? Number(orderForm.quantity).toLocaleString('fr-FR') + ' unités · $' + selectedService.rate + '/1k' : '–'}</p>
+                                        <p className="text-[10px] text-[#A1A1AA] mt-1">{orderForm.quantity ? Number(orderForm.quantity).toLocaleString('fr-FR') + ' unitÃ©s Â· $' + selectedService.rate + '/1k' : 'â€“'}</p>
                                     </div>
                                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: platformColor + '18' }}>
                                         <Zap size={26} style={{ color: platformColor }} />
@@ -1568,7 +1317,7 @@ export function Services() {
                                 </div>
                             </div>
 
-                            {/* ── Footer CTA ────────────────────────────────── */}
+                            {/* â”€â”€ Footer CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                             <div className="px-6 py-5 border-t border-white/5 shrink-0 flex gap-3 bg-[#0A0A0A]">
                                 <button onClick={closeOrderModal}
                                     className="px-5 py-3 rounded-xl bg-white/5 border border-white/8 text-white text-[13px] font-semibold hover:bg-white/10 transition-colors">
@@ -1583,12 +1332,12 @@ export function Services() {
                                     {isSubmitting ? (
                                         <>
                                             <RefreshCw size={16} className="animate-spin" />
-                                            Envoi en cours…
+                                            Envoi en coursâ€¦
                                         </>
                                     ) : (
                                         <>
                                             <Zap size={16} fill="currentColor" />
-                                            Commander · ${estimatedCost}
+                                            Commander Â· ${estimatedCost}
                                         </>
                                     )}
                                 </button>
