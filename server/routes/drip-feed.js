@@ -332,8 +332,9 @@ router.post('/process', authenticateCron, async (req, res) => {
         for (const parentOrder of parentOrders) {
             try {
                 // Get service details first to get the correct provider
+                // ORDER BY id DESC: picks the most recently configured row if dupe service_ids exist
                 const [services] = await connection.query(
-                    'SELECT * FROM allowed_services WHERE service_id = ?',
+                    'SELECT * FROM allowed_services WHERE service_id = ? ORDER BY id DESC LIMIT 1',
                     [parentOrder.service_id]
                 );
 
@@ -344,7 +345,19 @@ router.post('/process', authenticateCron, async (req, res) => {
 
                 const service = services[0];
                 const serviceRate = parseFloat(service.rate || 0);
-                const quantityPerRun = parseInt(service.dripfeed_quantity || 250);
+
+                // Prefer dripfeed_quantity from service config; fall back to first sub-order's
+                // quantity (which was correctly set at order-creation time) rather than 250.
+                let quantityPerRun = parseInt(service.dripfeed_quantity || 0);
+                if (!quantityPerRun) {
+                    const [firstSubRows] = await connection.query(
+                        'SELECT quantity FROM orders WHERE parent_order_id = ? ORDER BY id ASC LIMIT 1',
+                        [parentOrder.id]
+                    );
+                    quantityPerRun = firstSubRows.length > 0 ? parseInt(firstSubRows[0].quantity) : 250;
+                    console.log(`⚠️  Order ${parentOrder.id}: dripfeed_quantity not set on service, derived quantityPerRun=${quantityPerRun} from first sub-order`);
+                }
+
                 const serviceProvider = service.provider; // Use provider from service
 
                 // Get provider configuration (use provider from service)
@@ -392,10 +405,14 @@ router.post('/process', authenticateCron, async (req, res) => {
                     }
                 }
 
-                // Calculate quantity for this run
+                // Calculate quantity for this run using actual dispatched SUM (not fragile formula)
+                const [dispatchedRows] = await connection.query(
+                    'SELECT COALESCE(SUM(quantity), 0) as dispatched FROM orders WHERE parent_order_id = ?',
+                    [parentOrder.id]
+                );
+                const alreadyDispatched = parseInt(dispatchedRows[0].dispatched);
                 const currentRun = parentOrder.dripfeed_current_run + 1;
-                const totalQuantity = parentOrder.quantity;
-                const remainingQuantity = totalQuantity - (parentOrder.dripfeed_current_run * quantityPerRun);
+                const remainingQuantity = parentOrder.quantity - alreadyDispatched;
                 const runQuantity = Math.min(quantityPerRun, remainingQuantity);
                 const runCharge = serviceRate > 0 ? (runQuantity / 1000) * serviceRate : 0;
 

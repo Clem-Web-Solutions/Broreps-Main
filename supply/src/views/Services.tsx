@@ -277,6 +277,9 @@ interface Service {
     cancel?: boolean;
     dripfeed?: boolean;
     average_time?: string;
+    // From allowed_services DB config
+    delivery_mode?: 'standard' | 'dripfeed';
+    dripfeed_quantity?: number;
 }
 
 interface ServiceTypeCardProps {
@@ -410,23 +413,35 @@ export function Services() {
                     const providerData = await api.getServices(providerName);
                     const providerServices = providerData.services || [];
 
+                    // Build a map of service_id → DB config (delivery_mode, dripfeed_quantity)
+                    const allowedMap = new Map<string, { delivery_mode: string; dripfeed_quantity: number | null }>(
+                        allowedServices.map((s: { service_id: string; delivery_mode: string; dripfeed_quantity: number | null }) =>
+                            [s.service_id, { delivery_mode: s.delivery_mode, dripfeed_quantity: s.dripfeed_quantity }]
+                        )
+                    );
+
                     // Match allowed service IDs with provider services
                     const allowedIds = new Set(allowedServices.map((s: { service_id: string }) => s.service_id));
                     const matchedServices = providerServices
                         .filter((s: { service: string | number }) => allowedIds.has(s.service.toString()))
-                        .map((s: { service: string | number; name: string; type?: string; category?: string; rate: number | string; min: string | number; max: string | number; refill?: boolean; cancel?: boolean; dripfeed?: boolean; average_time?: string }) => ({
-                            service: s.service.toString(),
-                            name: s.name,
-                            type: s.type,
-                            category: s.category,
-                            rate: s.rate.toString(),
-                            min: s.min,
-                            max: s.max,
-                            refill: s.refill,
-                            cancel: s.cancel,
-                            dripfeed: s.dripfeed,
-                            average_time: s.average_time
-                        }));
+                        .map((s: { service: string | number; name: string; type?: string; category?: string; rate: number | string; min: string | number; max: string | number; refill?: boolean; cancel?: boolean; dripfeed?: boolean; average_time?: string }) => {
+                            const dbConfig = allowedMap.get(s.service.toString());
+                            return {
+                                service: s.service.toString(),
+                                name: s.name,
+                                type: s.type,
+                                category: s.category,
+                                rate: s.rate.toString(),
+                                min: s.min,
+                                max: s.max,
+                                refill: s.refill,
+                                cancel: s.cancel,
+                                dripfeed: s.dripfeed,
+                                average_time: s.average_time,
+                                delivery_mode: (dbConfig?.delivery_mode || 'standard') as 'standard' | 'dripfeed',
+                                dripfeed_quantity: dbConfig?.dripfeed_quantity || undefined,
+                            };
+                        });
 
                     setServices(matchedServices);
                     setSelectedProvider(providerName); // Update selected provider
@@ -525,7 +540,8 @@ export function Services() {
                 };
                 if (sub.deliveryMode === 'dripfeed') {
                     orderData.dripfeed_enabled = true;
-                    orderData.dripfeed_quantity = 250;
+                    // Use dripfeed_quantity from the matched service's DB config
+                    orderData.dripfeed_quantity = svc.dripfeed_quantity || 250;
                 }
                 await api.createDripFeedOrder(orderData);
                 results[i] = { label: sub.label, status: 'ok' };
@@ -692,18 +708,12 @@ export function Services() {
     });
 
     const openOrderModal = (service: Service) => {
-        // Vérifier si c'est un service d'abonnés
-        const nameNormalized = normalizeText(service.name);
-        const isFollowersService = nameNormalized.includes('follower') ||
-            nameNormalized.includes('abonne') ||
-            nameNormalized.includes('subscriber');
-
         setSelectedService(service);
         setOrderForm({
             link: '',
             quantity: service.min.toString(),
             shopifyOrderNumber: '',
-            deliveryMode: isFollowersService ? 'dripfeed' : 'standard' // Drip feed par défaut pour les abonnés
+            deliveryMode: service.delivery_mode || 'standard',
         });
         setIsModalOpen(true);
     };
@@ -764,9 +774,9 @@ export function Services() {
 
             // Add drip feed parameters if delivery mode is dripfeed
             if (orderForm.deliveryMode === 'dripfeed') {
-                // Configuration fixe: 250 par run (quantité par exécution)
                 orderData.dripfeed_enabled = true;
-                orderData.dripfeed_quantity = 250; // 250 unités par run
+                // Use dripfeed_quantity from the service's DB config (set in Config → Catalogue)
+                orderData.dripfeed_quantity = selectedService.dripfeed_quantity || 250;
             }
 
             // Submit order
