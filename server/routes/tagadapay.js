@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import db from '../config/database.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { normalizeSocialLink, extractUsername } from '../lib/username-extractor.js';
+import { sendOrderConfirmationEmail, sendOrderInProgressEmail } from '../lib/order-mails.js';
 import { smmRequest } from './smm.js';
 import { fulfillShopifyOrder } from '../lib/shopify.js';
 
@@ -832,6 +833,25 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
     status: 'paid'
   });
 
+  // Send confirmation email (commande confirmee + direct tracking link)
+  // Track number priority: Shopify number -> TagadaPay order id -> payment id
+  const trackingOrderNumber = shopifyOrderNumber || order_id || payment_id;
+  if (customerEmail && trackingOrderNumber) {
+    try {
+      await sendOrderConfirmationEmail({
+        to: customerEmail,
+        customerName,
+        orderNumber: trackingOrderNumber,
+      });
+      console.log('[MAIL] Confirmation envoyee:', {
+        to: customerEmail,
+        order: trackingOrderNumber,
+      });
+    } catch (mailErr) {
+      console.error('[MAIL] Echec envoi confirmation:', mailErr.message);
+    }
+  }
+
   // Create internal order automatically
   // ── Inline pack: variant contains "25k Vues | 5000 Likes | ..." ─────────────
   const inlinePack = parseInlinePackSegments(variantName, productName);
@@ -1310,6 +1330,24 @@ async function processSubscriptionResumed(subscription) {
 async function createInternalOrder(tagadapay_order_id, orderData) {
   const { serviceId, socialLink, quantity, customerEmail, shopifyOrderNumber, _skipPackCheck } = orderData;
 
+  // Pull parent payment context to build robust tracking + email fallback values.
+  const [tpRows] = await db.query(
+    `SELECT order_id, payment_id, shopify_order_number, customer_email, customer_name
+     FROM tagadapay_orders
+     WHERE id = ?
+     LIMIT 1`,
+    [tagadapay_order_id]
+  );
+  const tpOrder = tpRows[0] || null;
+  const mailTo = customerEmail || tpOrder?.customer_email || null;
+  const mailCustomerName = tpOrder?.customer_name || null;
+  const trackingOrderNumber =
+    shopifyOrderNumber ||
+    tpOrder?.shopify_order_number ||
+    tpOrder?.order_id ||
+    tpOrder?.payment_id ||
+    null;
+
   // Get TagadaPay default user
   const [users] = await db.query(
     'SELECT id FROM users WHERE email = ? LIMIT 1',
@@ -1476,6 +1514,24 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
         console.log('[OK] Drip-feed first batch dispatched to SMM:', {
           internal_order_id: internalOrderId, providerOrderId, firstQty,
         });
+
+        // Send "livraison en cours" email once at top-level order start.
+        if (!_skipPackCheck && mailTo && trackingOrderNumber) {
+          try {
+            await sendOrderInProgressEmail({
+              to: mailTo,
+              customerName: mailCustomerName,
+              orderNumber: trackingOrderNumber,
+            });
+            console.log('[MAIL] Livraison en cours envoyee:', {
+              to: mailTo,
+              order: trackingOrderNumber,
+              mode: 'dripfeed',
+            });
+          } catch (mailErr) {
+            console.error('[MAIL] Echec envoi livraison en cours:', mailErr.message);
+          }
+        }
       } catch (smmErr) {
         // First batch failed — cron will retry on next tick
         console.error('[WARN] Drip-feed first batch SMM dispatch failed (cron will retry):', smmErr.message);
@@ -1520,6 +1576,24 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
           tagadapay_order_id, internal_order_id: internalOrderId,
           service: service.service_name, quantity, providerOrderId,
         });
+
+        // Send "livraison en cours" email once when dispatch starts.
+        if (!_skipPackCheck && mailTo && trackingOrderNumber) {
+          try {
+            await sendOrderInProgressEmail({
+              to: mailTo,
+              customerName: mailCustomerName,
+              orderNumber: trackingOrderNumber,
+            });
+            console.log('[MAIL] Livraison en cours envoyee:', {
+              to: mailTo,
+              order: trackingOrderNumber,
+              mode: 'standard',
+            });
+          } catch (mailErr) {
+            console.error('[MAIL] Echec envoi livraison en cours:', mailErr.message);
+          }
+        }
       } catch (smmErr) {
         await db.query(
           'UPDATE orders SET status = ? WHERE id = ?',

@@ -64,6 +64,33 @@ function App() {
   const [orderNumber, setOrderNumber] = useState('');
   const [email, setEmail] = useState('');
 
+  // Direct link mode: /?order=XXXX opens tracking without manual form input.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const directOrder = (params.get('order') || '').trim().replace('#', '');
+    if (!directOrder) return;
+
+    const loadDirectOrder = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await api.trackOrder(directOrder);
+        setSearchQuery(directOrder);
+        setOrderNumber(directOrder);
+        setOrderData(data);
+        setVerificationStep('result');
+        setShowResult(true);
+      } catch (err: any) {
+        console.error('❌ Direct link tracking failed:', err);
+        setError(err.message || 'Lien de suivi invalide ou commande introuvable');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDirectOrder();
+  }, []);
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
