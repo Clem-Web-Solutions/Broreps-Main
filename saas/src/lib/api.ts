@@ -221,3 +221,46 @@ export const socialApi = {
     request<{ success: boolean }>(`/api/saas/social/${platform}`, { method: 'DELETE' }),
 };
 
+// ─── Orders ────────────────────────────────────────────────────────────────────
+export interface SaasOrder {
+  id: number;
+  order_number: string;
+  source: 'shopify' | 'tagadapay';
+  internal_id: number | null;
+  status: string;
+  product: string;
+  quantity: number;
+  delivered: number;
+  remains: number;
+  link: string;
+  placed_at: string;
+  updated_at: string | null;
+  is_drip_feed: boolean;
+  runs: number;
+  executed_runs: number;
+  payment_validated: boolean;
+  charge: number | null;
+}
+
+export interface SaasOrderDetail extends SaasOrder {
+  progress_pct: number;
+  run_interval: number;
+  drip_sub_orders: {
+    id: number;
+    quantity: number;
+    delivered: number;
+    remains: number;
+    status: string;
+    created_at: string;
+    has_provider_id: boolean;
+  }[];
+}
+
+export const ordersApi = {
+  list: () =>
+    request<{ orders: SaasOrder[] }>('/api/saas/orders'),
+
+  get: (id: string | number) =>
+    request<{ order: SaasOrderDetail }>(`/api/saas/orders/${id}`),
+};
+

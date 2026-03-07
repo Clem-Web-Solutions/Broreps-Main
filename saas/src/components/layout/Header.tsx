@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Settings, LogOut, Zap, Search, ArrowRight } from 'lucide-react';
+import { User, Settings, LogOut, Zap, Search, ArrowRight, Package } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -51,6 +51,17 @@ export default function Header() {
                         >
                             Mes Notes
                         </NavLink>
+                        <NavLink
+                            to="/orders"
+                            className={({ isActive }) =>
+                                `transition-colors ${isActive
+                                    ? 'text-white font-semibold'
+                                    : 'text-[#A1A1AA] hover:text-white'
+                                }`
+                            }
+                        >
+                            Mes Commandes
+                        </NavLink>
                     </nav>
 
                     <div className="flex items-center gap-1 sm:gap-2">
@@ -100,6 +111,9 @@ export default function Header() {
                                             </div>
                                             <button onClick={() => { setIsDropdownOpen(false); navigate('/profile'); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 cursor-pointer transition-colors mb-0.5">
                                                 <User className="w-4 h-4" /> Mon Profil
+                                            </button>
+                                            <button onClick={() => { setIsDropdownOpen(false); navigate('/orders'); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 cursor-pointer transition-colors mb-0.5">
+                                                <Package className="w-4 h-4" /> Mes Commandes
                                             </button>
                                             <button onClick={() => { setIsDropdownOpen(false); navigate('/settings'); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 cursor-pointer transition-colors mb-1">
                                                 <Settings className="w-4 h-4" /> Paramètres

@@ -13,6 +13,7 @@ import SetupPasswordPage from './pages/SetupPasswordPage';
 import ResourcesPage from './pages/ResourcesPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
+import OrdersPage from './pages/OrdersPage';
 import { Crown } from 'lucide-react';
 
 // Guard – redirects to /login when unauthenticated
@@ -85,6 +86,7 @@ function AppRoutes() {
           <Route path="/resources" element={<ResourcesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
         </Route>
       </Route>
 
