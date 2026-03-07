@@ -405,7 +405,8 @@ export function Drip() {
             console.log(`    - Total charge: $${totalCharge.toFixed(2)} ${serviceRate > 0 ? '(calculé depuis rate)' : '(non disponible)'}`);
             console.log(`========================================\n`);
 
-            // Determine overall status based on parent and sub-orders
+            // Determine overall status based on sub-orders execution reality.
+            // Parent status alone is not reliable for drip-feed completion.
             let overallStatus = 'Pending';
             const parentStatusLower = parentOrder.status?.toLowerCase() ?? '';
             
@@ -420,9 +421,20 @@ export function Drip() {
             const allRunsExecuted = executedOrders.length === totalRuns;
             const allDelivered = totalRemains === 0;
             
-            if (allSubOrdersCompleted || (allRunsExecuted && allDelivered) || completedCount === totalRuns || parentStatusLower === 'completed') {
+            const completedByRuns =
+                allSubOrdersCompleted ||
+                (allRunsExecuted && allDelivered) ||
+                (totalRuns > 0 && completedCount === totalRuns);
+
+            if (completedByRuns) {
                 overallStatus = 'Completed';
                 console.log(`[DRIP GROUP] ✅ Order ${parentId} marked as COMPLETED`);
+            } else if (parentStatusLower === 'completed') {
+                // Guard against false-complete on parent order while drip runs are still pending.
+                console.warn(
+                    `[DRIP GROUP] ⚠️ Parent ${parentId} is 'completed' but runs are not fully executed yet (${executedOrders.length}/${totalRuns}). Keeping active status.`
+                );
+                overallStatus = executedOrders.length > 0 ? 'In progress' : 'Pending';
             } else if (executedOrders.length > 0 || parentStatusLower === 'processing' || parentStatusLower === 'in progress') {
                 overallStatus = 'In progress';
             }
