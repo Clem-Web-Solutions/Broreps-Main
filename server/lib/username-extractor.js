@@ -163,16 +163,68 @@ const PLATFORM_BASE = {
  * @param {string}  [productTitle] - Product/variant title used as fallback for platform detection.
  * @returns {string}  Canonical URL, or the original value if nothing could be determined.
  */
+/**
+ * Lowercase only the username/handle segment of a full social profile URL.
+ * Content URLs (video IDs, shortcodes, reels) are returned unchanged because
+ * their path identifiers are case-sensitive.
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+function lowercaseProfileUsernameInUrl(url) {
+    try {
+        const u = new URL(url);
+        const parts = u.pathname.split('/').filter(Boolean);
+
+        if (u.hostname.includes('tiktok.com')) {
+            // /@Username/video/123  → parts: ['@Username', 'video', '123']
+            // /@Username            → parts: ['@Username']
+            if (parts[0] && parts[0].startsWith('@')) {
+                parts[0] = parts[0].toLowerCase();
+                u.pathname = '/' + parts.join('/');
+            }
+            return u.toString();
+        }
+
+        if (u.hostname.includes('instagram.com')) {
+            // /Username/            → parts: ['Username']
+            // /Username/            is a profile — lowercase it
+            // /p/shortcode/         is content — keep as-is
+            const contentSegments = ['p', 'reel', 'reels', 'tv', 'stories', 'explore'];
+            if (parts[0] && !contentSegments.includes(parts[0].toLowerCase())) {
+                parts[0] = parts[0].toLowerCase();
+                u.pathname = '/' + parts.join('/');
+            }
+            return u.toString();
+        }
+
+        if (u.hostname.includes('twitch.tv')) {
+            // /Username → parts: ['Username']
+            if (parts[0]) {
+                parts[0] = parts[0].toLowerCase();
+                u.pathname = '/' + parts.join('/');
+            }
+            return u.toString();
+        }
+
+        return url;
+    } catch {
+        return url;
+    }
+}
+
 export function normalizeSocialLink(raw, productTitle = '') {
     if (!raw || typeof raw !== 'string') return raw;
 
     const trimmed = raw.trim();
 
-    // Already a URL → return as-is
-    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    // Already a URL → lowercase the username segment, return
+    if (/^https?:\/\//i.test(trimmed)) {
+        return lowercaseProfileUsernameInUrl(trimmed);
+    }
 
-    // Strip leading @ if present
-    const username = trimmed.replace(/^@+/, '').trim();
+    // Strip leading @ if present, then lowercase the handle
+    const username = trimmed.replace(/^@+/, '').trim().toLowerCase();
 
     if (!username) return raw;
 
