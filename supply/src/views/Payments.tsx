@@ -277,7 +277,7 @@ export function Payments() {
                         )}
                     >
                         {t === 'payments' ? <CreditCard size={16} /> : <Repeat size={16} />}
-                        {t === 'payments' ? 'Paiements uniques' : 'Abonnements'}
+                        {t === 'payments' ? 'Transactions' : 'Abonnements'}
                     </button>
                 ))}
             </div>
@@ -334,6 +334,9 @@ export function Payments() {
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="text-white text-[13px] font-medium max-w-50 truncate">{p.product_title}</div>
+                                            {p.order_type === 'subscription' && (
+                                                <div className="text-[10px] text-purple-400 font-bold mt-0.5">REBILL</div>
+                                            )}
                                             {p.quantity > 1 && <div className="text-[#00A336] font-bold text-xs mt-0.5">x{p.quantity}</div>}
                                         </td>
                                         <td className="px-5 py-4 text-[#A1A1AA] text-xs max-w-40 truncate">

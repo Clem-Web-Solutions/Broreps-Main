@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import db from '../config/database.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { normalizeSocialLink, extractUsername } from '../lib/username-extractor.js';
+import { resolveLinkForService } from '../lib/social-link-resolver.js';
 import { sendOrderConfirmationEmail, sendOrderInProgressEmail } from '../lib/order-mails.js';
 import { smmRequest } from './smm.js';
 import { fulfillShopifyOrder } from '../lib/shopify.js';
@@ -1373,6 +1374,23 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
     ? service.dripfeed_quantity
     : 250;
 
+  // For engagement-type services (views/likes/comments...), resolve profile links
+  // to a latest content URL when possible.
+  const linkResolution = await resolveLinkForService(socialLink, service.service_name || '');
+  const targetLink = linkResolution.link || socialLink;
+  if (linkResolution.resolved) {
+    console.log('[LINK RESOLVER] Service target upgraded to latest media link:', {
+      service: service.service_name,
+      original: socialLink,
+      resolved: targetLink,
+    });
+  } else if (linkResolution.reason === 'latest-media-not-found') {
+    console.warn('[LINK RESOLVER] Could not resolve latest media, keeping original profile link:', {
+      service: service.service_name,
+      link: socialLink,
+    });
+  }
+
   // ── Pack: launch one order per sub-service ────────────────────────────────
   if (service.is_pack && !_skipPackCheck) {
     const [packItems] = await db.query(
@@ -1458,7 +1476,7 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
         dripfeed_runs, dripfeed_interval, dripfeed_current_run
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'processing', ?, ?, 0)
     `, [
-      userId, service.service_id, socialLink, username,
+      userId, service.service_id, targetLink, username,
       quantity, quantity, charge,
       shopifyOrderNumber || null,
       dripfeedRuns, dripfeedInterval,
@@ -1479,7 +1497,7 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
 
         const smmResponse = await smmRequest(provider, 'add', {
           service:  service.service_id,
-          link:     socialLink,
+          link:     targetLink,
           quantity: firstQty,
         });
         const providerOrderId = smmResponse.order;
@@ -1493,7 +1511,7 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'processing', ?, 1, ?, 1)
         `, [
           userId, service.service_id, firstQty, firstQty, firstCharge,
-          socialLink, username, shopifyOrderNumber || null, providerOrderId,
+          targetLink, username, shopifyOrderNumber || null, providerOrderId,
           internalOrderId, dripfeedInterval,
         ]);
 
@@ -1546,7 +1564,7 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
         shopify_order_number, status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
     `, [
-      userId, service.service_id, socialLink, username,
+      userId, service.service_id, targetLink, username,
       quantity, quantity, charge,
       shopifyOrderNumber || null,
     ]);
@@ -1556,7 +1574,7 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
       try {
         const smmResponse = await smmRequest(provider, 'add', {
           service:  service.service_id,
-          link:     socialLink,
+          link:     targetLink,
           quantity,
         });
         const providerOrderId = smmResponse.order;
@@ -1775,7 +1793,8 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req, res) => 
   }
 });
 
-// GET /api/tagadapay/admin/payments — paginated one-time payments
+// GET /api/tagadapay/admin/payments — paginated transactions
+// Includes one-time payments + subscription rebills (excludes initial subscription seed row)
 router.get('/admin/payments', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -1784,7 +1803,15 @@ router.get('/admin/payments', authenticateToken, requireAdmin, async (req, res) 
     const search = req.query.search ? `%${req.query.search}%` : null;
     const status = req.query.status || null;
 
-    let where = `WHERE order_type = 'one_time'`;
+    let where = `WHERE (
+      order_type = 'one_time'
+      OR (
+        order_type = 'subscription'
+        AND subscription_id IS NOT NULL
+        AND payment_id IS NOT NULL
+        AND payment_id <> subscription_id
+      )
+    )`;
     const params = [];
     if (search) {
       where += ` AND (customer_email LIKE ? OR customer_name LIKE ? OR product_title LIKE ? OR social_link LIKE ? OR payment_id LIKE ?)`;
@@ -1828,58 +1855,72 @@ router.get('/admin/subscriptions', authenticateToken, requireAdmin, async (req, 
     const search = req.query.search ? `%${req.query.search}%` : null;
     const status = req.query.status || null;
 
-    let having = ``;
-    const params = [];
-    const havingParams = [];
+    let where = `WHERE 1=1`;
+    const whereParams = [];
     if (search) {
-      having += ` HAVING (customer_email LIKE ? OR customer_name LIKE ? OR product_title LIKE ? OR social_link LIKE ?)`;
-      havingParams.push(search, search, search, search);
+      where += ` AND (l.customer_email LIKE ? OR l.customer_name LIKE ? OR l.product_title LIKE ? OR l.social_link LIKE ?)`;
+      whereParams.push(search, search, search, search);
     }
     if (status) {
-      having += (having ? ' AND' : ' HAVING') + ` subscription_status = ?`;
-      havingParams.push(status);
+      where += ` AND l.subscription_status = ?`;
+      whereParams.push(status);
     }
 
-    const countQuery = await db.query(
-      `SELECT COUNT(*) AS total FROM (
-         SELECT subscription_id
-         FROM tagadapay_orders
-         WHERE order_type = 'subscription' AND subscription_id IS NOT NULL
-         GROUP BY subscription_id
-         ${having}
-       ) AS sub`,
-      havingParams
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM (
+         SELECT t.subscription_id, MAX(t.id) AS latest_id
+         FROM tagadapay_orders t
+         WHERE t.order_type = 'subscription' AND t.subscription_id IS NOT NULL
+         GROUP BY t.subscription_id
+       ) latest
+       JOIN tagadapay_orders l ON l.id = latest.latest_id
+       ${where}`,
+      whereParams
     );
-    const total = countQuery[0][0].total;
+    const total = countRows[0]?.total || 0;
 
     const [subscriptions] = await db.query(
       `SELECT
-         MAX(id) AS id,
-         subscription_id,
-         subscription_status,
-         subscription_interval,
-         subscription_next_billing_date,
-         subscription_started_at,
-         customer_email,
-         customer_name,
-         customer_phone,
-         product_title,
-         amount,
-         currency,
-         social_link,
-         COUNT(*) AS payment_count,
-         SUM(CASE WHEN payment_status = 'paid' THEN amount ELSE 0 END) AS total_paid,
-         MIN(created_at) AS created_at
-       FROM tagadapay_orders
-       WHERE order_type = 'subscription' AND subscription_id IS NOT NULL
-       GROUP BY subscription_id, subscription_status, subscription_interval,
-                subscription_next_billing_date, subscription_started_at,
-                customer_email, customer_name, customer_phone, product_title,
-                amount, currency, social_link
-       ${having}
-       ORDER BY created_at DESC
+         l.id,
+         l.subscription_id,
+         l.subscription_status,
+         l.subscription_interval,
+         l.subscription_next_billing_date,
+         l.subscription_started_at,
+         l.customer_email,
+         l.customer_name,
+         l.customer_phone,
+         l.product_title,
+         l.amount,
+         l.currency,
+         l.social_link,
+         COALESCE(p.payment_count, 0) AS payment_count,
+         COALESCE(p.total_paid, 0) AS total_paid,
+         l.created_at
+       FROM (
+         SELECT t.subscription_id, MAX(t.id) AS latest_id
+         FROM tagadapay_orders t
+         WHERE t.order_type = 'subscription' AND t.subscription_id IS NOT NULL
+         GROUP BY t.subscription_id
+       ) latest
+       JOIN tagadapay_orders l ON l.id = latest.latest_id
+       LEFT JOIN (
+         SELECT
+           subscription_id,
+           COUNT(*) AS payment_count,
+           SUM(CASE WHEN payment_status IN ('paid', 'succeeded', 'success') THEN amount ELSE 0 END) AS total_paid
+         FROM tagadapay_orders
+         WHERE order_type = 'subscription'
+           AND subscription_id IS NOT NULL
+           AND payment_id IS NOT NULL
+           AND payment_id <> subscription_id
+         GROUP BY subscription_id
+       ) p ON p.subscription_id = l.subscription_id
+       ${where}
+       ORDER BY l.created_at DESC
        LIMIT ? OFFSET ?`,
-      [...havingParams, limit, offset]
+      [...whereParams, limit, offset]
     );
 
     res.json({
@@ -1948,6 +1989,13 @@ router.post('/admin/complete-order/:id', authenticateToken, requireAdmin, async 
       customerEmail:       customer_email || order.customer_email,
       shopifyOrderNumber:  order.shopify_order_number || null,
     });
+
+    // Fulfill Shopify order if we have the number
+    if (order.shopify_order_number) {
+      fulfillShopifyOrder(order.shopify_order_number).catch(e =>
+        console.error('[Shopify] fulfillment error (admin complete-order):', e.message)
+      );
+    }
 
     console.log('[ADMIN] ✅ Commande complétée manuellement:', {
       tagadapay_order_id: order.id,
