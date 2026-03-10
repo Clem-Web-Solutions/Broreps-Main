@@ -4,8 +4,8 @@ import db from '../config/database.js';
 
 const router = express.Router();
 
-// Get all allowed services (admin only)
-router.get('/', authenticateToken, requireAdmin, async (req, res) => {
+// Get all allowed services (any authenticated user)
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const [services] = await db.query(
       'SELECT id, service_id, service_name, provider, delivery_mode, dripfeed_quantity, is_pack, created_at FROM allowed_services ORDER BY created_at DESC'
