@@ -105,22 +105,39 @@ async function resolveTikTokLatestVideo(profileUrl) {
   const username = extractTikTokUsername(profileUrl);
   if (!username) return null;
 
-  // ── Strategy 1: parse __UNIVERSAL_DATA_FOR_REHYDRATION__ from the profile page ──
+  console.log(`[RESOLVER] TikTok: résolution dernière vidéo pour @${username}`);
+
+  // ── Strategy 1: TikWm community API (free, no auth, most reliable in production) ──
+  // TikWm is a well-known public data API that proxies TikTok data without auth.
+  try {
+    const tikwm = await fetchJson(
+      `https://api.tikwm.com/user/videos?unique_id=${encodeURIComponent('@' + username)}&count=1&cursor=0`,
+      { 'Accept': 'application/json', 'Origin': 'https://tikwm.com' },
+      12000
+    );
+    if (tikwm?.code === 0) {
+      const video = tikwm?.data?.videos?.[0];
+      const videoId = video?.video_id || video?.id;
+      if (videoId) {
+        console.log(`[RESOLVER] TikTok ✅ TikWm — vidéo: ${videoId}`);
+        return `https://www.tiktok.com/@${username}/video/${videoId}`;
+      }
+    }
+  } catch { /* fall through */ }
+
+  // ── Strategy 2: parse __UNIVERSAL_DATA_FOR_REHYDRATION__ from the profile page ──
   const html = await fetchText(`https://www.tiktok.com/@${username}`, {
     'Referer': 'https://www.tiktok.com/',
     'Sec-Fetch-Site': 'same-origin',
   });
 
   if (html) {
-    // Extract the JSON blob embedded in the SSR script tag
     const scriptMatch = html.match(/<script\s+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\s\S]*?)<\/script>/);
     if (scriptMatch) {
       try {
         const json = JSON.parse(scriptMatch[1]);
-        // Navigate the known structures TikTok uses
         const scope = json?.__DEFAULT_SCOPE__ || json;
         const userDetail = scope?.['webapp.user-detail'] || scope?.userDetail;
-        // itemList is the feed of videos; pick the first (most recent)
         const itemList =
           userDetail?.itemList ||
           userDetail?.items ||
@@ -128,37 +145,26 @@ async function resolveTikTokLatestVideo(profileUrl) {
           null;
         if (Array.isArray(itemList) && itemList.length > 0) {
           const videoId = itemList[0]?.id || itemList[0]?.video?.id || itemList[0]?.videoId;
-          if (videoId) return `https://www.tiktok.com/@${username}/video/${videoId}`;
+          if (videoId) {
+            console.log(`[RESOLVER] TikTok ✅ UNIVERSAL_DATA — vidéo: ${videoId}`);
+            return `https://www.tiktok.com/@${username}/video/${videoId}`;
+          }
         }
-      } catch { /* malformed JSON – fall through */ }
+      } catch { /* fall through */ }
     }
 
-    // ── Strategy 2: regex sweep on the raw HTML for a 15–19 digit video ID ──
-    // TikTok video IDs are always 15–19 digits; user ID length is similar,
-    // so restrict to patterns that are clearly associated with a video path.
+    // ── Strategy 3: regex sweep for a 15–19 digit video ID in the HTML ──
     const videoPathMatch =
       html.match(/\/video\/(\d{15,19})/) ||
       html.match(/"videoId"\s*:\s*"(\d{15,19})"/) ||
-      html.match(/"id"\s*:\s*"(\d{15,19})"/) ||
-      html.match(/ItemModule[^{]*{[^}]*"(\d{15,19})"/);
+      html.match(/"id"\s*:\s*"(\d{15,19})"/);
     if (videoPathMatch) {
+      console.log(`[RESOLVER] TikTok ✅ regex HTML — vidéo: ${videoPathMatch[1]}`);
       return `https://www.tiktok.com/@${username}/video/${videoPathMatch[1]}`;
     }
   }
 
-  // ── Strategy 3: unofficial user detail API (no auth required in many regions) ──
-  const apiData = await fetchJson(
-    `https://www.tiktok.com/api/user/detail/?uniqueId=${encodeURIComponent(username)}&aid=1988&app_name=tiktok_web&device_platform=web_pc`,
-    { Referer: 'https://www.tiktok.com/', 'X-Requested-With': 'XMLHttpRequest' }
-  );
-  if (apiData) {
-    const items = apiData?.userInfo?.latestVideoList || apiData?.itemList || apiData?.items || [];
-    if (Array.isArray(items) && items.length > 0) {
-      const videoId = items[0]?.id || items[0]?.video?.id;
-      if (videoId) return `https://www.tiktok.com/@${username}/video/${videoId}`;
-    }
-  }
-
+  console.warn(`[RESOLVER] TikTok ❌ Aucune stratégie n'a résolu @${username}`);
   return null;
 }
 
@@ -178,49 +184,63 @@ async function resolveInstagramLatestPost(profileUrl) {
   const username = extractInstagramUsername(profileUrl);
   if (!username) return null;
 
-  // ── Strategy 1: Instagram's semi-public web_profile_info endpoint ──
-  const igApiHeaders = {
+  console.log(`[RESOLVER] Instagram: résolution dernier post pour @${username}`);
+
+  // Full browser-like headers required by Instagram
+  const igHeaders = {
     'X-IG-App-ID': '936619743392459',
     'X-ASBD-ID': '198387',
+    'X-IG-WWW-Claim': '0',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Origin': 'https://www.instagram.com',
+    'Referer': `https://www.instagram.com/${username}/`,
     'Sec-Fetch-Site': 'same-origin',
     'Sec-Fetch-Mode': 'cors',
     'Sec-Fetch-Dest': 'empty',
-    'Referer': `https://www.instagram.com/${username}/`,
+    'Accept': '*/*',
   };
+
+  // ── Strategy 1: web_profile_info endpoint ──
   const profileData = await fetchJson(
     `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
-    igApiHeaders
+    igHeaders
   );
   if (profileData) {
     const edges = profileData?.data?.user?.edge_owner_to_timeline_media?.edges || [];
     if (edges.length > 0) {
-      const shortcode = edges[0]?.node?.shortcode;
-      if (shortcode) return `https://www.instagram.com/p/${shortcode}/`;
+      const node = edges[0]?.node;
+      const shortcode = node?.shortcode || node?.code;
+      if (shortcode) {
+        const type = node?.is_video ? 'reel' : 'p';
+        console.log(`[RESOLVER] Instagram ✅ web_profile_info — ${type}/${shortcode}`);
+        return `https://www.instagram.com/${type}/${shortcode}/`;
+      }
     }
   }
 
-  // ── Strategy 2: graphql query_hash approach ──
-  // query_hash for "user media" is well-known and still accepted in many cases.
-  const gqlData = await fetchJson(
-    `https://www.instagram.com/graphql/query/?query_hash=e769aa130647d2354c40ea6a439bfc08&variables=${encodeURIComponent(JSON.stringify({ id: username, first: 1 }))}`,
-    igApiHeaders
+  // ── Strategy 2: ?__a=1 endpoint (still active on some regions) ──
+  const a1Data = await fetchJson(
+    `https://www.instagram.com/${encodeURIComponent(username)}/?__a=1&__d=dis`,
+    igHeaders
   );
-  if (gqlData) {
-    const edges = gqlData?.data?.user?.edge_user_to_photos_of_you?.edges ||
-                  gqlData?.data?.user?.edge_owner_to_timeline_media?.edges || [];
+  if (a1Data) {
+    const edges = a1Data?.graphql?.user?.edge_owner_to_timeline_media?.edges ||
+                  a1Data?.data?.user?.edge_owner_to_timeline_media?.edges || [];
     if (edges.length > 0) {
       const shortcode = edges[0]?.node?.shortcode;
-      if (shortcode) return `https://www.instagram.com/p/${shortcode}/`;
+      if (shortcode) {
+        console.log(`[RESOLVER] Instagram ✅ __a=1 — p/${shortcode}`);
+        return `https://www.instagram.com/p/${shortcode}/`;
+      }
     }
   }
 
-  // ── Strategy 3: scrape the profile HTML page ──
+  // ── Strategy 3: HTML page scraping ──
   const html = await fetchText(`https://www.instagram.com/${username}/`, {
     'Referer': 'https://www.instagram.com/',
     'Sec-Fetch-Site': 'same-origin',
   });
   if (html) {
-    // window._sharedData / __additionalDataLoaded JSON
     const sharedMatch = html.match(/window\._sharedData\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
     if (sharedMatch) {
       try {
@@ -228,23 +248,28 @@ async function resolveInstagramLatestPost(profileUrl) {
         const edges =
           shared?.entry_data?.ProfilePage?.[0]?.graphql?.user?.edge_owner_to_timeline_media?.edges || [];
         if (edges.length > 0 && edges[0]?.node?.shortcode) {
+          console.log(`[RESOLVER] Instagram ✅ _sharedData HTML`);
           return `https://www.instagram.com/p/${edges[0].node.shortcode}/`;
         }
       } catch { /* fall through */ }
     }
 
-    // Generic shortcode sweep (8-12 char base64url, avoid false positives with word filters)
+    // Generic shortcode / reel sweep
     const patterns = [
-      /"shortcode"\s*:\s*"([A-Za-z0-9_-]{8,12})"/,
-      /instagram\.com\/(?:p|reel)\/([A-Za-z0-9_-]{8,12})\//,
-      /"code"\s*:\s*"([A-Za-z0-9_-]{8,12})"/,
+      [/instagram\.com\/(reel)\/([A-Za-z0-9_-]{8,12})\//, (m) => `https://www.instagram.com/reel/${m[2]}/`],
+      [/instagram\.com\/(p)\/([A-Za-z0-9_-]{8,12})\//, (m) => `https://www.instagram.com/p/${m[2]}/`],
+      [/"shortcode"\s*:\s*"([A-Za-z0-9_-]{8,12})"/, (m) => `https://www.instagram.com/p/${m[1]}/`],
     ];
-    for (const pat of patterns) {
+    for (const [pat, build] of patterns) {
       const m = html.match(pat);
-      if (m) return `https://www.instagram.com/p/${m[1]}/`;
+      if (m) {
+        console.log(`[RESOLVER] Instagram ✅ regex HTML`);
+        return build(m);
+      }
     }
   }
 
+  console.warn(`[RESOLVER] Instagram ❌ Aucune stratégie n'a résolu @${username}`);
   return null;
 }
 
