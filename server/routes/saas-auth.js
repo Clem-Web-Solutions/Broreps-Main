@@ -224,6 +224,7 @@ router.get('/me', requireSaasAuth, async (req, res) => {
   const [rows] = await db.query(
     `SELECT id, email, name, subscription_status, subscription_product,
             modules_unlocked, subscribed_at, next_billing_at, notes_reflection,
+            bio, custom_status, presence,
             tiktok_username, tiktok_linked_at, instagram_username, instagram_linked_at
      FROM saas_users WHERE id = ? AND is_active = 1`,
     [req.saasUser.id]
@@ -264,7 +265,7 @@ router.get('/me', requireSaasAuth, async (req, res) => {
 // ─── PATCH /api/saas/auth/profile ─────────────────────────────────────────────
 // Update display name and/or password
 router.patch('/profile', requireSaasAuth, async (req, res) => {
-  const { name, current_password, new_password } = req.body;
+  const { name, current_password, new_password, bio, custom_status, presence } = req.body;
   const updates = [];
   const params = [];
 
@@ -273,6 +274,23 @@ router.patch('/profile', requireSaasAuth, async (req, res) => {
     if (!trimmed) return res.status(400).json({ error: 'Le prénom ne peut pas être vide' });
     updates.push('name = ?');
     params.push(trimmed);
+  }
+
+  if (bio !== undefined) {
+    updates.push('bio = ?');
+    params.push(String(bio).slice(0, 500));
+  }
+
+  if (custom_status !== undefined) {
+    updates.push('custom_status = ?');
+    params.push(String(custom_status).slice(0, 100));
+  }
+
+  const validPresences = ['online', 'away', 'dnd', 'offline'];
+  if (presence !== undefined) {
+    if (!validPresences.includes(presence)) return res.status(400).json({ error: 'Statut de présence invalide' });
+    updates.push('presence = ?');
+    params.push(presence);
   }
 
   if (new_password) {
@@ -296,6 +314,7 @@ router.patch('/profile', requireSaasAuth, async (req, res) => {
   const [updated] = await db.query(
     `SELECT id, email, name, subscription_status, subscription_product,
             modules_unlocked, subscribed_at, next_billing_at,
+            bio, custom_status, presence,
             tiktok_username, tiktok_linked_at, instagram_username, instagram_linked_at
      FROM saas_users WHERE id = ?`,
     [req.saasUser.id]

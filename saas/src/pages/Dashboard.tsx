@@ -186,7 +186,7 @@ export default function Dashboard() {
 
                     <div className="mt-8 flex flex-col gap-3 relative z-10 w-full md:w-[80%]">
                         <div
-                            onClick={() => openCoach()}
+                            onClick={() => navigate('/ia')}
                             className="bg-[#09090b] border border-white/10 rounded-xl p-3 flex items-center justify-between text-[#A1A1AA] text-[13px] hover:border-white/20 cursor-pointer transition-colors group"
                         >
                             <span className="flex items-center gap-2">
@@ -196,8 +196,8 @@ export default function Dashboard() {
                             <div className="px-2 py-1 rounded bg-white/5 text-[10px] font-medium text-white/50">Cmd + J</div>
                         </div>
                         <div className="flex gap-2 flex-wrap text-[12px]">
-                            <span onClick={() => openCoach('Idée de short ?')} className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Idée de short ?</span>
-                            <span onClick={() => openCoach('Comment percer ?')} className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Comment percer ?</span>
+                            <span onClick={() => navigate('/ia')} className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Idée de short ?</span>
+                            <span onClick={() => navigate('/ia')} className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-white/70 cursor-pointer hover:bg-white/10 transition-colors">Comment percer ?</span>
                         </div>
                     </div>
                 </div>
@@ -365,8 +365,8 @@ function PremiumModuleCard({ number, title, desc, status, progressPct, onClick }
         <div
             onClick={isLocked ? undefined : onClick}
             className={`animated-border-card group flex flex-col p-6 rounded-2xl transition-all duration-300 relative overflow-hidden ${isLocked
-                ? 'bg-[#050505] border border-white/5 cursor-not-allowed opacity-50'
-                : 'bg-gradient-to-br from-[#071a0e] to-[#050e08] border border-[#00A336]/20 cursor-pointer hover:border-[#00A336]/50 hover:shadow-[0_0_40px_rgba(0,163,54,0.12)]'
+                ? 'bg-[#09090b] border border-white/5 cursor-not-allowed opacity-50'
+                : 'bg-[#09090b] border-2 border-[#00A336]/40 cursor-pointer hover:bg-[#0f0f0f] hover:border-[#00A336]/70 hover:shadow-[0_0_40px_rgba(0,163,54,0.12)]'
                 }`}
             style={!isLocked ? { animation: 'corner-glow 4s ease-in-out infinite' } : undefined}
         >
@@ -376,7 +376,7 @@ function PremiumModuleCard({ number, title, desc, status, progressPct, onClick }
             )}
 
             {/* Corner glow */}
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#00A336]/8 blur-2xl rounded-full -translate-x-1/2 translate-y-1/2 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-24 h-4 bg-[#00A336]/8 blur-2xl rounded-full -translate-x-1/2 translate-y-1/2 pointer-events-none" />
 
             <div className="flex justify-between items-start mb-5 relative z-10">
                 {/* MODULE X badge */}

@@ -13,6 +13,9 @@ export interface SaasUser {
   tiktok_linked_at?: string;
   instagram_username?: string;
   instagram_linked_at?: string;
+  bio?: string;
+  custom_status?: string;
+  presence?: string;
 }
 
 function authHeader(): Record<string, string> {
@@ -67,7 +70,7 @@ export const authApi = {
       body: JSON.stringify({ token, password }),
     }),
 
-  updateProfile: (data: { name?: string; current_password?: string; new_password?: string }) =>
+  updateProfile: (data: { name?: string; bio?: string; custom_status?: string; presence?: string; current_password?: string; new_password?: string }) =>
     request<{ success: boolean; user: SaasUser }>('/api/saas/auth/profile', {
       method: 'PATCH',
       body: JSON.stringify(data),

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Skull, Plus, LogOut } from 'lucide-react';
+import { X, Skull, Plus, LogOut, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router';
+import { authApi } from '../../lib/api';
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -10,11 +11,26 @@ interface ProfileModalProps {
 }
 
 export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
-    const { user, logout } = useAuth();
+    const { user, logout, refresh } = useAuth();
     const navigate = useNavigate();
-    const [presence, setPresence] = useState('online');
-    const [bio, setBio] = useState('');
-    const [customStatus, setCustomStatus] = useState('');
+    const [name, setName] = useState(user?.name || '');
+    const [presence, setPresence] = useState(user?.presence || 'online');
+    const [bio, setBio] = useState(user?.bio || '');
+    const [customStatus, setCustomStatus] = useState(user?.custom_status || '');
+    const [saving, setSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (isOpen && user) {
+            setName(user.name || '');
+            setPresence(user.presence || 'online');
+            setBio(user.bio || '');
+            setCustomStatus(user.custom_status || '');
+            setSaveSuccess(false);
+            setSaveError(null);
+        }
+    }, [isOpen]);
 
     const handleLogout = () => {
         onClose();
@@ -22,9 +38,30 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         navigate('/login');
     };
 
+    const handleSave = async () => {
+        setSaving(true);
+        setSaveError(null);
+        setSaveSuccess(false);
+        try {
+            await authApi.updateProfile({
+                name: name.trim() || undefined,
+                bio,
+                custom_status: customStatus,
+                presence,
+            });
+            await refresh();
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+        } catch (err: unknown) {
+            setSaveError((err as Error).message || 'Erreur lors de la sauvegarde');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     // Get user initials for avatar
-    const initials = user?.name
-        ? user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    const initials = name
+        ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
         : '?';
 
     const username = user?.email
@@ -40,7 +77,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
             {/* Modal Container */}
             <div
-                className="w-full max-w-[500px] bg-[#0A0A0A] border border-[#00A336]/20 rounded-2xl p-6 shadow-[0_0_60px_rgba(0,163,54,0.15)] relative z-10 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+                className="w-full max-w-150 bg-[#0A0A0A] border border-[#00A336]/20 rounded-2xl p-6 shadow-[0_0_60px_rgba(0,163,54,0.15)] relative z-10 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -79,8 +116,8 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                         </div>
 
                         {/* Name & Title */}
-                        <div className="ml-4 mb-2">
-                            <h3 className="text-white text-xl font-bold leading-tight">{user?.name || 'Ton nom'}</h3>
+                        <div className="ml-4 -mb-3">
+                            <h3 className="text-white text-xl font-bold leading-tight">{name || 'Ton nom'}</h3>
                             <div className="flex items-center gap-3 mt-1">
                                 <span className="text-[#a1a1aa] text-sm">{username}</span>
                                 <div className="flex items-center gap-1.5 bg-[#18181b] border border-[#27272a] px-2 py-0.5 rounded-md text-[#a1a1aa] text-xs font-medium">
@@ -93,6 +130,18 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 </div>
 
                 <div className="space-y-6">
+                    {/* Nom affiché */}
+                    <div>
+                        <h4 className="text-[#a1a1aa] text-[11px] font-bold mb-2 tracking-widest uppercase">Nom affiché</h4>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            placeholder="Ton prénom ou pseudo..."
+                            className="w-full bg-[#111] border border-[#18181b] rounded-xl px-4 py-3 text-[14px] text-white placeholder-[#52525b] focus:outline-none focus:border-[#00A336] focus:ring-1 focus:ring-[#00A336] transition-colors"
+                        />
+                    </div>
+
                     {/* Statut de présence */}
                     <div>
                         <h4 className="text-[#a1a1aa] text-[11px] font-bold mb-3 tracking-widest uppercase">Statut de présence</h4>
@@ -164,9 +213,22 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     </div>
 
                     {/* Actions */}
+                    {saveError && (
+                        <p className="text-red-400 text-[13px] bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5">{saveError}</p>
+                    )}
                     <div className="flex items-center justify-between pt-2 gap-4">
-                        <button className="flex-1 bg-[#00A336] hover:bg-[#00cc44] text-black font-black py-3.5 rounded-xl transition-all text-[15px] shadow-[0_0_20px_rgba(0,163,54,0.3)] hover:shadow-[0_0_30px_rgba(0,204,68,0.4)]">
-                            Enregistrer le profil
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex-1 bg-[#00A336] hover:bg-[#00cc44] text-black font-black py-3.5 rounded-xl transition-all text-[15px] shadow-[0_0_20px_rgba(0,163,54,0.3)] hover:shadow-[0_0_30px_rgba(0,204,68,0.4)] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {saving ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : saveSuccess ? (
+                                <><Check className="w-4 h-4" /> Enregistré !</>
+                            ) : (
+                                'Enregistrer le profil'
+                            )}
                         </button>
                         <button
                             onClick={handleLogout}
