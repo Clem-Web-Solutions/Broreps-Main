@@ -1124,23 +1124,43 @@ async function processSubscriptionPaymentSuccess(payment) {
 
   console.log(`[SUBSCRIPTION PAYMENT] Payment #${payment_id} succeeded for subscription #${subscriptionId}`);
 
-  // Get subscription info from DB
-  const [subscriptions] = await db.query(
-    'SELECT * FROM tagadapay_orders WHERE subscription_id = ? AND order_type = "subscription" ORDER BY created_at DESC LIMIT 1',
+  // Get ALL rows for this subscription (seed + previous rebills), oldest first.
+  // We scan all rows because social_link / service_id can be set on any of them
+  // (e.g. set later via complete-order on the first payment, or auto-matched on a rebill).
+  let [subRows] = await db.query(
+    'SELECT * FROM tagadapay_orders WHERE subscription_id = ? ORDER BY created_at ASC',
     [subscriptionId]
   );
 
-  if (subscriptions.length === 0) {
-    console.warn('[WARN] Subscription not found, creating new entry');
-    // Create subscription entry if not exists
+  if (subRows.length === 0) {
+    console.warn('[WARN] Subscription not found, creating seed entry');
     await processSubscriptionCreated(payment);
+    // Re-query to get the just-created seed row
+    [subRows] = await db.query(
+      'SELECT * FROM tagadapay_orders WHERE subscription_id = ? ORDER BY created_at ASC',
+      [subscriptionId]
+    );
   }
 
-  const subscription = subscriptions[0];
-  const socialLink = subscription?.social_link || metadata?.social_link || '';
-  const productTitle = subscription?.product_title || metadata?.product_title || 'Subscription';
-  const quantity = subscription?.quantity || parseInt(metadata?.quantity || '1');
-  const serviceId = subscription?.service_id || metadata?.service_id || null;
+  const seedRow = subRows[0] || null;
+  // Pick best row across ALL related rows for social_link and service_id
+  const rowWithLink    = subRows.find(r => r.social_link && r.social_link.trim()) || seedRow;
+  const rowWithService = subRows.find(r => r.service_id) || seedRow;
+
+  const socialLink   = rowWithLink?.social_link    || metadata?.social_link || '';
+  const productTitle = seedRow?.product_title      || metadata?.product_title || 'Subscription';
+  const quantity     = seedRow?.quantity           || parseInt(metadata?.quantity || '1');
+  let   serviceId    = rowWithService?.service_id  || metadata?.service_id   || null;
+
+  // Auto-match service by product name if still missing
+  if (!serviceId && productTitle) {
+    const variantPart = productTitle.includes(' - ') ? productTitle.split(' - ').slice(1).join(' - ') : '';
+    const matched = await findServiceByProductName(productTitle, variantPart);
+    if (matched) {
+      serviceId = matched.id;
+      console.log(`[SUBSCRIPTION PAYMENT] ✅ Service auto-matché: ${matched.service_name} (id: ${serviceId})`);
+    }
+  }
 
   const recurringPaymentCreatedAt = toMySQLDateTime(createdAt || new Date());
 
@@ -1173,9 +1193,9 @@ async function processSubscriptionPaymentSuccess(payment) {
     'subscription',
     subscriptionId,
     'active',
-    customer?.email?.toLowerCase() || subscription?.customer_email,
-    customer?.fullName || subscription?.customer_name,
-    customer?.phone || subscription?.customer_phone,
+    customer?.email?.toLowerCase() || seedRow?.customer_email,
+    customer?.fullName || seedRow?.customer_name,
+    customer?.phone || seedRow?.customer_phone,
     productTitle,
     quantity,
     amount,
@@ -1203,12 +1223,20 @@ async function processSubscriptionPaymentSuccess(payment) {
         serviceId,
         socialLink,
         quantity,
-        customerEmail: customer?.email || subscription?.customer_email,
+        customerEmail: customer?.email || seedRow?.customer_email,
         shopifyOrderNumber: null,
       });
     } catch (error) {
       console.error('[ERREUR] Failed to create internal order for subscription payment:', error);
     }
+  } else {
+    console.warn('[SUBSCRIPTION PAYMENT] ⚠️ Commande non créée automatiquement:', {
+      payment_id,
+      subscription_id: subscriptionId,
+      serviceId: serviceId ?? 'MANQUANT',
+      socialLink: socialLink || 'MANQUANT',
+      quantity,
+    });
   }
 
   return result.insertId;
@@ -1329,7 +1357,7 @@ async function processSubscriptionResumed(subscription) {
 
 // Create internal order automatically
 async function createInternalOrder(tagadapay_order_id, orderData) {
-  const { serviceId, socialLink, quantity, customerEmail, shopifyOrderNumber, _skipPackCheck } = orderData;
+  const { serviceId, socialLink, quantity, customerEmail, shopifyOrderNumber, _skipPackCheck, _linkAlreadyResolved } = orderData;
 
   // Pull parent payment context to build robust tracking + email fallback values.
   const [tpRows] = await db.query(
@@ -1376,19 +1404,23 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
 
   // For engagement-type services (views/likes/comments...), resolve profile links
   // to a latest content URL when possible.
-  const linkResolution = await resolveLinkForService(socialLink, service.service_name || '');
-  const targetLink = linkResolution.link || socialLink;
-  if (linkResolution.resolved) {
-    console.log('[LINK RESOLVER] Service target upgraded to latest media link:', {
-      service: service.service_name,
-      original: socialLink,
-      resolved: targetLink,
-    });
-  } else if (linkResolution.reason === 'latest-media-not-found') {
-    console.warn('[LINK RESOLVER] Could not resolve latest media, keeping original profile link:', {
-      service: service.service_name,
-      link: socialLink,
-    });
+  // Skip if the caller (pack handler) already pre-resolved the link.
+  let targetLink = socialLink;
+  if (!_linkAlreadyResolved) {
+    const linkResolution = await resolveLinkForService(socialLink, service.service_name || '');
+    targetLink = linkResolution.link || socialLink;
+    if (linkResolution.resolved) {
+      console.log('[LINK RESOLVER] Service target upgraded to latest media link:', {
+        service: service.service_name,
+        original: socialLink,
+        resolved: targetLink,
+      });
+    } else if (linkResolution.reason === 'latest-media-not-found') {
+      console.warn('[LINK RESOLVER] Could not resolve latest media, keeping original profile link:', {
+        service: service.service_name,
+        link: socialLink,
+      });
+    }
   }
 
   // ── Pack: launch one order per sub-service ────────────────────────────────
@@ -1409,19 +1441,42 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
 
     console.log(`[PACK] Lancement de ${packItems.length} commandes pour le pack "${service.service_name}"`);
 
-    const subOrderIds = await Promise.all(packItems.map((item, idx) =>
-      createInternalOrder(tagadapay_order_id, {
-        serviceId:      item.sub_service_id,
-        socialLink,
-        quantity:       item.quantity_override || quantity,
+    // Pre-resolve the profile link → latest video/post ONCE for all engagement sub-services.
+    // This avoids parallel API calls that may be rate-limited, and ensures a consistent result.
+    let preResolvedMediaLink = null;
+    const hasEngagementSubService = packItems.some(item =>
+      /\b(vue|vues|view|views|like|likes|comment|comments|share|shares|save|saves|reel|reels)\b/i.test(item.service_name || '')
+    );
+    if (hasEngagementSubService) {
+      const engagementItem = packItems.find(item =>
+        /\b(vue|vues|view|views|like|likes|comment|comments|share|shares|save|saves|reel|reels)\b/i.test(item.service_name || '')
+      );
+      const res = await resolveLinkForService(socialLink, engagementItem.service_name);
+      if (res.resolved) {
+        preResolvedMediaLink = res.link;
+        console.log(`[PACK] ✅ Lien pré-résolu pour les services engagement: ${socialLink} → ${preResolvedMediaLink}`);
+      } else {
+        console.warn(`[PACK] ⚠️ Résolution échouée (${res.reason}), lien profil conservé: ${socialLink}`);
+      }
+    }
+
+    const subOrderIds = await Promise.all(packItems.map((item, idx) => {
+      // Engagement services get the pre-resolved media URL; follower/profile services keep original.
+      const requiresMedia = /\b(vue|vues|view|views|like|likes|comment|comments|share|shares|save|saves|reel|reels)\b/i.test(item.service_name || '');
+      const linkForSubOrder = requiresMedia && preResolvedMediaLink ? preResolvedMediaLink : socialLink;
+      return createInternalOrder(tagadapay_order_id, {
+        serviceId:           item.sub_service_id,
+        socialLink:          linkForSubOrder,
+        quantity:            item.quantity_override || quantity,
         customerEmail,
         shopifyOrderNumber,
-        _skipPackCheck: true,
+        _skipPackCheck:      true,
+        _linkAlreadyResolved: requiresMedia && !!preResolvedMediaLink,
       }).catch(err => {
         console.error(`[PACK] ❌ Sous-commande #${idx + 1} (${item.service_name}) échouée:`, err.message);
         return null;
-      })
-    ));
+      });
+    }));
 
     const firstValid = subOrderIds.find(id => id !== null);
     if (firstValid) {

@@ -5,6 +5,7 @@ import { extractUsername } from '../lib/username-extractor.js';
 import { smmRequest } from './smm.js';
 import { notifyAdmins, createNotification } from './notifications.js';
 import { fulfillShopifyOrder } from '../lib/shopify.js';
+import { resolveLinkForService } from '../lib/social-link-resolver.js';
 
 const router = express.Router();
 
@@ -75,8 +76,15 @@ router.post('/create-order', authenticateToken, async (req, res) => {
         const providerData = providers[0];
         console.log(`✅ Using provider: ${providerData.name} for service ${service}`);
 
+        // Resolve profile link → latest content URL for engagement services (views/likes/…)
+        const linkResolution = await resolveLinkForService(link, serviceData.service_name || '');
+        const resolvedLink = linkResolution.link || link;
+        if (linkResolution.resolved) {
+            console.log(`[LINK RESOLVER] drip-feed: ${serviceData.service_name} — profil → ${resolvedLink}`);
+        }
+
         // Extract username from link
-        const userInfo = extractUsername(link);
+        const userInfo = extractUsername(resolvedLink);
         const username = userInfo ? userInfo.username : null;
 
         // Use service rate if available
@@ -109,7 +117,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
                     status, dripfeed_runs, dripfeed_interval, dripfeed_current_run
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
-                    userId, service, totalQuantity, totalQuantity, totalCharge, link, username, shopify_order_number || null,
+                    userId, service, totalQuantity, totalQuantity, totalCharge, resolvedLink, username, shopify_order_number || null,
                     'processing', dripfeedRuns, dripfeedInterval, 0
                 ]
             );
@@ -127,7 +135,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
                 // Send to SMM API
                 const smmResponse = await smmRequest(providerData, 'add', {
                     service: service,
-                    link: link,
+                    link: resolvedLink,
                     quantity: firstRunQuantity
                 });
 
@@ -141,7 +149,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
                         status, parent_order_id, dripfeed_runs, dripfeed_interval, dripfeed_current_run
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
-                        userId, service, firstRunQuantity, firstRunQuantity, firstRunCharge, link, username, shopify_order_number || null, providerOrderId,
+                        userId, service, firstRunQuantity, firstRunQuantity, firstRunCharge, resolvedLink, username, shopify_order_number || null, providerOrderId,
                         'processing', parentOrderId, 1, dripfeedInterval, 1
                     ]
                 );
@@ -210,7 +218,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
                     status
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
-                    userId, service, totalQuantity, totalQuantity, totalCharge, link, username, shopify_order_number || null,
+                    userId, service, totalQuantity, totalQuantity, totalCharge, resolvedLink, username, shopify_order_number || null,
                     'pending'
                 ]
             );
@@ -223,7 +231,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
                 console.log(`🚀 Sending to SMM API...`);
                 const smmResponse = await smmRequest(providerData, 'add', {
                     service: service,
-                    link: link,
+                    link: resolvedLink,
                     quantity: totalQuantity
                 });
 
