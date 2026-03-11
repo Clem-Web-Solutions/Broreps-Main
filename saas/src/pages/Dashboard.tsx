@@ -245,18 +245,18 @@ export default function Dashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[
-                        { id: 1, title: "Bienvenue dans ton écosystème", Icon: PlayCircle },
-                        { id: 2, title: "Boost multi-plateformes", Icon: Rocket },
-                        { id: 3, title: "Passe au niveau supérieur", Icon: Target },
-                        { id: 4, title: "L'art du montage", Icon: Video },
-                        { id: 5, title: "Discipline & régularité", Icon: BarChart2 },
-                        { id: 6, title: "Maîtrise des réseaux", Icon: Sparkles },
+                        { id: 1, title: "Bienvenue dans ton écosystème", desc: "Prends en main ton espace BroReps et démarre efficacement.", Icon: PlayCircle },
+                        { id: 2, title: "Boost multi-plateformes", desc: "Explose ta visibilité sur TikTok et Instagram simultanément.", Icon: Rocket },
+                        { id: 3, title: "Passe au niveau supérieur", desc: "Multiplie tes résultats et passe un vrai cap de croissance.", Icon: Target },
+                        { id: 4, title: "Étape clé à venir", desc: "Booste tes vues, likes et partages pour dominer l'algorithme.", Icon: Video },
+                        { id: 5, title: "Discipline & régularité", desc: "Construis une présence durable grâce à la constance.", Icon: BarChart2 },
+                        { id: 6, title: "Maîtrise des réseaux", desc: "Maîtrise les codes des réseaux et deviens incontournable.", Icon: Sparkles },
                     ].map(m => (
                         <PremiumModuleCard
                             key={m.id}
                             number={m.id}
                             title={m.title}
-                            Icon={m.Icon}
+                            desc={m.desc}
                             status={getModuleStatus(m.id)}
                             progressPct={modules.find(mod => mod.id === m.id)?.progress_pct}
                             onClick={() => navigate(`/module/${m.id}`)}
@@ -358,59 +358,71 @@ function StatCard({ title, value, subtitle, icon: Icon, color, iconBg }: StatCar
     );
 }
 
-function PremiumModuleCard({ number, title, Icon, status, progressPct, onClick }: { number: number, title: string, Icon: React.ElementType, status: 'en_cours' | 'en_attente' | 'termine' | 'verrouille', progressPct?: number, onClick?: () => void }) {
+function PremiumModuleCard({ number, title, desc, status, progressPct, onClick }: { number: number, title: string, desc: string, status: 'en_cours' | 'en_attente' | 'termine' | 'verrouille', progressPct?: number, onClick?: () => void }) {
     const isLocked = status === 'verrouille';
 
     return (
         <div
             onClick={isLocked ? undefined : onClick}
-            className={`group flex flex-col p-6 rounded-2xl border transition-all duration-300 relative overflow-hidden ${isLocked
-                ? 'bg-[#050505] border-white/5 cursor-not-allowed opacity-75'
-                : 'bg-[#09090b] border-white/5 hover:border-white/20 cursor-pointer hover:bg-white/[0.02]'
+            className={`animated-border-card group flex flex-col p-6 rounded-2xl transition-all duration-300 relative overflow-hidden ${isLocked
+                ? 'bg-[#050505] border border-white/5 cursor-not-allowed opacity-50'
+                : 'bg-gradient-to-br from-[#071a0e] to-[#050e08] border border-[#00A336]/20 cursor-pointer hover:border-[#00A336]/50 hover:shadow-[0_0_40px_rgba(0,163,54,0.12)]'
                 }`}
+            style={!isLocked ? { animation: 'corner-glow 4s ease-in-out infinite' } : undefined}
         >
-            <div className="flex justify-between items-start mb-10 relative z-10">
-                <div className="flex flex-col gap-2">
-                    <span className="text-white/40 font-medium text-[11px] uppercase tracking-wider">Module {number}</span>
-                    {status === 'en_cours' && (
-                        <span className="bg-[#1e3a8a]/20 text-[#60a5fa] border border-[#1e3a8a]/50 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide w-fit">En cours</span>
-                    )}
-                    {status === 'termine' && (
-                        <span className="bg-[#00A336]/10 text-[#00A336] border border-[#00A336]/20 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide w-fit">Terminé</span>
-                    )}
-                    {status === 'verrouille' && (
-                        <span className="bg-white/5 text-white/40 border border-white/10 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide w-fit flex items-center gap-1">
-                            <Lock className="w-3 h-3" /> Verrouillé
-                        </span>
-                    )}
-                </div>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform ${isLocked ? 'bg-white/5 text-white/20' : 'bg-white/10 text-white/80 group-hover:scale-110 group-hover:text-white group-hover:bg-white/15'}`}>
-                    <Icon className="w-5 h-5" />
-                </div>
-            </div>
+            {/* Animated top scan line on hover */}
+            {!isLocked && (
+                <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#00A336]/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            )}
 
-            <div className="relative z-10">
-                <h3 className={`text-[16px] font-semibold leading-snug mb-4 ${isLocked ? 'text-white/40' : 'text-white'}`}>
-                    {title}
-                </h3>
+            {/* Corner glow */}
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#00A336]/8 blur-2xl rounded-full -translate-x-1/2 translate-y-1/2 pointer-events-none" />
 
-                {!isLocked && (
-                    <div className="flex items-center justify-between">
-                        <span className={`text-[12px] font-medium transition-colors ${status === 'termine' ? 'text-[#00A336]' : 'text-white/40 group-hover:text-white/70'}`}>
-                            {status === 'termine' ? 'Visionné' : 'Découvrir'}
-                        </span>
-                        {status === 'en_cours' && (
-                            <div className="w-1/2 h-1 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-white transition-all duration-500" style={{ width: `${progressPct ?? 0}%` }} />
-                            </div>
-                        )}
+            <div className="flex justify-between items-start mb-5 relative z-10">
+                {/* MODULE X badge */}
+                <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide ${isLocked ? 'bg-white/5 border border-white/10 text-white/30' : 'bg-[#00A336]/10 border border-[#00A336]/30 text-[#00A336]'}`}>
+                    <Sparkles className="w-3 h-3" />
+                    Module {number}
+                </span>
+
+                {/* Play / Lock button */}
+                {isLocked ? (
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                        <Lock className="w-4 h-4 text-white/20" />
+                    </div>
+                ) : (
+                    <div className="w-10 h-10 rounded-xl bg-[#00A336]/10 border border-[#00A336]/30 flex items-center justify-center group-hover:bg-[#00A336]/20 group-hover:scale-110 group-hover:border-[#00A336]/60 transition-all duration-300">
+                        <PlayCircle className="w-5 h-5 text-[#00A336]" />
                     </div>
                 )}
             </div>
 
-            {/* Subtle glow effect for active cards */}
-            {!isLocked && status !== 'termine' && (
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative z-10 flex-1">
+                <h3 className={`text-[17px] font-bold leading-snug mb-2 ${isLocked ? 'text-white/30' : 'text-white'}`}>
+                    {title}
+                </h3>
+                <p className={`text-[13px] leading-relaxed ${isLocked ? 'text-white/20' : 'text-[#A1A1AA]'}`}>
+                    {desc}
+                </p>
+
+                {status === 'en_cours' && (
+                    <div className="mt-4">
+                        <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-[#00A336] to-[#00cc44] rounded-full transition-all duration-500" style={{ width: `${progressPct ?? 0}%` }} />
+                        </div>
+                        <p className="text-[11px] text-[#00A336]/70 mt-1">{progressPct ?? 0}% complété</p>
+                    </div>
+                )}
+            </div>
+
+            {!isLocked && (
+                <div className="flex items-center justify-between relative z-10 mt-5 pt-4 border-t border-[#00A336]/10">
+                    <span className="flex items-center gap-1.5 text-[#00A336] text-[13px] font-bold group-hover:gap-2.5 transition-all">
+                        <PlayCircle className="w-4 h-4" />
+                        {status === 'termine' ? 'Revoir' : 'Découvrir'}
+                    </span>
+                    <div className="w-10 h-[1px] bg-gradient-to-r from-[#00A336]/60 to-transparent group-hover:w-16 transition-all duration-300" />
+                </div>
             )}
         </div>
     )

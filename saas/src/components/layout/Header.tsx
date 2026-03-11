@@ -3,11 +3,13 @@ import { User, Settings, LogOut, Zap, Search, ArrowRight, Package } from 'lucide
 import { NavLink, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import ProfileModal from './ProfileModal';
 
 export default function Header() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
     const handleLogout = () => {
         logout();
@@ -15,6 +17,7 @@ export default function Header() {
     };
 
     return (
+        <>
         <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-center w-[calc(100%-32px)] max-w-[900px]">
             <div className="w-full h-[60px] pl-5 pr-2 bg-[#111111]/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-full flex items-center justify-between border border-white/10">
 
@@ -109,7 +112,7 @@ export default function Header() {
                                                 <p className="text-[13px] font-medium text-white truncate">{user?.name || 'Utilisateur'}</p>
                                                 <p className="text-[11px] text-[#A1A1AA] font-medium mt-0.5 truncate">{user?.email || 'user@example.com'}</p>
                                             </div>
-                                            <button onClick={() => { setIsDropdownOpen(false); navigate('/profile'); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 cursor-pointer transition-colors mb-0.5">
+                                            <button onClick={() => { setIsDropdownOpen(false); setIsProfileModalOpen(true); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 cursor-pointer transition-colors mb-0.5">
                                                 <User className="w-4 h-4" /> Mon Profil
                                             </button>
                                             <button onClick={() => { setIsDropdownOpen(false); navigate('/orders'); }} className="w-full text-left px-3 py-2 text-[13px] font-medium text-[#A1A1AA] hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 cursor-pointer transition-colors mb-0.5">
@@ -132,5 +135,8 @@ export default function Header() {
 
             </div>
         </header>
+
+        <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
+        </>
     );
 }
