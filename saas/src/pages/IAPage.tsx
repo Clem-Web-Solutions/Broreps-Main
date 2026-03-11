@@ -29,18 +29,9 @@ export default function IAPage() {
     ]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const [remaining, setRemaining] = useState<number | null>(null);
-    const [dailyLimit, setDailyLimit] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const historyRef = useRef<ChatMessage[]>([]);
-
-    useEffect(() => {
-        aiApi.status().then((data) => {
-            setRemaining(data.remaining);
-            setDailyLimit(data.daily_limit);
-        }).catch(() => {});
-    }, []);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -124,8 +115,7 @@ export default function IAPage() {
                 prev.map((m) => (m.id === botMsgId ? { ...m, streaming: false } : m))
             );
 
-            // Refresh rate limit counter
-            aiApi.status().then((data) => setRemaining(data.remaining)).catch(() => {});
+
         } catch (err: unknown) {
             const e = err as Error & { status?: number };
             setMessages((prev) => prev.filter((m) => m.id !== botMsgId));
