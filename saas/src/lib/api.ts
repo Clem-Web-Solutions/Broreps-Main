@@ -267,3 +267,43 @@ export const ordersApi = {
     request<{ order: SaasOrderDetail }>(`/api/saas/orders/${id}`),
 };
 
+// ─── Subscription ──────────────────────────────────────────────────────────────
+export interface SubscriptionInfo {
+  subscription_id: string;
+  status: 'active' | 'paused' | 'cancelled' | 'canceled' | 'past_due' | 'expired' | string;
+  product: string | null;
+  amount: number;          // in cents
+  currency: string;
+  interval: string | null; // e.g. 'month', 'year'
+  next_billing_at: string | null;
+  started_at: string | null;
+  cancelled_at: string | null;
+}
+
+export interface SubscriptionPayment {
+  id: number;
+  payment_id: string;
+  amount: number;
+  currency: string;
+  payment_status: string;
+  product_title: string | null;
+  quantity: number;
+  subscription_status: string | null;
+  payment_created_at: string | null;
+  created_at: string;
+}
+
+export const subscriptionApi = {
+  get: () =>
+    request<{ subscription: SubscriptionInfo; payments: SubscriptionPayment[] }>('/api/saas/subscription'),
+
+  pause: () =>
+    request<{ success: boolean; message: string }>('/api/saas/subscription/pause', { method: 'POST' }),
+
+  resume: () =>
+    request<{ success: boolean; message: string }>('/api/saas/subscription/resume', { method: 'POST' }),
+
+  cancel: () =>
+    request<{ success: boolean; message: string }>('/api/saas/subscription/cancel', { method: 'POST' }),
+};
+

@@ -405,12 +405,22 @@ function PremiumModuleCard({ number, title, desc, status, progressPct, onClick }
                     {desc}
                 </p>
 
-                {status === 'en_cours' && (
+                {!isLocked && (
                     <div className="mt-4">
                         <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-[#00A336] to-[#00cc44] rounded-full transition-all duration-500" style={{ width: `${progressPct ?? 0}%` }} />
+                            <div
+                                className="h-full bg-gradient-to-r from-[#00A336] to-[#00cc44] rounded-full transition-all duration-500"
+                                style={{ width: `${status === 'termine' ? 100 : (progressPct ?? 0)}%` }}
+                            />
                         </div>
-                        <p className="text-[11px] text-[#00A336]/70 mt-1">{progressPct ?? 0}% complété</p>
+                        {status === 'en_cours' && (
+                            <p className="text-[11px] text-[#00A336]/70 mt-1">{progressPct ?? 0}% complété</p>
+                        )}
+                        {status === 'termine' && (
+                            <p className="text-[11px] text-[#00A336] mt-1 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" /> Terminé
+                            </p>
+                        )}
                     </div>
                 )}
             </div>

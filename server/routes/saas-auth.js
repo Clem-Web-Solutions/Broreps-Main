@@ -105,6 +105,9 @@ router.post('/login', async (req, res) => {
   if (!user.is_active || ['cancelled', 'expired'].includes(user.subscription_status)) {
     return res.status(403).json({ error: 'Ton abonnement est inactif ou expiré', code: 'SUBSCRIPTION_INACTIVE' });
   }
+  if (user.subscription_status === 'past_due') {
+    return res.status(403).json({ error: 'Un paiement a échoué sur ton abonnement. Mets à jour ton moyen de paiement pour reprendre l\'accès.', code: 'SUBSCRIPTION_PAST_DUE' });
+  }
 
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) {

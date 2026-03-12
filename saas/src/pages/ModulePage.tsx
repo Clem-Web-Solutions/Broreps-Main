@@ -1,14 +1,18 @@
 import { ArrowLeft, Sparkles, Zap, Play, MessageSquare, Ticket, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { modulesApi, type ModuleProgress } from '../lib/api';
 
 export default function ModulePage() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
+    const [searchParams] = useSearchParams();
+    const autoplay = searchParams.get('autoplay') === '1';
+    const autoplayedRef = useRef(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [videoCompleted, setVideoCompleted] = useState(false);
     const [moduleProgress, setModuleProgress] = useState<ModuleProgress | null>(null);
     const [loadingProgress, setLoadingProgress] = useState(true);
     const lastSaveRef = useRef<number>(0);
@@ -108,6 +112,7 @@ export default function ModulePage() {
                 const r = await modulesApi.list();
                 const m = r.modules.find((m: ModuleProgress) => m.id === parseInt(moduleId));
                 setModuleProgress(m || null);
+                if (m && (m.completed || m.progress_pct >= 99)) setVideoCompleted(true);
             } catch {
                 setModuleProgress(null);
             } finally {
@@ -155,9 +160,20 @@ export default function ModulePage() {
         }
     };
 
+    // Auto-play (muted) when arriving from onboarding (?autoplay=1)
+    const handleCanPlay = () => {
+        if (autoplay && !autoplayedRef.current && videoRef.current) {
+            autoplayedRef.current = true;
+            videoRef.current.muted = true;
+            videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+        }
+    };
+
     // Make sure we stop playing and scroll top when loading another module
     useEffect(() => {
         setTimeout(() => setIsPlaying(false), 0);
+        setVideoCompleted(false);
+        autoplayedRef.current = false;
         if (videoRef.current) {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
@@ -249,9 +265,10 @@ export default function ModulePage() {
                         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isPlaying ? 'opacity-100' : 'opacity-80 group-hover:opacity-100'}`}
                         playsInline
                         onPause={() => { setIsPlaying(false); handleSaveProgress(); }}
-                        onEnded={() => { setIsPlaying(false); handleSaveProgress(); }}
+                        onEnded={() => { setIsPlaying(false); setVideoCompleted(true); handleSaveProgress(); }}
                         onPlay={() => setIsPlaying(true)}
                         onTimeUpdate={handleTimeUpdate}
+                        onCanPlay={handleCanPlay}
                     />
 
                     {!isPlaying && (
@@ -342,8 +359,9 @@ export default function ModulePage() {
                     </button>
 
                     <button
-                        onClick={() => navigate(parseInt(moduleId) >= Object.keys(moduleData).length ? '/dashboard' : `/module/${parseInt(moduleId) + 1}`)}
-                        className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-black font-semibold text-[13px] hover:bg-gray-200 transition-all cursor-pointer shadow-sm"
+                        onClick={() => videoCompleted && navigate(parseInt(moduleId) >= Object.keys(moduleData).length ? '/dashboard' : `/module/${parseInt(moduleId) + 1}`)}
+                        disabled={!videoCompleted}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-[13px] transition-all shadow-sm ${videoCompleted ? 'bg-white text-black hover:bg-gray-200 cursor-pointer' : 'bg-white/20 text-white/40 cursor-not-allowed'}`}
                     >
                         Suivant
                         <ChevronRight className="w-4 h-4" strokeWidth={3} />

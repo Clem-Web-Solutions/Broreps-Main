@@ -50,7 +50,7 @@ export default function SetupPasswordPage() {
             localStorage.setItem('saas_token', res.token);
             await refresh();
             setDone(true);
-            setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
+            setTimeout(() => navigate('/module/1?autoplay=1', { replace: true }), 2000);
         } catch (err: unknown) {
             const e = err as Error & { code?: string };
             if (e.code === 'INVALID_TOKEN') setError('Lien invalide ou expiré. Demande un nouveau lien.');
@@ -84,7 +84,7 @@ export default function SetupPasswordPage() {
                         <div className="flex flex-col items-center gap-4 py-4">
                             <CheckCircle className="w-12 h-12 text-[#00A336]" />
                             <h2 className="text-white text-[20px] font-black text-center">Mot de passe créé !</h2>
-                            <p className="text-[#71717a] text-[13px] text-center">Redirection vers ton dashboard…</p>
+                            <p className="text-[#71717a] text-[13px] text-center">Redirection vers ton premier module…</p>
                         </div>
                     ) : (
                         <>

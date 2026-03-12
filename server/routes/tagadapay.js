@@ -21,6 +21,19 @@ function toMySQLDateTime(value) {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
 }
 
+// Parse a social_link field that may contain multiple URLs separated by commas or newlines.
+// Returns an array of trimmed link strings. Falls back to [raw] for single entries or non-URL content.
+function splitSocialLinks(raw) {
+  if (!raw || typeof raw !== 'string') return raw ? [raw] : [];
+  const parts = raw.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+  if (parts.length <= 1) return parts.length === 1 ? parts : [raw];
+  const looksLikeLink = (s) =>
+    s.startsWith('http') ||
+    s.includes('tiktok.com') || s.includes('instagram.com') ||
+    s.startsWith('@') || s.startsWith('tiktok') || s.startsWith('instagram');
+  return parts.every(p => looksLikeLink(p)) ? parts : [raw];
+}
+
 // Middleware to verify TagadaPay webhook signature
 const verifyTagadaPayWebhook = (req, res, next) => {
   const signature = req.headers['x-tagadapay-signature'];
@@ -544,6 +557,103 @@ function sendSaasSetupEmail(email, name, token) {
   });
 }
 
+// ─── Shared: extract social link from TagadaPay custom field arrays ──────────
+// Accepts an array of {name, value} objects (cartCustomAttributes / formFields).
+// Priority: video links (Lien Vidéo 1-3 joined with \n) > profile (Nom D'utilisateur) > ''
+function extractSocialFromCustomAttrs(fields = []) {
+  if (!Array.isArray(fields) || fields.length === 0) return '';
+  const norm = fields.map(f => ({
+    name:  String(f.name  || f.key   || f.label || ''),
+    value: String(f.value || f.answer || '').trim(),
+  }));
+  const videoLinks = norm
+    .filter(f => /lien\s*vid[eé]/i.test(f.name) && f.value)
+    .map(f => f.value);
+  if (videoLinks.length > 0) return videoLinks.join('\n');
+  const usernameField = norm.find(f =>
+    /utilisateur|username|pseudo/i.test(f.name) && !/vid[eé]/i.test(f.name) && f.value
+  );
+  return usernameField?.value || '';
+}
+
+// ─── Helper: flatten CartCustomAttributes + formFields from any object ────────
+function extractSocialFromObject(obj) {
+  if (!obj) return '';
+  const cartAttrs  = obj?.metadata?.cartCustomAttributes || [];
+  const formFields = obj?.formFields || obj?.customFields || obj?.orderFields || obj?.fields || [];
+  const combined = [
+    ...(Array.isArray(cartAttrs)  ? cartAttrs  : []),
+    ...(Array.isArray(formFields) ? formFields : []),
+  ];
+  return extractSocialFromCustomAttrs(combined);
+}
+
+// ─── Fetch full subscription from API + try to find its original order ────────
+// Returns { subscription, order } — either may be null on failure / missing apiKey.
+async function fetchTagadaPaySubscription(subscriptionId) {
+  const apiKey = process.env.TAGADAPAY_API_KEY;
+  const isDev  = (process.env.TAGADAPAY_ENVIRONMENT || '').toLowerCase().includes('dev');
+  const defaultBase = isDev
+    ? 'https://app.tagadapay.dev/api/public/v1'
+    : 'https://app.tagadapay.com/api/public/v1';
+  const baseUrl = process.env.TAGADAPAY_BASE_URL || defaultBase;
+
+  if (!apiKey) return { subscription: null, order: null };
+
+  const headers = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // GET /subscriptions/{id}
+  let subData = null;
+  try {
+    const r = await fetch(`${baseUrl}/subscriptions/${subscriptionId}`, { method: 'GET', headers });
+    if (r.ok) {
+      const d = await r.json();
+      subData = d?.subscription || d;
+      console.log(`[TAGADAPAY API SUB] ✅ Abonnement ${subscriptionId}:`, JSON.stringify(subData, null, 2));
+    } else {
+      console.warn(`[TAGADAPAY API SUB] GET /subscriptions/${subscriptionId} → ${r.status}`);
+    }
+  } catch (e) {
+    console.error('[TAGADAPAY API SUB] ❌ GET subscription:', e.message);
+  }
+
+  // POST /orders/list — find earliest order linked to this subscription (has cartCustomAttributes)
+  let orderData = null;
+  const listOrderFilters = [
+    { 'subscriptions.id': { condition: 'is-equal', value: subscriptionId } },
+    { 'orders.subscriptionId': { condition: 'is-equal', value: subscriptionId } },
+  ];
+  for (const filters of listOrderFilters) {
+    if (orderData) break;
+    try {
+      const r = await fetch(`${baseUrl}/orders/list`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          filters,
+          pagination: { page: 1, pageSize: 1 },
+          sortBy: { 'orders.createdAt': 'asc' },
+        }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const item = d?.data?.[0] || d?.orders?.[0] || d?.items?.[0] || null;
+        if (item) {
+          orderData = item;
+          console.log('[TAGADAPAY API SUB] ✅ Commande liée à l\'abonnement:', JSON.stringify(item, null, 2));
+        }
+      }
+    } catch (e) {
+      console.error('[TAGADAPAY API SUB] ❌ POST /orders/list:', e.message);
+    }
+  }
+
+  return { subscription: subData, order: orderData };
+}
+
 // Fetch full order details from TagadaPay API (enriches webhook with email + form fields)
 // Tries multiple endpoints in cascade: GET /orders/{id} → POST /orders/list → GET /payments/{id}
 async function fetchTagadaPayOrder({ orderId, paymentId, cartToken } = {}) {
@@ -635,19 +745,34 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
   // Shopify order number (stocké dans metadata.shopify_order_number)
   const shopifyOrderNumber = enriched.metadata?.shopify_order_number || enriched.metadata?.shopify_number || null;
 
-  // Social link — TagadaPay stocke le lien dans metadata.cartCustomAttributes: [{name: "Nom D'utilisateur", value: "..."}]
-  const isSocialFieldKey = (str) => ['link','url','lien','video','vidéo','instagram','tiktok','twitch','social','profil','compte','utilisateur','username'].some(k => str.toLowerCase().includes(k));
-  const cartCustomAttrs = enriched.metadata?.cartCustomAttributes || [];
-  const socialFromCart = Array.isArray(cartCustomAttrs)
-    ? (cartCustomAttrs.find(a => isSocialFieldKey(a.name || ''))?.value || '')
-    : '';
-  const formFields = enriched.formFields || enriched.customFields || enriched.orderFields || enriched.fields || [];
-  const socialFieldFromApi = Array.isArray(formFields)
-    ? formFields.find(f => isSocialFieldKey(f.key || f.name || f.label || ''))
-    : null;
-  const socialLinkFromApi = socialFromCart || socialFieldFromApi?.value || socialFieldFromApi?.answer || '';
-  // ─────────────────────────────────────────────────────────────────────────
-  
+  // Subscription ID — if this one-time payment belongs to a subscription's first charge
+  const subscriptionId = payment.subscriptionId || payment.subscription_id
+    || enriched.subscriptionId || enriched.subscription_id || null;
+
+  // ── Social link extraction ────────────────────────────────────────────────
+  // TagadaPay custom fields recognised:
+  //   "Nom D'utilisateur"              → profile / username
+  //   "Lien Vidéo", "Lien Vidéo 1-3"  → video URLs (possibly multiple)
+  //
+  // Use shared helper — extracts from metadata.cartCustomAttributes + formFields
+  let socialLinkFromApi = extractSocialFromObject(enriched);
+  if (!socialLinkFromApi) {
+    // Fallback: any generic social field
+    const allFlat = [
+      ...(Array.isArray(enriched.metadata?.cartCustomAttributes) ? enriched.metadata.cartCustomAttributes : []),
+      ...(Array.isArray(enriched.formFields || enriched.customFields || enriched.fields) ? (enriched.formFields || enriched.customFields || enriched.fields) : []),
+    ].map(f => ({ name: String(f.name || f.key || f.label || ''), value: String(f.value || f.answer || '').trim() }));
+    const genericSocial = allFlat.find(f =>
+      ['link','url','lien','instagram','tiktok','twitch','social','profil','compte'].some(k => f.name.toLowerCase().includes(k))
+      && f.value
+    );
+    socialLinkFromApi = genericSocial?.value || '';
+    if (socialLinkFromApi) console.log('[SOCIAL FIELDS] Fallback champ générique:', socialLinkFromApi);
+  } else {
+    console.log('[SOCIAL FIELDS] Champ(s) détecté(s):', socialLinkFromApi.split('\n'));
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   // Extract first line item for product info
   const lineItem = payment.lineItems?.[0] || {};
   const amount = lineItem.unitAmount || payment.amount || 0;
@@ -853,6 +978,29 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
     }
   }
 
+  // ── Subscription sync: if this payment belongs to a subscription, propagate social_link ──
+  // This ensures that future rebills (subscription.payment_succeeded) can find the social_link
+  // even when the customer provided it via Shopify checkout (not TagadaPay subscription metadata).
+  if (subscriptionId && normalizedSocialLink) {
+    try {
+      const [syncResult] = await db.query(
+        `UPDATE tagadapay_orders
+         SET social_link  = ?,
+             service_id   = COALESCE(service_id, ?),
+             updated_at   = NOW()
+         WHERE subscription_id = ?
+           AND order_type = 'subscription'
+           AND (social_link IS NULL OR social_link = '')`,
+        [normalizedSocialLink, serviceId || null, subscriptionId]
+      );
+      if (syncResult.affectedRows > 0) {
+        console.log(`[SUBSCRIPTION SYNC] ✅ social_link synchronisé vers abonnement ${subscriptionId}: ${normalizedSocialLink}`);
+      }
+    } catch (syncErr) {
+      console.warn('[SUBSCRIPTION SYNC] Échec sync social_link:', syncErr.message);
+    }
+  }
+
   // Create internal order automatically
   // ── Inline pack: variant contains "25k Vues | 5000 Likes | ..." ─────────────
   const inlinePack = parseInlinePackSegments(variantName, productName);
@@ -924,13 +1072,54 @@ async function processPaymentSuccess(payment, orderType = 'one_time') {
     console.log('  - quantity: Number of followers/likes (optional, defaults to lineItem quantity)');
   }
 
+  // ── Additional line items (multi-product Shopify orders) ──────────────────
+  // When a customer buys multiple products in one cart, process each additional
+  // line item as a separate supply order tied to the same tagadapay_orders row.
+  if (payment.lineItems && payment.lineItems.length > 1 && normalizedSocialLink) {
+    for (let i = 1; i < payment.lineItems.length; i++) {
+      const item            = payment.lineItems[i];
+      const itemProductName = item.productName  || item.product_name  || '';
+      const itemVariantName = item.variantName  || item.variant_name  || '';
+      const itemBaseQty     = item.quantity || 1;
+      const itemQty         = extractQuantityFromVariant(itemVariantName, itemBaseQty);
+
+      let itemServiceId = null;
+      if (itemProductName) {
+        const matched = await findServiceByProductName(itemProductName, itemVariantName);
+        if (matched) itemServiceId = matched.id;
+      }
+
+      if (itemServiceId && itemQty) {
+        try {
+          await createInternalOrder(result.insertId, {
+            serviceId:          itemServiceId,
+            socialLink:         normalizedSocialLink,
+            quantity:           itemQty,
+            customerEmail,
+            shopifyOrderNumber: shopifyOrderNumber || null,
+            _skipFinalLink:     true, // parent row already linked; skip re-update
+          });
+          console.log(`[MULTI-ITEM] ✅ Article ${i + 1}: ${itemProductName} - ${itemVariantName} (qty: ${itemQty})`);
+        } catch (err) {
+          console.error(`[MULTI-ITEM] ❌ Article ${i + 1} (${itemProductName} - ${itemVariantName}):`, err.message);
+        }
+      } else {
+        console.warn(`[MULTI-ITEM] ⚠️ Article ${i + 1} ignoré (service non détecté):`, { itemProductName, itemVariantName });
+      }
+    }
+  }
+
   // ── SaaS account provisioning ──────────────────────────────────────────────
-  if (customerEmail) {
+  // Only for subscription payments — one-time basic orders do NOT get SaaS access.
+  // A subscription payment can arrive via order/paid if subscriptionId is present.
+  if (customerEmail && subscriptionId) {
     try {
       await provisionSaasAccount(customerEmail, customerName, productName, payment);
     } catch (err) {
       console.error('[SAAS PROVISION] Error:', err.message);
     }
+  } else if (customerEmail && !subscriptionId) {
+    console.log('[SAAS] Commande simple (non-abonnement) — pas de provisionnement SaaS pour', customerEmail);
   }
 
   return result.insertId;
@@ -1032,8 +1221,29 @@ async function processSubscriptionCreated(subscription) {
     amount: `${amount / 100} ${currency}`
   });
 
-  // Extract metadata
-  const socialLink = metadata?.social_link || metadata?.instagram || metadata?.tiktok || '';
+  // ── Extract social link ──────────────────────────────────────────────────
+  // 1. Try from webhook payload metadata (cartCustomAttributes)
+  const subCartAttrs  = metadata?.cartCustomAttributes || [];
+  let socialLink = extractSocialFromCustomAttrs(Array.isArray(subCartAttrs) ? subCartAttrs : []);
+
+  // 2. Fallback: generic metadata fields
+  if (!socialLink) {
+    socialLink = metadata?.social_link || metadata?.instagram || metadata?.tiktok || '';
+  }
+
+  // 3. Last resort: fetch from TagadaPay API — subscription details + associated order
+  if (!socialLink && subscription_id) {
+    console.log(`[SUBSCRIPTION] social_link absent du payload, enrichissement API pour ${subscription_id}...`);
+    const { subscription: subApi, order: orderApi } = await fetchTagadaPaySubscription(subscription_id);
+    socialLink = extractSocialFromObject(orderApi) || extractSocialFromObject(subApi) || '';
+    if (socialLink) {
+      console.log(`[SUBSCRIPTION] ✅ social_link récupéré via API: ${socialLink}`);
+    } else {
+      console.warn(`[SUBSCRIPTION] ⚠️ Impossible de trouver le social_link pour l'abonnement ${subscription_id}`);
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   const productTitle = metadata?.product_title || plan?.name || 'Subscription Service';
   const quantity = parseInt(metadata?.quantity || '1');
   const serviceId = metadata?.service_id || null;
@@ -1107,6 +1317,18 @@ async function processSubscriptionCreated(subscription) {
     status: 'active'
   });
 
+  // ── SaaS account provisioning (first subscription creation) ────────────────
+  const customerEmail = customer?.email;
+  const customerName  = customer?.fullName || `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim() || null;
+  if (customerEmail) {
+    try {
+      await provisionSaasAccount(customerEmail, customerName, metadata?.product_title || plan?.name || 'Abonnement BroReps', subscription);
+      console.log('[SAAS] ✅ Compte provisionné pour abonnement', subscription_id);
+    } catch (err) {
+      console.error('[SAAS PROVISION] Error (subscription.created):', err.message);
+    }
+  }
+
   return result.insertId;
 }
 
@@ -1147,7 +1369,32 @@ async function processSubscriptionPaymentSuccess(payment) {
   const rowWithLink    = subRows.find(r => r.social_link && r.social_link.trim()) || seedRow;
   const rowWithService = subRows.find(r => r.service_id) || seedRow;
 
-  const socialLink   = rowWithLink?.social_link    || metadata?.social_link || '';
+  // Also try to extract from this payment's own metadata cartCustomAttributes
+  const paymentCartAttrs = metadata?.cartCustomAttributes || [];
+  const socialFromPayload = extractSocialFromCustomAttrs(Array.isArray(paymentCartAttrs) ? paymentCartAttrs : [])
+    || metadata?.social_link || '';
+
+  let socialLink = rowWithLink?.social_link?.trim() || socialFromPayload || '';
+
+  // Last resort: fetch from TagadaPay API when social_link is still missing
+  if (!socialLink && subscriptionId) {
+    console.log(`[SUBSCRIPTION PAYMENT] social_link absent — enrichissement API pour ${subscriptionId}...`);
+    const { subscription: subApi, order: orderApi } = await fetchTagadaPaySubscription(subscriptionId);
+    socialLink = extractSocialFromObject(orderApi) || extractSocialFromObject(subApi) || '';
+    if (socialLink) {
+      // Persist to seed row so future rebills don't need another API call
+      await db.query(
+        `UPDATE tagadapay_orders SET social_link = ?, updated_at = NOW()
+         WHERE subscription_id = ? AND order_type = 'subscription'
+         AND (social_link IS NULL OR social_link = '')`,
+        [socialLink, subscriptionId]
+      );
+      console.log(`[SUBSCRIPTION PAYMENT] ✅ social_link récupéré via API et persisté: ${socialLink}`);
+    } else {
+      console.warn(`[SUBSCRIPTION PAYMENT] ⚠️ social_link introuvable pour abonnement ${subscriptionId}`);
+    }
+  }
+
   const productTitle = seedRow?.product_title      || metadata?.product_title || 'Subscription';
   const quantity     = seedRow?.quantity           || parseInt(metadata?.quantity || '1');
   let   serviceId    = rowWithService?.service_id  || metadata?.service_id   || null;
@@ -1239,6 +1486,18 @@ async function processSubscriptionPaymentSuccess(payment) {
     });
   }
 
+  // ── SaaS account provisioning (renewal — unlocks next module) ──────────────
+  const rebillEmail = customer?.email || seedRow?.customer_email;
+  const rebillName  = customer?.fullName || seedRow?.customer_name;
+  if (rebillEmail) {
+    try {
+      await provisionSaasAccount(rebillEmail, rebillName, productTitle, payment);
+      console.log('[SAAS] ✅ Module débloqué (rebill) pour', rebillEmail);
+    } catch (err) {
+      console.error('[SAAS PROVISION] Error (subscription.payment_succeeded):', err.message);
+    }
+  }
+
   return result.insertId;
 }
 
@@ -1261,6 +1520,24 @@ async function processSubscriptionPaymentFailed(payment) {
       payment_status = 'failed',
       updated_at = NOW()
   `, [payment_id, 'subscription', subscriptionId, 'failed', false]);
+
+  // Block SaaS access
+  try {
+    const [orderRows] = await db.query(
+      `SELECT customer_email FROM tagadapay_orders WHERE subscription_id = ? AND customer_email IS NOT NULL LIMIT 1`,
+      [subscriptionId]
+    );
+    if (orderRows.length > 0) {
+      const email = orderRows[0].customer_email.toLowerCase();
+      await db.query(
+        `UPDATE saas_users SET subscription_status = 'past_due' WHERE email = ?`,
+        [email]
+      );
+      console.log('[SAAS] ⚠️ Subscription past_due set for:', email);
+    }
+  } catch (err) {
+    console.error('[SAAS] Failed to set past_due status:', err.message);
+  }
 
   console.log('[WARN] Subscription payment failure logged:', payment_id);
 }
@@ -1318,6 +1595,24 @@ async function processSubscriptionCancelled(subscription) {
     subscription_id
   ]);
 
+  // Block SaaS access
+  try {
+    const [orderRows] = await db.query(
+      `SELECT customer_email FROM tagadapay_orders WHERE subscription_id = ? AND customer_email IS NOT NULL LIMIT 1`,
+      [subscription_id]
+    );
+    if (orderRows.length > 0) {
+      const email = orderRows[0].customer_email.toLowerCase();
+      await db.query(
+        `UPDATE saas_users SET subscription_status = 'cancelled' WHERE email = ?`,
+        [email]
+      );
+      console.log('[SAAS] ❌ Subscription cancelled for:', email);
+    }
+  } catch (err) {
+    console.error('[SAAS] Failed to set cancelled status:', err.message);
+  }
+
   console.log('[OK] Subscription cancelled:', subscription_id);
 }
 
@@ -1357,7 +1652,45 @@ async function processSubscriptionResumed(subscription) {
 
 // Create internal order automatically
 async function createInternalOrder(tagadapay_order_id, orderData) {
-  const { serviceId, socialLink, quantity, customerEmail, shopifyOrderNumber, _skipPackCheck, _linkAlreadyResolved } = orderData;
+  const { serviceId, socialLink, quantity, customerEmail, shopifyOrderNumber, _skipPackCheck, _linkAlreadyResolved, _skipFinalLink } = orderData;
+
+  // ── Multi-link: if social_link contains N URLs, dispatch one sub-order per URL ──
+  // Only runs at the top level (not inside pack sub-orders or other sub-invocations).
+  if (!_skipPackCheck && !_skipFinalLink) {
+    const links = splitSocialLinks(socialLink);
+    if (links.length > 1) {
+      console.log(`[MULTI-LINK] ${links.length} liens détectés, quantité ${quantity} divisée équitablement`);
+      const baseQty = Math.floor(quantity / links.length);
+      const remainder = quantity % links.length;
+      const subOrderIds = [];
+      for (let i = 0; i < links.length; i++) {
+        const linkQty = baseQty + (i === 0 ? remainder : 0);
+        try {
+          const subId = await createInternalOrder(tagadapay_order_id, {
+            ...orderData,
+            socialLink: links[i],
+            quantity:   linkQty,
+            _skipFinalLink: true,  // sub-calls don't update tagadapay_orders
+          });
+          subOrderIds.push(subId);
+          console.log(`[MULTI-LINK] ✅ Lien ${i + 1}/${links.length}: ${links[i]} → commande #${subId} (qty: ${linkQty})`);
+        } catch (err) {
+          console.error(`[MULTI-LINK] ❌ Lien ${i + 1} (${links[i]}):`, err.message);
+          subOrderIds.push(null);
+        }
+      }
+      const firstValid = subOrderIds.find(id => id != null);
+      if (firstValid) {
+        await db.query(
+          `UPDATE tagadapay_orders SET internal_order_id = ?, is_processed = true WHERE id = ?`,
+          [firstValid, tagadapay_order_id]
+        );
+      }
+      console.log(`[MULTI-LINK] ✅ ${subOrderIds.filter(Boolean).length}/${links.length} commandes créées:`, subOrderIds);
+      return firstValid;
+    }
+  }
+  // ── /Multi-link ────────────────────────────────────────────────────────────
 
   // Pull parent payment context to build robust tracking + email fallback values.
   const [tpRows] = await db.query(
@@ -1680,8 +2013,8 @@ async function createInternalOrder(tagadapay_order_id, orderData) {
     }
   }
 
-  // Link TagadaPay order to internal order (skipped for pack sub-orders — the pack handler links)
-  if (!_skipPackCheck) {
+  // Link TagadaPay order to internal order (skipped for pack sub-orders and multi-link sub-orders)
+  if (!_skipPackCheck && !_skipFinalLink) {
     await db.query(`
       UPDATE tagadapay_orders
       SET internal_order_id = ?, is_processed = true
@@ -1880,7 +2213,7 @@ router.get('/admin/payments', authenticateToken, requireAdmin, async (req, res) 
     const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total FROM tagadapay_orders ${where}`, params);
     const [payments] = await db.query(
       `SELECT id, payment_id, order_id, order_type, customer_email, customer_name, customer_phone,
-              product_title, quantity, amount, currency, payment_status, social_link,
+              product_title, quantity, amount, currency, payment_status, social_link, service_id,
               shopify_order_number, payment_created_at, created_at,
               is_processed, internal_order_id
        FROM tagadapay_orders ${where}

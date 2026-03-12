@@ -35,6 +35,7 @@ interface Payment {
     currency: string;
     payment_status: string;
     social_link: string | null;
+    service_id: number | null;
     shopify_order_number: number | null;
     payment_created_at: string;
     created_at: string;
@@ -144,6 +145,7 @@ export function Payments() {
     const [completeModal, setCompleteModal] = useState<Payment | null>(null);
     const [completeSocialLink, setCompleteSocialLink] = useState('');
     const [completeEmail, setCompleteEmail] = useState('');
+    const [completeServiceId, setCompleteServiceId] = useState('');
     const [completeLoading, setCompleteLoading] = useState(false);
     const [completeError, setCompleteError] = useState('');
 
@@ -151,6 +153,7 @@ export function Payments() {
         setCompleteModal(p);
         setCompleteSocialLink('');
         setCompleteEmail(p.customer_email || '');
+        setCompleteServiceId(p.service_id !== null && p.service_id !== undefined ? String(p.service_id) : '');
         setCompleteError('');
     };
     const closeComplete = () => { setCompleteModal(null); setCompleteError(''); };
@@ -165,6 +168,7 @@ export function Payments() {
                 body: JSON.stringify({
                     social_link: completeSocialLink.trim(),
                     customer_email: completeEmail.trim() || undefined,
+                    service_id: completeServiceId.trim() ? Number(completeServiceId.trim()) : undefined,
                 }),
             });
             closeComplete();
@@ -587,20 +591,32 @@ export function Payments() {
                                 <div className="space-y-4 pt-2">
                                     <div className="space-y-2">
                                         <label className="text-white text-[13px] font-semibold flex items-center gap-1.5 focus-within:text-primary transition-colors">
-                                            Lien de destination (URL ou @pseudo) <span className="text-[#00A336]">*</span>
+                                            Lien(s) de destination <span className="text-[#00A336]">*</span>
                                         </label>
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={completeSocialLink}
-                                                onChange={e => setCompleteSocialLink(e.target.value)}
-                                                placeholder="ex: https://instagram.com/p/..."
-                                                className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-[14px] text-white placeholder-[#A1A1AA]/50 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium"
-                                                autoFocus
-                                                onKeyDown={e => e.key === 'Enter' && submitComplete()}
-                                            />
-                                        </div>
-                                        <p className="text-[#A1A1AA] text-[11px]">Le lien vers lequel les services seront envoyés via l'API.</p>
+                                        <textarea
+                                            rows={3}
+                                            value={completeSocialLink}
+                                            onChange={e => setCompleteSocialLink(e.target.value)}
+                                            placeholder={"ex: https://www.tiktok.com/@user/video/123\nhttps://www.tiktok.com/@user/video/456"}
+                                            className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-[14px] text-white placeholder-[#A1A1AA]/50 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium resize-none"
+                                            autoFocus
+                                        />
+                                        <p className="text-[#A1A1AA] text-[11px]">
+                                            Un lien par ligne (ou séparés par une virgule). Si plusieurs liens, la quantité sera divisée équitablement.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-white text-[13px] font-semibold flex items-center gap-1.5 focus-within:text-primary transition-colors">
+                                            ID du service <span className="text-[#A1A1AA] font-normal text-xs">(Optionnel si déjà détecté)</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={completeServiceId}
+                                            onChange={e => setCompleteServiceId(e.target.value)}
+                                            placeholder="ex: 42 — laissez vide pour utiliser le service auto-détecté"
+                                            className="w-full bg-[#050505] border border-white/10 rounded-xl px-4 py-3 text-[14px] text-white placeholder-[#A1A1AA]/50 outline-none focus:border-white/30 transition-all"
+                                        />
                                     </div>
 
                                     <div className="space-y-2">

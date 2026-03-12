@@ -34,8 +34,8 @@ function RequireAuth() {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  // Block access if subscription is cancelled or expired
-  if (['cancelled', 'expired'].includes(user.subscription_status)) {
+  // Block access if subscription is cancelled, expired, or past due
+  if (['cancelled', 'expired', 'past_due'].includes(user.subscription_status)) {
     return <SubscriptionExpiredPage />;
   }
 
@@ -44,20 +44,25 @@ function RequireAuth() {
 
 // Shown when subscription is inactive
 function SubscriptionExpiredPage() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const isPastDue = user?.subscription_status === 'past_due';
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6">
       <div className="max-w-[400px] text-center flex flex-col items-center gap-6">
-        <span className="text-[56px]">⏸️</span>
-        <h1 className="text-white text-[24px] font-black">Abonnement inactif</h1>
+        <span className="text-[56px]">{isPastDue ? '💳' : '⏸️'}</span>
+        <h1 className="text-white text-[24px] font-black">
+          {isPastDue ? 'Paiement échoué' : 'Abonnement inactif'}
+        </h1>
         <p className="text-[#71717a] text-[14px] leading-relaxed">
-          Ton accès au SaaS BroReps est suspendu. Pour reprendre l'accès, renouvelle ton abonnement.
+          {isPastDue
+            ? 'Un paiement a échoué sur ton abonnement. Mets à jour ton moyen de paiement pour reprendre l\'accès.'
+            : 'Ton accès au SaaS BroReps est suspendu. Pour reprendre l\'accès, renouvelle ton abonnement.'}
         </p>
         <a
           href="https://broreps.fr"
           className="px-6 py-3 bg-[#00A336] text-white font-bold rounded-xl hover:bg-[#00BF3F] transition-colors"
         >
-          Reprendre mon abonnement
+          {isPastDue ? 'Mettre à jour mon paiement' : 'Reprendre mon abonnement'}
         </a>
         <button onClick={logout} className="text-[#52525b] text-[13px] hover:text-[#a1a1aa] transition-colors cursor-pointer">
           Se déconnecter

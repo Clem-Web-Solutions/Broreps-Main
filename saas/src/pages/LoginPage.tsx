@@ -260,7 +260,7 @@ export default function LoginPage() {
                     transition={{ delay: 0.5 }}
                     className="text-center text-[12px] text-[#52525B] mt-8"
                 >
-                    Besoin d'aide ? <a href="mailto:support@broreps.fr" className="hover:text-[#F4F4F5] transition-colors underline underline-offset-4">support@broreps.fr</a>
+                    Besoin d'aide ? <a href="mailto:contact@broreps.fr" className="hover:text-[#F4F4F5] transition-colors underline underline-offset-4">contact@broreps.fr</a>
                 </motion.p>
             </motion.div>
         </div>

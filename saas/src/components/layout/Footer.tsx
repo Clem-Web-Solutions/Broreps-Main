@@ -18,11 +18,11 @@ export default function Footer() {
                 <div className="flex flex-col md:flex-row items-center gap-6 mb-12">
                     <div className="flex items-center gap-2 px-6 py-2 rounded-full bg-white/[0.02] border border-white/5 shadow-sm text-sm font-medium text-[#A1A1AA]">
                         <span className="w-2 h-2 rounded-full bg-[#00A336] animate-pulse" />
-                        Beta Privée V1.0
+                        V1
                     </div>
 
-                    <a href="mailto:support@broreps.fr" className="px-6 py-2 rounded-full bg-white/[0.02] border border-white/5 shadow-sm text-sm font-medium text-[#A1A1AA] hover:text-white hover:bg-white/5 hover:border-white/10 transition-colors">
-                        support@broreps.fr
+                    <a href="mailto:contact@broreps.fr" className="px-6 py-2 rounded-full bg-white/[0.02] border border-white/5 shadow-sm text-sm font-medium text-[#A1A1AA] hover:text-white hover:bg-white/5 hover:border-white/10 transition-colors">
+                        contact@broreps.fr
                     </a>
                 </div>
 

@@ -30,6 +30,7 @@ import saasNotesRoutes from './routes/saas-notes.js';
 import saasAiRoutes from './routes/saas-ai.js';
 import saasSocialRoutes from './routes/saas-social.js';
 import saasOrdersRoutes from './routes/saas-orders.js';
+import saasSubscriptionRoutes from './routes/saas-subscription.js';
 import { initCron } from './lib/cron.js';
 import { initWebSocket } from './lib/websocket.js';
 
@@ -129,6 +130,7 @@ app.use('/api/saas/notes', saasNotesRoutes);
 app.use('/api/saas/ai', saasAiRoutes);
 app.use('/api/saas/social', saasSocialRoutes);
 app.use('/api/saas/orders', saasOrdersRoutes);
+app.use('/api/saas/subscription', saasSubscriptionRoutes);
 
 // 404 handler
 app.use((req, res) => {
