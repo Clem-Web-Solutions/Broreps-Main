@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Target,
     Hourglass,
@@ -14,6 +14,8 @@ import {
     Sparkles,
     ArrowRight,
     CheckCircle2,
+    Star,
+    Zap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CobeGlobe from '../components/layout/CobeGlobe';
@@ -30,6 +32,10 @@ export default function Dashboard() {
     const [modules, setModules] = useState<ModuleProgress[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [now] = useState(() => Date.now());
+
+    // Newly unlocked module modal
+    const [newlyUnlockedModule, setNewlyUnlockedModule] = useState<{ id: number; title: string } | null>(null);
+    const [showConfetti, setShowConfetti] = useState(false);
 
     // Mock link modal
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
@@ -55,9 +61,40 @@ export default function Dashboard() {
         return () => window.removeEventListener('keydown', handler);
     }, []);
 
+    const MODULE_TITLES: Record<number, string> = {
+        1: "Bienvenue dans ton écosystème",
+        2: "Boost multi-plateformes",
+        3: "Passe au niveau supérieur",
+        4: "Étape clé à venir",
+        5: "Discipline & régularité",
+        6: "Maîtrise des réseaux",
+    };
+
     useEffect(() => {
         modulesApi.list()
-            .then(r => setModules(r.modules))
+            .then(r => {
+                const fetched: ModuleProgress[] = r.modules;
+                setModules(fetched);
+
+                // Detect newly unlocked modules vs cached state
+                const CACHE_KEY = 'broreps_unlocked_ids';
+                const cached: number[] = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
+                const currentUnlocked = fetched.filter(m => m.unlocked).map(m => m.id);
+
+                // Persist new cache
+                localStorage.setItem(CACHE_KEY, JSON.stringify(currentUnlocked));
+
+                // If cache was non-empty (not first visit), find new unlocks
+                if (cached.length > 0) {
+                    const newIds = currentUnlocked.filter(id => !cached.includes(id));
+                    if (newIds.length > 0) {
+                        const firstNew = newIds[0];
+                        setNewlyUnlockedModule({ id: firstNew, title: MODULE_TITLES[firstNew] ?? `Module ${firstNew}` });
+                        setShowConfetti(true);
+                        setTimeout(() => setShowConfetti(false), 4000);
+                    }
+                }
+            })
             .catch(() => { })
             .finally(() => setIsLoading(false));
     }, []);
@@ -208,18 +245,27 @@ export default function Dashboard() {
                         <CobeGlobe />
                     </div>
                     <div className="relative z-10 w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mt-20 text-center">
+                        <div className="flex items-center justify-center gap-1.5 mb-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#00A336] animate-pulse" />
+                            <span className="text-[#00A336] text-[11px] font-bold uppercase tracking-widest">En direct</span>
+                        </div>
                         <h3 className="text-white font-semibold text-[15px] mb-1">Croissance Globale</h3>
-                        <p className="text-[#A1A1AA] text-[13px]">Rejoins les créateurs connectés</p>
-                        <div className="mt-4 flex -space-x-2 justify-center">
-                            {[1, 2, 3, 4].map(i => (
-                                <div key={i} className={`w-8 h-8 rounded-full border-2 border-[#09090b] bg-white/10 flex items-center justify-center overflow-hidden z-[${4 - i}]`}>
+                        <p className="text-[#A1A1AA] text-[13px]">+1 200 créateurs actifs sur BroReps</p>
+                        <div className="mt-4 flex -space-x-2 justify-center items-center">
+                            {[0, 1, 2, 3].map(i => (
+                                <div
+                                    key={i}
+                                    style={{ zIndex: 4 - i }}
+                                    className="w-8 h-8 rounded-full border-2 border-[#09090b] overflow-hidden flex-shrink-0"
+                                >
                                     <UserAvatar seed={i.toString()} />
                                 </div>
                             ))}
-                            <div className="w-8 h-8 rounded-full border-2 border-[#09090b] bg-[#00A336] text-black text-[10px] font-bold flex items-center justify-center z-0">
-                                +2k
+                            <div style={{ zIndex: 0 }} className="w-8 h-8 rounded-full border-2 border-[#09090b] bg-[#00A336] text-black text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                                +1k
                             </div>
                         </div>
+                        <p className="text-[#52525b] text-[11px] mt-3">45+ pays · TikTok · Instagram</p>
                     </div>
                 </div>
             </motion.div>
@@ -324,6 +370,23 @@ export default function Dashboard() {
                     />
                 )}
             </AnimatePresence>
+
+            {/* Confetti burst on new module unlock */}
+            <AnimatePresence>
+                {showConfetti && <ConfettiCanvas />}
+            </AnimatePresence>
+
+            {/* New module unlock modal */}
+            <AnimatePresence>
+                {newlyUnlockedModule && (
+                    <ModuleUnlockModal
+                        moduleId={newlyUnlockedModule.id}
+                        title={newlyUnlockedModule.title}
+                        onOpen={() => { setNewlyUnlockedModule(null); navigate(`/module/${newlyUnlockedModule.id}`); }}
+                        onClose={() => setNewlyUnlockedModule(null)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -360,19 +423,62 @@ function StatCard({ title, value, subtitle, icon: Icon, color, iconBg }: StatCar
 
 function PremiumModuleCard({ number, title, desc, status, progressPct, onClick }: { number: number, title: string, desc: string, status: 'en_cours' | 'en_attente' | 'termine' | 'verrouille', progressPct?: number, onClick?: () => void }) {
     const isLocked = status === 'verrouille';
+    const cardRef = useRef<HTMLDivElement>(null);
+    const [tilt, setTilt] = useState({ x: 0, y: 0 });
+    const [isHovered, setIsHovered] = useState(false);
+
+    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        if (isLocked || !cardRef.current) return;
+        const rect = cardRef.current.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = (e.clientX - cx) / (rect.width / 2);
+        const dy = (e.clientY - cy) / (rect.height / 2);
+        setTilt({ x: dy * -6, y: dx * 6 });
+    }, [isLocked]);
+
+    const resetTilt = () => setTilt({ x: 0, y: 0 });
 
     return (
-        <div
+        <motion.div
+            ref={cardRef}
+            onMouseMove={handleMouseMove}
+            onMouseEnter={() => !isLocked && setIsHovered(true)}
+            onMouseLeave={() => { resetTilt(); setIsHovered(false); }}
             onClick={isLocked ? undefined : onClick}
-            className={`animated-border-card group flex flex-col p-6 rounded-2xl transition-all duration-300 relative overflow-hidden ${isLocked
+            animate={{
+                rotateX: tilt.x,
+                rotateY: tilt.y,
+                scale: isHovered ? 1.03 : 1,
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            style={!isLocked
+                ? { animation: 'corner-glow 4s ease-in-out infinite', perspective: 800, transformStyle: 'preserve-3d' as const }
+                : { perspective: 800, transformStyle: 'preserve-3d' as const }
+            }
+            className={`animated-border-card group flex flex-col p-6 rounded-2xl transition-colors duration-300 relative overflow-hidden ${isLocked
                 ? 'bg-[#09090b] border border-white/5 cursor-not-allowed opacity-50'
-                : 'bg-[#09090b] border-2 border-[#00A336]/40 cursor-pointer hover:bg-[#0f0f0f] hover:border-[#00A336]/70 hover:shadow-[0_0_40px_rgba(0,163,54,0.12)]'
+                : 'bg-[#09090b] border-2 border-[#00A336]/40 cursor-pointer hover:border-[#00A336]/80 hover:shadow-[0_0_60px_rgba(0,163,54,0.18),0_0_20px_rgba(0,163,54,0.08)]'
                 }`}
-            style={!isLocked ? { animation: 'corner-glow 4s ease-in-out infinite' } : undefined}
         >
             {/* Animated top scan line on hover */}
             {!isLocked && (
-                <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#00A336]/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <motion.div
+                    className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#00A336] to-transparent"
+                    initial={{ opacity: 0, scaleX: 0 }}
+                    animate={{ opacity: isHovered ? 1 : 0, scaleX: isHovered ? 1 : 0 }}
+                    transition={{ duration: 0.3 }}
+                />
+            )}
+
+            {/* Spotlight radial glow that follows cursor */}
+            {!isLocked && isHovered && (
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        background: `radial-gradient(circle at ${50 + tilt.y * 4}% ${50 + tilt.x * -4}%, rgba(0,163,54,0.12) 0%, transparent 65%)`,
+                    }}
+                />
             )}
 
             {/* Corner glow */}
@@ -391,14 +497,18 @@ function PremiumModuleCard({ number, title, desc, status, progressPct, onClick }
                         <Lock className="w-4 h-4 text-white/20" />
                     </div>
                 ) : (
-                    <div className="w-10 h-10 rounded-xl bg-[#00A336]/10 border border-[#00A336]/30 flex items-center justify-center group-hover:bg-[#00A336]/20 group-hover:scale-110 group-hover:border-[#00A336]/60 transition-all duration-300">
+                    <motion.div
+                        animate={{ scale: isHovered ? 1.15 : 1, rotate: isHovered ? 5 : 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                        className="w-10 h-10 rounded-xl bg-[#00A336]/10 border border-[#00A336]/30 flex items-center justify-center group-hover:bg-[#00A336]/30 group-hover:border-[#00A336]/70 transition-colors duration-300"
+                    >
                         <PlayCircle className="w-5 h-5 text-[#00A336]" />
-                    </div>
+                    </motion.div>
                 )}
             </div>
 
             <div className="relative z-10 flex-1">
-                <h3 className={`text-[17px] font-bold leading-snug mb-2 ${isLocked ? 'text-white/30' : 'text-white'}`}>
+                <h3 className={`text-[17px] font-bold leading-snug mb-2 transition-colors ${isLocked ? 'text-white/30' : isHovered ? 'text-white' : 'text-white/90'}`}>
                     {title}
                 </h3>
                 <p className={`text-[13px] leading-relaxed ${isLocked ? 'text-white/20' : 'text-[#A1A1AA]'}`}>
@@ -408,9 +518,11 @@ function PremiumModuleCard({ number, title, desc, status, progressPct, onClick }
                 {!isLocked && (
                     <div className="mt-4">
                         <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-[#00A336] to-[#00cc44] rounded-full transition-all duration-500"
-                                style={{ width: `${status === 'termine' ? 100 : (progressPct ?? 0)}%` }}
+                            <motion.div
+                                className="h-full bg-gradient-to-r from-[#00A336] to-[#00cc44] rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${status === 'termine' ? 100 : (progressPct ?? 0)}%` }}
+                                transition={{ duration: 0.8, ease: 'easeOut' }}
                             />
                         </div>
                         {status === 'en_cours' && (
@@ -427,22 +539,193 @@ function PremiumModuleCard({ number, title, desc, status, progressPct, onClick }
 
             {!isLocked && (
                 <div className="flex items-center justify-between relative z-10 mt-5 pt-4 border-t border-[#00A336]/10">
-                    <span className="flex items-center gap-1.5 text-[#00A336] text-[13px] font-bold group-hover:gap-2.5 transition-all">
-                        <PlayCircle className="w-4 h-4" />
+                    <motion.span
+                        animate={{ gap: isHovered ? '10px' : '6px' }}
+                        className="flex items-center text-[#00A336] text-[13px] font-bold transition-all"
+                        style={{ gap: isHovered ? '10px' : '6px' }}
+                    >
+                        <PlayCircle className="w-4 h-4 flex-shrink-0" />
                         {status === 'termine' ? 'Revoir' : 'Découvrir'}
-                    </span>
-                    <div className="w-10 h-[1px] bg-gradient-to-r from-[#00A336]/60 to-transparent group-hover:w-16 transition-all duration-300" />
+                    </motion.span>
+                    <motion.div
+                        animate={{ width: isHovered ? 64 : 40 }}
+                        className="h-[1px] bg-gradient-to-r from-[#00A336]/60 to-transparent"
+                    />
                 </div>
             )}
-        </div>
+        </motion.div>
     )
 }
 
 
 
-// Minimal placeholder avatar
+// Placeholder avatar with gradient + initial
 function UserAvatar({ seed }: { seed: string }) {
-    const bgColors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500"];
-    const color = bgColors[parseInt(seed) % bgColors.length];
-    return <div className={`w-full h-full ${color} opacity-80 mix-blend-screen`} />
+    const avatars: { grad: string; initial: string }[] = [
+        { grad: 'linear-gradient(135deg,#7c3aed,#a855f7)', initial: 'A' },
+        { grad: 'linear-gradient(135deg,#2563eb,#06b6d4)', initial: 'M' },
+        { grad: 'linear-gradient(135deg,#ea580c,#f59e0b)', initial: 'K' },
+        { grad: 'linear-gradient(135deg,#db2777,#f43f5e)', initial: 'T' },
+        { grad: 'linear-gradient(135deg,#16a34a,#22c55e)', initial: 'S' },
+    ];
+    const av = avatars[parseInt(seed) % avatars.length];
+    return (
+        <div
+            className="w-full h-full flex items-center justify-center text-white text-[11px] font-bold"
+            style={{ background: av.grad }}
+        >
+            {av.initial}
+        </div>
+    );
+}
+
+// ========================
+// Confetti Canvas
+// ========================
+function ConfettiCanvas() {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const COLORS = ['#00A336', '#00cc44', '#ffffff', '#a3e635', '#facc15', '#00ff88'];
+        const particles = Array.from({ length: 120 }, () => ({
+            x: Math.random() * canvas.width,
+            y: -20 - Math.random() * 200,
+            vx: (Math.random() - 0.5) * 4,
+            vy: 2 + Math.random() * 5,
+            w: 6 + Math.random() * 8,
+            h: 3 + Math.random() * 5,
+            angle: Math.random() * Math.PI * 2,
+            spin: (Math.random() - 0.5) * 0.2,
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            opacity: 1,
+        }));
+
+        let rafId: number;
+        const draw = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let alive = false;
+            for (const p of particles) {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.12; // gravity
+                p.angle += p.spin;
+                if (p.y > canvas.height * 0.7) p.opacity -= 0.02;
+                if (p.opacity > 0) {
+                    alive = true;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.angle);
+                    ctx.globalAlpha = Math.max(0, p.opacity);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+                }
+            }
+            if (alive) rafId = requestAnimationFrame(draw);
+        };
+        rafId = requestAnimationFrame(draw);
+        return () => cancelAnimationFrame(rafId);
+    }, []);
+
+    return (
+        <canvas
+            ref={canvasRef}
+            className="fixed inset-0 pointer-events-none z-[9999]"
+        />
+    );
+}
+
+// ========================
+// Module Unlock Modal
+// ========================
+function ModuleUnlockModal({ moduleId, title, onOpen, onClose }: {
+    moduleId: number;
+    title: string;
+    onOpen: () => void;
+    onClose: () => void;
+}) {
+    return (
+        <motion.div
+            className="fixed inset-0 z-[9998] flex items-center justify-center px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+        >
+            {/* Backdrop */}
+            <motion.div
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                onClick={onClose}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+            />
+
+            {/* Card */}
+            <motion.div
+                className="relative z-10 w-full max-w-[420px] bg-[#09090b] border-2 border-[#00A336]/50 rounded-3xl p-8 flex flex-col items-center text-center shadow-[0_0_80px_rgba(0,163,54,0.25)]"
+                initial={{ scale: 0.7, opacity: 0, y: 40 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.85, opacity: 0, y: 20 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+            >
+                {/* Glowing badge */}
+                <motion.div
+                    className="w-20 h-20 rounded-[24px] bg-[#00A336]/15 border border-[#00A336]/40 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(0,163,54,0.3)]"
+                    animate={{ scale: [1, 1.08, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                    <Zap className="w-9 h-9 text-[#00A336]" fill="currentColor" strokeWidth={0} />
+                </motion.div>
+
+                {/* Stars decoration */}
+                <div className="flex gap-2 mb-4">
+                    {[0, 1, 2].map(i => (
+                        <motion.div
+                            key={i}
+                            initial={{ scale: 0, rotate: -30 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ delay: 0.3 + i * 0.1, type: 'spring', stiffness: 300 }}
+                        >
+                            <Star className="w-4 h-4 text-[#00A336] fill-[#00A336]" />
+                        </motion.div>
+                    ))}
+                </div>
+
+                <span className="text-[#00A336] text-[11px] font-bold uppercase tracking-widest mb-2">
+                    Nouveau module débloqué !
+                </span>
+
+                <h2 className="text-white text-[22px] font-semibold leading-tight mb-2">
+                    Module {moduleId}
+                </h2>
+                <p className="text-[#A1A1AA] text-[14px] font-medium mb-8 leading-relaxed">
+                    "{title}" vient d'être débloqué. Lance-toi dès maintenant !
+                </p>
+
+                <div className="flex flex-col gap-3 w-full">
+                    <button
+                        onClick={onOpen}
+                        className="w-full py-3.5 bg-[#00A336] hover:bg-[#00b83d] text-black font-bold text-[14px] rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    >
+                        <PlayCircle className="w-4 h-4" />
+                        Commencer le module
+                    </button>
+                    <button
+                        onClick={onClose}
+                        className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#A1A1AA] font-semibold text-[13px] rounded-xl transition-colors cursor-pointer"
+                    >
+                        Plus tard
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
 }
