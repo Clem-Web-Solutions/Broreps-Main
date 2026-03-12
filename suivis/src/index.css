@@ -1,45 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* Custom Colors */
-  --color-broreps-green: #39FF14;
-  --color-broreps-dark: #050505;
-  --color-broreps-card: #121212;
-  --color-broreps-gray: #2A2A2A;
-  
-  /* Custom Fonts */
-  --font-family-titan: "Titan One", sans-serif;
-  --font-family-sans: Inter, sans-serif;
-  
-  /* Custom Shadows */
-  --shadow-neon: 0 0 10px #39FF14, 0 0 20px #39FF14;
-  --shadow-neon-sm: 0 0 5px #39FF14;
+    /* Brand colors — same palette as SaaS */
+    --color-brand-primary: #00A336;
+    --color-brand-secondary: #00cc33;
+    --color-brand-bg: #000000;
+    --color-surface: rgba(255, 255, 255, 0.02);
+    --color-surface-hover: rgba(255, 255, 255, 0.05);
+    --color-border: rgba(255, 255, 255, 0.05);
+    --color-border-hover: rgba(255, 255, 255, 0.1);
+    --color-text-dimmed: #9CA3AF;
+
+    /* Legacy aliases — keep existing class names working */
+    --color-broreps-green: #00A336;
+    --color-broreps-dark: #000000;
+    --color-broreps-card: #09090b;
+    --color-broreps-gray: #27272a;
+
+    --font-family-sans: Inter, system-ui, sans-serif;
 }
 
 @layer base {
-  body {
-    @apply bg-broreps-dark text-white font-sans overflow-x-hidden;
-  }
+    body {
+        @apply bg-black text-white font-sans overflow-x-hidden;
+    }
 }
 
+/* Card component — matches saas card style */
 .glass-panel {
-  @apply bg-broreps-card/60 backdrop-blur-md border border-white/10;
+    @apply bg-[#09090b]/80 backdrop-blur-md border border-white/10;
 }
 
-.text-glow {
-  text-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
-}
-
+/* Slow spin for Disc icon */
 .spin-slow {
-  animation: spin 8s linear infinite;
+    animation: spin 8s linear infinite;
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
+
+@keyframes corner-glow {
+    0%, 100% { box-shadow: 0 0 12px rgba(0, 163, 54, 0.15); }
+    50% { box-shadow: 0 0 28px rgba(0, 163, 54, 0.35); }
+}
+

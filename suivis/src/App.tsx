@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from "motion/react"
-import { AlertCircle, CheckCircle, ChevronDown, Clock, Disc, FileX, Info, MessageCircle, Search, Send, Shield, Target, User, X, Zap } from 'lucide-react';
+import { AlertCircle, CheckCircle, ChevronDown, Clock, Crown, Disc, FileX, Info, MessageCircle, Search, Send, Shield, Target, User, X, Zap } from 'lucide-react';
 
 import './App.css'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -382,42 +382,40 @@ function App() {
 
   if (!showResult) {
     return (
-      <div className="min-h-screen bg-broreps-dark text-white p-4 font-sans flex flex-col justify-center items-center relative overflow-hidden">
+      <div className="min-h-screen bg-black text-white p-4 font-sans flex flex-col justify-center items-center relative overflow-hidden">
         {/* Background Effects */}
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-broreps-green/10 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-broreps-green/5 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#00A336]/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#00A336]/5 rounded-full blur-[120px] pointer-events-none" />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-lg z-10 text-center"
         >
-          <div className="mb-12">
-            <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 drop-shadow-lg transform -skew-x-6 mb-4">
-              <span className="text-broreps-green drop-shadow-[0_0_15px_rgba(57,255,20,0.6)]">BRO</span>REPS
-            </h1>
-            <p className="text-broreps-green font-bold tracking-[0.2em] text-sm uppercase glow-sm">Plateforme de Suivi</p>
+          <div className="mb-12 flex flex-col items-center">
+            <Crown className="w-8 h-8 text-[#00A336] mb-1" />
+            <span className="text-[28px] font-black text-[#00A336] italic tracking-tighter leading-none mb-2">BROREPS</span>
+            <p className="text-[#A1A1AA] font-medium tracking-[0.15em] text-[12px] uppercase mt-1">Plateforme de Suivi</p>
           </div>
 
           {/* Step 1: Search by order number */}
           {verificationStep === 'search' && (
-            <form onSubmit={handleSearch} className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-broreps-green to-emerald-600 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-              <div className="relative flex items-center bg-[#0F0F0F] border border-white/10 rounded-xl p-2 shadow-2xl">
-                <Search className="text-gray-500 ml-4 w-6 h-6" />
+            <form onSubmit={handleSearch}>
+              <div className="flex items-center bg-[#111111] border border-[#27272a] rounded-xl px-4 focus-within:border-[#00A336] transition-colors shadow-2xl">
+                <Search className="text-[#52525b] w-5 h-5 shrink-0" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="N° TagadaPay ou N° commande Shopify (ex: #1234)"
-                  className="w-full bg-transparent text-white px-4 py-4 text-lg focus:outline-none placeholder-gray-600 font-medium"
+                  className="flex-1 bg-transparent text-white px-4 py-4 text-[15px] focus:outline-none placeholder-[#52525b] font-medium"
                 />
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-broreps-green hover:bg-[#2ecc12] text-black font-black italic tracking-wider py-3 px-8 rounded-lg transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(57,255,20,0.3)] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)]"
+                  className="bg-[#00A336] hover:bg-[#00BF3F] text-white font-bold py-3 px-6 rounded-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  CONTINUER
+                  Continuer
                 </button>
               </div>
             </form>
@@ -430,45 +428,44 @@ function App() {
               animate={{ opacity: 1, x: 0 }}
               className="space-y-6"
             >
-              <div className="bg-[#0F0F0F]/80 border border-white/10 rounded-2xl p-6">
+              <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <Shield className="w-6 h-6 text-broreps-green" />
-                  <h2 className="text-xl font-bold">Vérification de sécurité</h2>
+                  <Shield className="w-6 h-6 text-[#00A336]" />
+                  <h2 className="text-[18px] font-semibold text-white">Vérification de sécurité</h2>
                 </div>
-                <p className="text-gray-400 text-sm mb-2">
-                  Pour accéder aux détails de la commande <span className="text-white font-bold">#{orderNumber}</span>,
+                <p className="text-[#A1A1AA] text-[13px] mb-2">
+                  Pour accéder aux détails de la commande <span className="text-white font-semibold">#{orderNumber}</span>,
                 </p>
-                <p className="text-gray-400 text-sm">
+                <p className="text-[#A1A1AA] text-[13px]">
                   veuillez confirmer l'email utilisé lors de la commande TagadaPay ou Shopify.
                 </p>
               </div>
 
-              <form onSubmit={handleVerify} className="relative group">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-broreps-green to-emerald-600 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-                <div className="relative flex items-center bg-[#0F0F0F] border border-white/10 rounded-xl p-2 shadow-2xl">
-                  <User className="text-gray-500 ml-4 w-6 h-6" />
+              <form onSubmit={handleVerify}>
+                <div className="flex items-center bg-[#111111] border border-[#27272a] rounded-xl px-4 focus-within:border-[#00A336] transition-colors shadow-2xl">
+                  <User className="text-[#52525b] w-5 h-5 shrink-0" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email de la commande"
-                    className="w-full bg-transparent text-white px-4 py-4 text-lg focus:outline-none placeholder-gray-600 font-medium"
+                    className="flex-1 bg-transparent text-white px-4 py-4 text-[15px] focus:outline-none placeholder-[#52525b] font-medium"
                     required
                     autoFocus
                   />
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="bg-broreps-green hover:bg-[#2ecc12] text-black font-black italic tracking-wider py-3 px-8 rounded-lg transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(57,255,20,0.3)] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)]"
+                    className="bg-[#00A336] hover:bg-[#00BF3F] text-white font-bold py-3 px-6 rounded-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLoading ? <Disc className="animate-spin w-6 h-6" /> : 'VÉRIFIER'}
+                    {isLoading ? <Disc className="animate-spin w-6 h-6" /> : 'Vérifier'}
                   </button>
                 </div>
               </form>
 
               <button
                 onClick={handleBack}
-                className="text-gray-400 hover:text-white text-sm transition-colors flex items-center gap-2 mx-auto"
+                className="text-[#A1A1AA] hover:text-white text-[13px] transition-colors flex items-center gap-2 mx-auto"
               >
                 <Search className="w-4 h-4" />
                 Retour à la recherche
@@ -493,10 +490,10 @@ function App() {
 
   if (!orderData) {
     return (
-      <div className="min-h-screen bg-broreps-dark text-white p-4 md:p-8 font-sans flex justify-center items-center">
+      <div className="min-h-screen bg-black text-white p-4 md:p-8 font-sans flex justify-center items-center">
         <div className="text-center">
-          <Disc className="w-16 h-16 text-broreps-green animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Chargement des données...</p>
+          <Disc className="w-16 h-16 text-[#00A336] animate-spin mx-auto mb-4" />
+          <p className="text-[#A1A1AA]">Chargement des données...</p>
         </div>
       </div>
     );
@@ -510,8 +507,8 @@ function App() {
   const nextDelivery = getNextDeliveryTime();
 
   return (
-    <div className="antialiased selection:bg-broreps-green selection:text-black">
-      <div className="min-h-screen bg-broreps-dark text-white p-4 md:p-8 font-sans flex justify-center items-center">
+    <div className="antialiased selection:bg-[#00A336] selection:text-black">
+      <div className="min-h-screen bg-black text-white p-4 md:p-8 font-sans flex justify-center items-center">
         <button
           onClick={() => {
             setShowResult(false);
@@ -522,10 +519,10 @@ function App() {
             setOrderNumber('');
             setEmail('');
           }}
-          className="fixed top-4 left-4 z-50 bg-[#0F0F0F] border border-white/10 p-2 rounded-full hover:bg-white/5 transition-colors"
+          className="fixed top-4 left-4 z-50 bg-[#09090b] border border-white/10 p-2 rounded-full hover:bg-white/5 transition-colors"
           title="Retour à la recherche"
         >
-          <Search className="w-5 h-5 text-gray-400" />
+          <Search className="w-5 h-5 text-[#A1A1AA]" />
         </button>
 
         <div className="max-w-8xl w-full grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -534,30 +531,30 @@ function App() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-4 bg-[#0F0F0F]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 flex flex-col md:flex-row justify-between items-center shadow-lg"
+            className="lg:col-span-4 bg-[#09090b]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 flex flex-col md:flex-row justify-between items-center shadow-lg"
           >
             <div className="flex items-center gap-4 mb-4 md:mb-0">
-              <div className="w-14 h-14 bg-[#1a1a1a] rounded-2xl flex items-center justify-center border border-white/10 text-broreps-green">
+              <div className="w-14 h-14 bg-white/[0.04] rounded-2xl flex items-center justify-center border border-white/10 text-[#00A336]">
                 <Disc className="w-8 h-8 spin-slow" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-3">
                   Commande {orderData.id}
-                  <span className="bg-[#1a1a1a] text-yellow-500 border border-yellow-500/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                  <span className="bg-white/[0.04] text-yellow-500 border border-yellow-500/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
                     {orderData.status}
                   </span>
                 </h1>
-                <p className="text-gray-400 text-sm">{orderData.product}</p>
+                <p className="text-[#A1A1AA] text-sm">{orderData.product}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 bg-[#0a0a0a] p-1.5 rounded-xl border border-white/5">
-              <div className="px-4 py-2 rounded-lg bg-[#151515] flex items-center gap-2 border border-white/5">
-                <User className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-3 bg-black p-1.5 rounded-xl border border-white/5">
+              <div className="px-4 py-2 rounded-lg bg-white/5 flex items-center gap-2 border border-white/5">
+                <User className="w-4 h-4 text-[#A1A1AA]" />
                 <span className="text-sm font-medium text-gray-200">{orderData.link || orderData.tagadapay?.social_link || 'Non fourni'}</span>
               </div>
-              <div className="px-4 py-2 rounded-lg bg-[#151515] flex items-center gap-2 border border-white/5">
-                <Target className="w-4 h-4 text-broreps-green" />
+              <div className="px-4 py-2 rounded-lg bg-white/5 flex items-center gap-2 border border-white/5">
+                <Target className="w-4 h-4 text-[#00A336]" />
                 <span className="text-sm font-bold text-white">{orderData.quantity.toLocaleString()} objectif</span>
               </div>
             </div>
@@ -569,26 +566,26 @@ function App() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="lg:col-span-4 bg-[#0F0F0F]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 shadow-lg"
+              className="lg:col-span-4 bg-[#09090b]/80 backdrop-blur-md rounded-3xl p-6 border border-white/5 shadow-lg"
             >
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-broreps-green" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[#00A336]" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
                     </svg>
                     Informations TagadaPay
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-400 text-sm">Lien social:</span>
+                      <span className="text-[#A1A1AA] text-sm">Lien social:</span>
                       <span className="text-white text-sm font-medium">
                         {orderData.tagadapay.social_link || 'Non fourni'}
                       </span>
                     </div>
                     {orderData.tagadapay.customer_name && (
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-400 text-sm">Client:</span>
+                        <span className="text-[#A1A1AA] text-sm">Client:</span>
                         <span className="text-white text-sm font-medium">
                           {orderData.tagadapay.customer_name}
                         </span>
@@ -612,7 +609,7 @@ function App() {
                     </span>
                   </div>
                   {orderData.tagadapay.total_price && (
-                    <div className="px-4 py-2 rounded-lg bg-[#151515] border border-white/5">
+                    <div className="px-4 py-2 rounded-lg bg-white/5 border border-white/5">
                       <span className="text-white text-sm font-bold">
                         {parseFloat(orderData.tagadapay.total_price).toFixed(2)} €
                       </span>
@@ -628,13 +625,13 @@ function App() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 }}
-            className="lg:col-span-3 bg-[#0F0F0F] rounded-3xl p-8 border border-white/5 relative overflow-hidden group shadow-2xl"
+            className="lg:col-span-3 bg-[#09090b] rounded-3xl p-8 border border-white/5 relative overflow-hidden group shadow-2xl"
           >
             {/* Background Glow */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-broreps-green/5 blur-[100px] rounded-full pointer-events-none group-hover:bg-broreps-green/10 transition-all duration-700" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#00A336]/5 blur-[100px] rounded-full pointer-events-none group-hover:bg-[#00A336]/10 transition-all duration-700" />
 
             <div className="flex justify-between items-end mb-6">
-              <span className="bg-[#151515] text-broreps-green border border-broreps-green/20 px-4 py-1.5 rounded-full text-sm font-bold">
+              <span className="bg-white/5 text-[#00A336] border border-[#00A336]/20 px-4 py-1.5 rounded-full text-sm font-bold">
                 Finalisation
               </span>
               <span className="text-6xl font-black text-white tracking-tight">
@@ -643,22 +640,22 @@ function App() {
             </div>
 
             {/* Progress Bar */}
-            <div className="h-4 w-full bg-[#1a1a1a] rounded-full mb-8 relative overflow-hidden">
+            <div className="h-4 w-full bg-white/[0.04] rounded-full mb-8 relative overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${percentage}%` }}
                 transition={{ duration: 1.5, ease: "easeOut" }}
-                className="absolute top-0 left-0 h-full bg-linear-to-r from-emerald-600 to-broreps-green shadow-[0_0_20px_rgba(57,255,20,0.4)] rounded-full"
+                className="absolute top-0 left-0 h-full bg-linear-to-r from-emerald-600 to-[#00A336] shadow-[0_0_20px_rgba(57,255,20,0.4)] rounded-full"
               />
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-[#151515] rounded-2xl p-4 text-center border border-white/5">
-                <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Livré</p>
+              <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/5">
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-1">Livré</p>
                 {orderData.isDripFeed ? (
                   <>
-                    <p className="text-sm text-gray-400 mb-1">{orderData.executedRuns || 0} run(s) exécuté(s)</p>
+                    <p className="text-sm text-[#A1A1AA] mb-1">{orderData.executedRuns || 0} run(s) exécuté(s)</p>
                     <p className="text-2xl font-black text-white">
                       {dripProgress.delivered.toLocaleString()}
                     </p>
@@ -667,22 +664,22 @@ function App() {
                   <p className="text-2xl font-black text-white">{dripProgress.delivered.toLocaleString()}</p>
                 )}
               </div>
-              <div className="bg-[#151515] rounded-2xl p-4 text-center border border-white/5">
-                <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Objectif</p>
+              <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/5">
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-1">Objectif</p>
                 {orderData.isDripFeed ? (
                   <>
-                    <p className="text-sm text-gray-400 mb-1">{orderData.runs || 0} run(s) total</p>
+                    <p className="text-sm text-[#A1A1AA] mb-1">{orderData.runs || 0} run(s) total</p>
                     <p className="text-2xl font-black text-white">{orderData.quantity.toLocaleString()}</p>
                   </>
                 ) : (
                   <p className="text-2xl font-black text-white">{orderData.quantity.toLocaleString()}</p>
                 )}
               </div>
-              <div className="bg-[#151515] rounded-2xl p-4 text-center border border-white/5">
-                <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Restant</p>
+              <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/5">
+                <p className="text-[#A1A1AA] text-xs uppercase tracking-wider mb-1">Restant</p>
                 {orderData.isDripFeed ? (
                   <>
-                    <p className="text-sm text-gray-400 mb-1">{(orderData.runs || 0) - (orderData.executedRuns || 0)} run(s)</p>
+                    <p className="text-sm text-[#A1A1AA] mb-1">{(orderData.runs || 0) - (orderData.executedRuns || 0)} run(s)</p>
                     <p className="text-2xl font-black text-white">{dripProgress.remains.toLocaleString()}</p>
                   </>
                 ) : (
@@ -697,7 +694,7 @@ function App() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="lg:col-span-1 lg:row-span-2 bg-[#0F0F0F] rounded-3xl p-6 border border-white/5 shadow-2xl flex flex-col"
+            className="lg:col-span-1 lg:row-span-2 bg-[#09090b] rounded-3xl p-6 border border-white/5 shadow-2xl flex flex-col"
           >
             <h3 className="text-xl font-bold mb-8 text-white">Progression</h3>
 
@@ -714,9 +711,9 @@ function App() {
                     <div className={`
                                         w-10 h-10 rounded-full shrink-0 flex items-center justify-center border-4
                                         transition-all duration-300
-                                        ${isCompleted ? 'bg-broreps-green border-[#0F0F0F] text-black shadow-[0_0_20px_rgba(57,255,20,0.4)]' :
-                        isActive ? 'bg-[#0F0F0F] border-broreps-green text-broreps-green shadow-[0_0_15px_rgba(57,255,20,0.3)]' :
-                          'bg-[#0F0F0F] border-[#1a1a1a] text-gray-600'}
+                                        ${isCompleted ? 'bg-[#00A336] border-[#0F0F0F] text-black shadow-[0_0_20px_rgba(57,255,20,0.4)]' :
+                        isActive ? 'bg-[#09090b] border-[#00A336] text-[#00A336] shadow-[0_0_15px_rgba(57,255,20,0.3)]' :
+                          'bg-[#09090b] border-[#1a1a1a] text-gray-600'}
                                     `}>
                       <step.icon size={18} strokeWidth={isCompleted || isActive ? 2.5 : 2} />
                     </div>
@@ -745,34 +742,34 @@ function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="lg:col-span-1 bg-[#0F0F0F] rounded-3xl p-6 border border-white/5 shadow-2xl flex flex-col justify-between"
+            className="lg:col-span-1 bg-[#09090b] rounded-3xl p-6 border border-white/5 shadow-2xl flex flex-col justify-between"
           >
             <h3 className="text-xl font-bold mb-6 text-white">État de la livraison</h3>
 
             <div className="space-y-4">
               {/* Avg/Day Card */}
-              <div className="bg-[#151515] rounded-2xl p-4 border border-white/5">
+              <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="w-4 h-4 text-yellow-400" fill="currentColor" />
-                  <span className="text-gray-400 text-sm">Moyenne/jour</span>
+                  <span className="text-[#A1A1AA] text-sm">Moyenne/jour</span>
                 </div>
                 <p className="text-3xl font-black text-white">~{dailyAverage}</p>
               </div>
 
               {/* Mode Card */}
-              <div className="bg-[#151515] rounded-2xl p-4 border border-white/5">
+              <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="w-4 h-4 text-blue-400" />
-                  <span className="text-gray-400 text-sm">Mode</span>
+                  <span className="text-[#A1A1AA] text-sm">Mode</span>
                 </div>
                 <p className="text-3xl font-black text-blue-400">{orderData.isDripFeed ? 'Progressif' : 'Standard'}</p>
               </div>
 
               {/* Next Delivery Card */}
-              <div className="bg-[#151515] rounded-2xl p-4 border border-white/5">
+              <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="w-4 h-4 text-purple-400" />
-                  <span className="text-gray-400 text-sm">Prochaine livraison</span>
+                  <span className="text-[#A1A1AA] text-sm">Prochaine livraison</span>
                 </div>
                 <p className="text-xl font-bold text-white">{nextDelivery}</p>
               </div>
@@ -792,13 +789,13 @@ function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="lg:col-span-2 bg-[#0F0F0F] rounded-3xl p-8 border border-white/5 relative shadow-2xl min-h-100"
+            className="lg:col-span-2 bg-[#09090b] rounded-3xl p-8 border border-white/5 relative shadow-2xl min-h-100"
           >
             <div className="flex justify-between items-center mb-8">
               <h3 className="text-xl font-bold text-white">Évolution de votre croissance</h3>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-broreps-green animate-pulse"></div>
-                <span className="text-gray-400 text-sm">Abonnés</span>
+                <div className="w-2 h-2 rounded-full bg-[#00A336] animate-pulse"></div>
+                <span className="text-[#A1A1AA] text-sm">Abonnés</span>
               </div>
             </div>
 
@@ -807,14 +804,14 @@ function App() {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#39FF14" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#39FF14" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#00A336" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#00A336" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <Tooltip
                     contentStyle={{ backgroundColor: '#121212', border: '1px solid #333', borderRadius: '12px' }}
                     itemStyle={{ color: '#fff' }}
-                    cursor={{ stroke: '#39FF14', strokeWidth: 1, strokeDasharray: '5 5' }}
+                    cursor={{ stroke: '#00A336', strokeWidth: 1, strokeDasharray: '5 5' }}
                   />
                   <XAxis
                     dataKey="name"
@@ -829,7 +826,7 @@ function App() {
                   <Area
                     type="monotone"
                     dataKey="value"
-                    stroke="#39FF14"
+                    stroke="#00A336"
                     strokeWidth={3}
                     fillOpacity={1}
                     fill="url(#colorValue)"
@@ -854,9 +851,9 @@ function App() {
               className="fixed bottom-24 right-6 w-96 h-125 glass-panel rounded-2xl shadow-2xl flex flex-col z-50"
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-white/10 bg-linear-to-r from-broreps-green/20 to-transparent rounded-t-2xl">
+              <div className="flex items-center justify-between p-4 border-b border-white/10 bg-linear-to-r from-[#00A336]/20 to-transparent rounded-t-2xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-broreps-green flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-[#00A336] flex items-center justify-center">
                     <MessageCircle className="w-5 h-5 text-black" />
                   </div>
                   <div>
@@ -883,7 +880,7 @@ function App() {
                   >
                     <div
                       className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.sender === 'user'
-                          ? 'bg-broreps-green text-black rounded-br-none'
+                          ? 'bg-[#00A336] text-black rounded-br-none'
                           : 'bg-white/10 text-white rounded-bl-none'
                         }`}
                     >
@@ -920,11 +917,11 @@ function App() {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder="Écrivez votre message..."
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-broreps-green/50 focus:ring-1 focus:ring-broreps-green/50 transition-all"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-[#00A336]/50 focus:ring-1 focus:ring-[#00A336]/50 transition-all"
                     />
                     <button
                       type="submit"
-                      className="bg-broreps-green hover:bg-broreps-green/90 text-black rounded-xl px-4 py-2 transition-colors"
+                      className="bg-[#00A336] hover:bg-[#00A336]/90 text-black rounded-xl px-4 py-2 transition-colors"
                     >
                       <Send className="w-5 h-5" />
                     </button>
@@ -942,7 +939,7 @@ function App() {
           animate={{ scale: 1 }}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          className="fixed bottom-6 right-6 w-16 h-16 bg-linear-to-br from-broreps-green to-green-400 rounded-full shadow-lg shadow-broreps-green/50 flex items-center justify-center z-50 hover:shadow-xl hover:shadow-broreps-green/60 transition-all"
+          className="fixed bottom-6 right-6 w-16 h-16 bg-linear-to-br from-[#00A336] to-green-400 rounded-full shadow-lg shadow-[#00A336]/50 flex items-center justify-center z-50 hover:shadow-xl hover:shadow-[#00A336]/60 transition-all"
         >
           <AnimatePresence mode="wait">
             {isOpen ? (
