@@ -44,7 +44,31 @@ router.get('/', requireSaasAuth, async (req, res) => {
     );
 
     if (subRows.length === 0) {
-      return res.status(404).json({ error: 'Aucun abonnement trouvé', code: 'NO_SUBSCRIPTION' });
+      // Fallback: build from saas_users when tagadapay_orders has no row yet
+      const [userRows] = await db.query(
+        `SELECT subscription_status, subscription_product, next_billing_at, subscribed_at
+         FROM saas_users WHERE LOWER(email) = ?`,
+        [email]
+      );
+      if (userRows.length === 0 || !userRows[0].subscription_status) {
+        return res.status(404).json({ error: 'Aucun abonnement trouvé', code: 'NO_SUBSCRIPTION' });
+      }
+      const u = userRows[0];
+      return res.json({
+        subscription: {
+          subscription_id: null,
+          status: u.subscription_status,
+          product: u.subscription_product || 'BroReps Premium',
+          amount: 0,
+          currency: 'EUR',
+          interval: 'month',
+          next_billing_at: u.next_billing_at || null,
+          started_at: u.subscribed_at || null,
+          cancelled_at: null,
+        },
+        payments: [],
+        _source: 'saas_users',
+      });
     }
 
     const sub = subRows[0];
@@ -199,6 +223,120 @@ router.post('/cancel', requireSaasAuth, async (req, res) => {
     res.json({ success: true, message: 'Abonnement annulé. Ton accès reste actif jusqu\'à la fin de la période.' });
   } catch (err) {
     console.error('[SAAS SUBSCRIPTION] CANCEL error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/saas/subscription/sync ────────────────────────────────────────
+// Forces a live fetch from TagadaPay API and refreshes DB + saas_users.
+router.post('/sync', requireSaasAuth, async (req, res) => {
+  const email = req.saasUser.email.toLowerCase();
+
+  try {
+    // Find existing subscription_id in DB
+    const [rows] = await db.query(
+      `SELECT subscription_id FROM tagadapay_orders
+       WHERE LOWER(customer_email) = ? AND order_type = 'subscription'
+       ORDER BY created_at DESC LIMIT 1`,
+      [email]
+    );
+
+    const subId = rows[0]?.subscription_id;
+
+    if (!subId) {
+      // No local row — try to match via TagadaPay customer lookup
+      const [userRows] = await db.query(
+        `SELECT subscription_status, subscription_product, next_billing_at, subscribed_at
+         FROM saas_users WHERE LOWER(email) = ?`,
+        [email]
+      );
+      if (userRows.length === 0) {
+        return res.status(404).json({ error: 'Aucun abonnement trouvé', code: 'NO_SUBSCRIPTION' });
+      }
+      const u = userRows[0];
+      return res.json({
+        subscription: {
+          subscription_id: null,
+          status: u.subscription_status,
+          product: u.subscription_product || 'BroReps Premium',
+          amount: 0,
+          currency: 'EUR',
+          interval: 'month',
+          next_billing_at: u.next_billing_at || null,
+          started_at: u.subscribed_at || null,
+          cancelled_at: null,
+        },
+        payments: [],
+        _source: 'saas_users',
+        _synced: false,
+      });
+    }
+
+    // Fetch live data from TagadaPay
+    let liveData;
+    try {
+      liveData = await tagadaPayRequest('GET', `/subscriptions/${subId}`);
+    } catch {
+      // API unavailable — just return current DB state
+      return res.redirect(307, '/');
+    }
+
+    const live = liveData?.subscription || liveData?.data || liveData;
+    if (!live) return res.redirect(307, '/');
+
+    const liveStatus = live.status || live.subscription_status;
+    const liveNextBilling = live.nextBillingDate || live.next_billing_date || null;
+    const liveCancelledAt = live.cancelledAt || live.cancelled_at || null;
+
+    // Update tagadapay_orders row
+    await db.query(
+      `UPDATE tagadapay_orders
+         SET subscription_status = ?,
+             subscription_next_billing_date = ?,
+             subscription_cancelled_at = ?,
+             updated_at = NOW()
+       WHERE subscription_id = ?`,
+      [liveStatus, liveNextBilling, liveCancelledAt, subId]
+    );
+
+    // Sync saas_users too
+    await db.query(
+      `UPDATE saas_users SET subscription_status = ?, next_billing_at = ? WHERE LOWER(email) = ?`,
+      [liveStatus, liveNextBilling, email]
+    );
+
+    // Return fresh data (reuse GET logic)
+    const [subRows] = await db.query(
+      `SELECT * FROM tagadapay_orders
+       WHERE subscription_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [subId]
+    );
+    const [payments] = await db.query(
+      `SELECT id, payment_id, amount, currency, payment_status,
+              product_title, quantity, subscription_status,
+              payment_created_at, created_at
+       FROM tagadapay_orders WHERE subscription_id = ? ORDER BY created_at DESC`,
+      [subId]
+    );
+
+    const sub = subRows[0];
+    res.json({
+      subscription: {
+        subscription_id: sub.subscription_id,
+        status: sub.subscription_status || 'active',
+        product: sub.product_title,
+        amount: sub.amount,
+        currency: sub.currency || 'EUR',
+        interval: sub.subscription_interval,
+        next_billing_at: sub.subscription_next_billing_date,
+        started_at: sub.subscription_started_at || sub.created_at,
+        cancelled_at: sub.subscription_cancelled_at,
+      },
+      payments,
+      _synced: true,
+    });
+  } catch (err) {
+    console.error('[SAAS SUBSCRIPTION] SYNC error:', err);
     res.status(500).json({ error: err.message });
   }
 });

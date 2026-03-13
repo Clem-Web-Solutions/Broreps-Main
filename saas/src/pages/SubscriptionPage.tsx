@@ -179,6 +179,7 @@ export default function SubscriptionPage() {
     const [confirmAction, setConfirmAction] = useState<ActionType | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -226,6 +227,28 @@ export default function SubscriptionPage() {
         }
     }
 
+    async function handleSync() {
+        setSyncing(true);
+        setError(null);
+        try {
+            const res = await subscriptionApi.sync();
+            setSubscription(res.subscription);
+            setPayments(res.payments);
+            await refresh();
+            setActionSuccess('Abonnement synchronisé avec succès');
+            setTimeout(() => setActionSuccess(null), 4000);
+        } catch (e: unknown) {
+            const err = e as Error & { code?: string };
+            if (err.code === 'NO_SUBSCRIPTION') {
+                setError('NO_SUBSCRIPTION');
+            } else {
+                setError(err.message || 'Erreur de synchronisation');
+            }
+        } finally {
+            setSyncing(false);
+        }
+    }
+
     const st = subscription ? statusConfig(subscription.status) : null;
     const isCancelled = subscription?.status === 'cancelled' || subscription?.status === 'canceled' || subscription?.status === 'expired';
     const isActive = subscription?.status === 'active' || subscription?.status === 'past_due';
@@ -259,6 +282,15 @@ export default function SubscriptionPage() {
                             <Crown className="w-4.5 h-4.5 text-brand-primary" />
                         </div>
                         <h1 className="text-white text-[26px] font-black tracking-tight">Mon abonnement</h1>
+                        <button
+                            onClick={handleSync}
+                            disabled={syncing || loading}
+                            title="Synchroniser avec TagadaPay"
+                            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/8 bg-white/[0.03] text-[#a1a1aa] text-[12px] font-medium hover:bg-white/5 hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                            {syncing ? 'Sync…' : 'Synchroniser'}
+                        </button>
                     </div>
                     <p className="text-[#71717a] text-[14px]">Gérez votre abonnement BroReps et consultez l'historique de vos paiements.</p>
                 </motion.div>

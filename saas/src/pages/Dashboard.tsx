@@ -25,6 +25,7 @@ import { modulesApi, type ModuleProgress } from '../lib/api';
 import { Skeleton } from '../components/ui/skeleton';
 import { AICoachModal } from '../components/layout/AICoachModal';
 import { SocialConnectModal } from '../components/layout/SocialConnectModal';
+import { OnboardingModal, ONBOARDING_KEY } from '../components/layout/OnboardingModal';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -39,6 +40,9 @@ export default function Dashboard() {
 
     // Mock link modal
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+
+    // Onboarding — show once for new users
+    const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !localStorage.getItem(ONBOARDING_KEY));
 
     // AI Coach modal
     const [isAICoachOpen, setIsAICoachOpen] = useState(false);
@@ -244,7 +248,7 @@ export default function Dashboard() {
                     <div className="absolute inset-0 z-0 opacity-40">
                         <CobeGlobe />
                     </div>
-                    <div className="relative z-10 w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mt-20 text-center">
+                    <div className="relative z-10 w-full bg-black/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 mt-14 text-center">
                         <div className="flex items-center justify-center gap-1.5 mb-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#00A336] animate-pulse" />
                             <span className="text-[#00A336] text-[11px] font-bold uppercase tracking-widest">En direct</span>
@@ -350,6 +354,13 @@ export default function Dashboard() {
                     </div>
                 </div>
             </motion.div>
+
+            {/* Onboarding */}
+            <AnimatePresence>
+                {isOnboardingOpen && (
+                    <OnboardingModal onClose={() => setIsOnboardingOpen(false)} />
+                )}
+            </AnimatePresence>
 
             {/* Social Connect Modal */}
             <AnimatePresence>

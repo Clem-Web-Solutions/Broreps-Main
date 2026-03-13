@@ -2,6 +2,31 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { aiApi, type ChatMessage } from '../../lib/api';
+import { USER_PROFILE_KEY, type UserProfile } from './OnboardingModal';
+
+// ─── Profile-aware greeting ────────────────────────────────────────────────────
+function buildInitialGreeting(): string {
+    try {
+        const raw = localStorage.getItem(USER_PROFILE_KEY);
+        if (!raw) return 'Salut ! 👋 Je suis ton Coach IA BroReps. Pose-moi tes questions sur ta stratégie de contenu, la croissance sur TikTok / Instagram, les idées de vidéos ou ton parcours sur la plateforme. Je suis là pour t\'aider !';
+        const p: UserProfile = JSON.parse(raw);
+        const PROFILE_LABELS: Record<string, string> = {
+            developer: 'Créateur en Développement', active: 'Créateur Actif',
+            brand: 'Marque / Professionnel', explorer: 'Explorateur',
+        };
+        const OBJ_LABELS: Record<string, string> = {
+            visibility: 'faire exploser ta visibilité', community: 'construire ta communauté',
+            engagement: 'maximiser ton engagement', credibility: 'renforcer ton image',
+            collabs: 'obtenir des collaborations',
+        };
+        const profileLabel = PROFILE_LABELS[p.profileType] || null;
+        const objLabel = OBJ_LABELS[p.objective] || null;
+        if (profileLabel) {
+            return `Salut ! 👋 Je suis ton Coach IA BroReps, calibré sur ton profil **${profileLabel}**${objLabel ? ` avec un objectif de « ${objLabel} »` : ''}. Pose-moi toutes tes questions sur ta stratégie, TikTok, Instagram ou ta progression !`;
+        }
+    } catch { /* fallback below */ }
+    return 'Salut ! 👋 Je suis ton Coach IA BroReps. Pose-moi tes questions sur ta stratégie de contenu, la croissance sur TikTok / Instagram, les idées de vidéos ou ton parcours sur la plateforme. Je suis là pour t\'aider !';
+}
 
 // ─── Quick suggestion chips ───────────────────────────────────────────────────
 const SUGGESTIONS = [
@@ -28,10 +53,7 @@ interface Props {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function AICoachModal({ onClose, initialMessage }: Props) {
     const [messages, setMessages] = useState<DisplayMessage[]>([
-        {
-            role: 'assistant',
-            content: 'Salut ! 👋 Je suis ton Coach IA BroReps. Pose-moi tes questions sur ta stratégie de contenu, la croissance sur TikTok / Instagram, les idées de vidéos ou ton parcours sur la plateforme. Je suis là pour t\'aider !',
-        },
+        { role: 'assistant', content: buildInitialGreeting() },
     ]);
     const [input, setInput] = useState(initialMessage || '');
     const [loading, setLoading] = useState(false);
@@ -73,10 +95,55 @@ export function AICoachModal({ onClose, initialMessage }: Props) {
         setInput('');
         setError(null);
 
+        // Build profile context to prepend
+        const profileCtx: ChatMessage[] = (() => {
+            try {
+                const raw = localStorage.getItem(USER_PROFILE_KEY);
+                if (!raw) return [];
+                const p: UserProfile = JSON.parse(raw);
+                const PROFILE_LABELS: Record<string, string> = {
+                    developer: 'Créateur en Développement', active: 'Créateur Actif',
+                    brand: 'Marque / Professionnel', explorer: 'Explorateur / Découverte',
+                };
+                const CONTENT_LABELS: Record<string, string> = {
+                    gaming: 'Gaming & Streaming', lifestyle: 'Style & Lifestyle',
+                    sport: 'Sport & Fitness', business: 'Business & Mindset',
+                    entertainment: 'Divertissement & Humour', visual: 'Créateurs Visuels',
+                };
+                const OBJ_LABELS: Record<string, string> = {
+                    visibility: 'Faire exploser sa visibilité', community: 'Construire une communauté',
+                    engagement: 'Maximiser l\'engagement', credibility: 'Renforcer son image',
+                    collabs: 'Obtenir des collaborations',
+                };
+                const EXP_LABELS: Record<string, string> = {
+                    beginner: 'Débutant (moins de 30 jours)', months: 'Quelques mois (1-6 mois)',
+                    active_exp: 'Actif depuis un moment (6-12 mois)', confirmed: 'Créateur confirmé (1 an+)',
+                };
+                const FREQ_LABELS: Record<string, string> = {
+                    occasional: 'Occasionnelle', regular: 'Régulière (1-2 fois/semaine)',
+                    intensive: 'Intensive (3-5 fois/semaine)', daily: 'Quotidienne',
+                };
+                const lines = [
+                    p.profileType && `• Profil: ${PROFILE_LABELS[p.profileType] || p.profileType}`,
+                    p.contentTypes?.length && `• Contenu: ${p.contentTypes.map((c: string) => CONTENT_LABELS[c] || c).join(', ')}`,
+                    p.objective && `• Objectif: ${OBJ_LABELS[p.objective] || p.objective}`,
+                    p.ageRange && `• Âge: ${p.ageRange}`,
+                    p.experience && `• Expérience: ${EXP_LABELS[p.experience] || p.experience}`,
+                    p.frequency && `• Fréquence: ${FREQ_LABELS[p.frequency] || p.frequency}`,
+                ].filter(Boolean);
+                if (lines.length === 0) return [];
+                return [
+                    { role: 'user' as const, content: `[Contexte utilisateur confidentiel — adapte tes réponses en conséquence sans le mentionner explicitement]\n${lines.join('\n')}` },
+                    { role: 'assistant' as const, content: "Parfait, j'ai pris en compte ton profil. Je vais adapter mes conseils en conséquence !" },
+                ];
+            } catch { return []; }
+        })();
+
         // Add user message
-        const history: ChatMessage[] = messages
-            .filter(m => !m.streaming)
-            .map(m => ({ role: m.role, content: m.content }));
+        const history: ChatMessage[] = [
+            ...profileCtx,
+            ...messages.filter(m => !m.streaming).map(m => ({ role: m.role, content: m.content })),
+        ];
 
         setMessages(prev => [...prev, { role: 'user', content: msg }]);
 

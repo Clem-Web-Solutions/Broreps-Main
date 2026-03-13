@@ -295,7 +295,10 @@ export interface SubscriptionPayment {
 
 export const subscriptionApi = {
   get: () =>
-    request<{ subscription: SubscriptionInfo; payments: SubscriptionPayment[] }>('/api/saas/subscription'),
+    request<{ subscription: SubscriptionInfo; payments: SubscriptionPayment[]; _source?: string }>('/api/saas/subscription'),
+
+  sync: () =>
+    request<{ subscription: SubscriptionInfo; payments: SubscriptionPayment[]; _synced: boolean }>('/api/saas/subscription/sync', { method: 'POST' }),
 
   pause: () =>
     request<{ success: boolean; message: string }>('/api/saas/subscription/pause', { method: 'POST' }),

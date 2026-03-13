@@ -204,7 +204,7 @@ export default function SettingsPage() {
                                     {STATUS_MAP[user?.subscription_status ?? ''] ?? 'Actif'}
                                 </span>
                             </div>
-                            <button className="w-full bg-white hover:bg-gray-200 text-black font-semibold text-[14px] py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm">
+                            <button onClick={() => navigate('/subscription')} className="w-full bg-white hover:bg-gray-200 text-black font-semibold text-[14px] py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer">
                                 <Settings className="w-4 h-4" />
                                 Gérer mon abonnement
                             </button>

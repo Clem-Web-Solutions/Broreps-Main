@@ -407,7 +407,7 @@ function App() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="N° TagadaPay ou N° commande Shopify (ex: #1234)"
+                  placeholder="Votre N° de commande"
                   className="flex-1 bg-transparent text-white px-4 py-4 text-[15px] focus:outline-none placeholder-[#52525b] font-medium"
                 />
                 <button

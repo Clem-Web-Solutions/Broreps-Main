@@ -88,6 +88,7 @@ function AppRoutes() {
           <Route path="/hub" element={<HubPage />} />
           <Route path="/forum/:id" element={<ForumCategoryPage />} />
           <Route path="/subscription" element={<SubscriptionPage />} />
+          <Route path="/subscriptions" element={<Navigate to="/subscription" replace />} />
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/resources" element={<ResourcesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
